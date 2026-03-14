@@ -2,6 +2,7 @@ import { ApiFixture, LeagueConfig, LEAGUES, TeamStats, H2HFixture } from '@/type
 import { supabase } from '@/integrations/supabase/client';
 
 const CACHE_TTL = 5 * 60 * 1000;
+const LEAGUE_BATCH_SIZE = 4;
 
 interface CachedValue {
   data: unknown;
