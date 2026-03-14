@@ -1,6 +1,7 @@
-import { Zap, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import profetaLogo from '@/assets/profeta-bet-logo.png';
 
 interface LobbyHeaderProps {
   onRefresh: () => void;
@@ -12,12 +13,12 @@ export function LobbyHeader({ onRefresh }: LobbyHeaderProps) {
   return (
     <header className="glass-card px-4 py-3 md:px-6 md:py-4 flex items-center justify-between">
       <div
-        className="flex items-center gap-2 cursor-pointer"
+        className="flex items-center gap-3 cursor-pointer"
         onClick={() => navigate('/')}
       >
-        <Zap className="w-6 h-6 text-primary" />
+        <img src={profetaLogo} alt="Profeta Bet" className="w-8 h-8 md:w-10 md:h-10" />
         <h1 className="font-display text-2xl md:text-3xl tracking-wider text-foreground">
-          ORACLE BET
+          PROFETA BET
         </h1>
       </div>
 

@@ -1,4 +1,5 @@
-import { Zap, History } from 'lucide-react';
+import { History } from 'lucide-react';
+import profetaLogo from '@/assets/profeta-bet-logo.png';
 
 interface HeaderProps {
   onToggleHistory: () => void;
@@ -8,10 +9,10 @@ interface HeaderProps {
 export function Header({ onToggleHistory, historyCount }: HeaderProps) {
   return (
     <header className="glass-card px-4 py-3 md:px-6 md:py-4 flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <Zap className="w-6 h-6 text-oracle-win" />
+      <div className="flex items-center gap-3">
+        <img src={profetaLogo} alt="Profeta Bet" className="w-8 h-8 md:w-10 md:h-10" />
         <h1 className="font-display text-2xl md:text-3xl tracking-wider text-foreground">
-          ORACLE BET
+          PROFETA BET
         </h1>
       </div>
       <p className="hidden md:block text-oracle-muted text-sm font-body">
