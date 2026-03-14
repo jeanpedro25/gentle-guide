@@ -145,7 +145,58 @@ function eventToFixture(
   };
 }
 
-export async function fetchFixturesByLeague(
+export interface LiveMatchData {
+  id: string;
+  homeTeam: string;
+  awayTeam: string;
+  homeBadge: string;
+  awayBadge: string;
+  homeScore: string | null;
+  awayScore: string | null;
+  status: string;
+  league: string;
+  leagueBadge: string;
+  time: string;
+  venue: string;
+}
+
+export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
+  const today = new Date().toISOString().slice(0, 10);
+
+  try {
+    const data = await sportsDbFetch<{ events: SportsDbEvent[] | null }>(
+      `eventsday.php?d=${today}&s=Soccer`
+    );
+
+    if (!data?.events) return [];
+
+    return data.events
+      .filter(e => {
+        // Include live + recently finished
+        const status = e.strStatus || '';
+        return ['1H', '2H', 'HT', 'ET', 'P', 'FT', 'Match Finished', 'AET', 'AP'].includes(status)
+          || (e.intHomeScore !== null && e.intHomeScore !== '');
+      })
+      .map(e => ({
+        id: e.idEvent,
+        homeTeam: e.strHomeTeam,
+        awayTeam: e.strAwayTeam,
+        homeBadge: e.strHomeTeamBadge || '/placeholder.svg',
+        awayBadge: e.strAwayTeamBadge || '/placeholder.svg',
+        homeScore: e.intHomeScore,
+        awayScore: e.intAwayScore,
+        status: e.strStatus || '',
+        league: e.strLeague,
+        leagueBadge: e.strLeagueBadge || '',
+        time: e.strTime || '',
+        venue: e.strVenue || '',
+      }));
+  } catch (err) {
+    console.error('[Oracle] fetchLiveMatches error:', err);
+    return [];
+  }
+}
+
   league: LeagueConfig,
   options: { forceRefresh?: boolean } = {}
 ): Promise<ApiFixture[]> {
