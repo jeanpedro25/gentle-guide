@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 export default function MatchLobby() {
   const [selectedLeague, setSelectedLeague] = useState<number | null>(null);
   const { data, isLoading, isError, error, refetch } = useFilteredFixtures(selectedLeague);
+  const liveQuery = useLiveMatches();
   const navigate = useNavigate();
 
   const handleMatchClick = (fixture: ApiFixture) => {
