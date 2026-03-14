@@ -322,25 +322,29 @@ export async function fetchAllFixtures(
   lastApiError = '';
 
   try {
-    const results = await Promise.allSettled(
-      LEAGUES.map(async (league) => ({
-        league,
-        fixtures: await fetchFixturesByLeague(league, options),
-      }))
-    );
+    const successful: { league: LeagueConfig; fixtures: ApiFixture[] }[] = [];
 
-    results.forEach((r, i) => {
-      if (r.status === 'rejected') {
-        console.warn(`[Oracle] ${LEAGUES[i].name} failed:`, r.reason?.message || r.reason);
-      }
-    });
+    for (let i = 0; i < LEAGUES.length; i += LEAGUE_BATCH_SIZE) {
+      const batch = LEAGUES.slice(i, i + LEAGUE_BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map(async (league) => ({
+          league,
+          fixtures: await fetchFixturesByLeague(league, options),
+        }))
+      );
 
-    const successful = results
-      .filter((r): r is PromiseFulfilledResult<{ league: LeagueConfig; fixtures: ApiFixture[] }> =>
-        r.status === 'fulfilled'
-      )
-      .map((r) => r.value)
-      .filter((r) => r.fixtures.length > 0);
+      results.forEach((result, index) => {
+        const league = batch[index];
+        if (result.status === 'rejected') {
+          console.warn(`[Oracle] ${league.name} failed:`, result.reason?.message || result.reason);
+          return;
+        }
+
+        if (result.value.fixtures.length > 0) {
+          successful.push(result.value);
+        }
+      });
+    }
 
     if (successful.length > 0) {
       usingRealData = true;
