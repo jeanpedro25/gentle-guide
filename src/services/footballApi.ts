@@ -86,6 +86,42 @@ interface SportsDbTeam {
   strCountry: string;
 }
 
+function parseEventDate(event: SportsDbEvent): Date | null {
+  const directTs = event.strTimestamp?.trim();
+  if (directTs) {
+    const parsed = new Date(directTs);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+
+  const fallback = new Date(`${event.dateEvent}T${event.strTime || '00:00:00'}`);
+  if (!Number.isNaN(fallback.getTime())) return fallback;
+
+  return null;
+}
+
+function toStatusShort(status: string, hasScore: boolean): string {
+  const normalized = status.toUpperCase().trim();
+  if (
+    normalized === 'MATCH FINISHED' ||
+    normalized === 'FT' ||
+    normalized === 'AET' ||
+    normalized === 'AP' ||
+    normalized === 'PEN'
+  ) return 'FT';
+
+  if (
+    normalized === '1H' ||
+    normalized === '2H' ||
+    normalized === 'HT' ||
+    normalized === 'ET' ||
+    normalized === 'LIVE' ||
+    normalized === 'IN PLAY'
+  ) return 'LIVE';
+
+  if (normalized === 'POSTPONED' || normalized === 'PST') return 'PST';
+
+  return hasScore ? 'FT' : 'NS';
+}
 
 function eventToFixture(
   event: SportsDbEvent,
