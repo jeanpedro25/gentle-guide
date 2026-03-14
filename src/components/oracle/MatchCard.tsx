@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { ApiFixture } from '@/types/fixture';
-import { format, isToday, parseISO } from 'date-fns';
+import { format, isToday, isValid, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ChevronRight, Plus, Check } from 'lucide-react';
 import { useMultipla } from '@/contexts/MultiplaContext';
@@ -15,9 +15,14 @@ interface MatchCardProps {
 const DEFAULT_ODDS = { home: 2.05, draw: 3.25, away: 3.50 };
 
 export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
-  const matchDate = parseISO(fixture.fixture.date);
-  const isTodayMatch = isToday(matchDate);
-  const formattedDate = format(matchDate, "EEE, dd MMM '•' HH:mm", { locale: ptBR });
+  const parsedDate = parseISO(fixture.fixture.date);
+  const fallbackDate = new Date(fixture.fixture.timestamp * 1000);
+  const matchDate = isValid(parsedDate) ? parsedDate : fallbackDate;
+  const hasValidDate = isValid(matchDate);
+  const isTodayMatch = hasValidDate ? isToday(matchDate) : false;
+  const formattedDate = hasValidDate
+    ? format(matchDate, "EEE, dd MMM '•' HH:mm", { locale: ptBR })
+    : 'Data a confirmar';
   const { isSelected, getSelection, toggleSelection, maxReached } = useMultipla();
   const [showPicks, setShowPicks] = useState(false);
 

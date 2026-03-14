@@ -2,6 +2,7 @@ import { ApiFixture, LeagueConfig, LEAGUES, TeamStats, H2HFixture } from '@/type
 import { supabase } from '@/integrations/supabase/client';
 
 const CACHE_TTL = 5 * 60 * 1000;
+const LEAGUE_BATCH_SIZE = 4;
 
 interface CachedValue {
   data: unknown;
@@ -85,6 +86,42 @@ interface SportsDbTeam {
   strCountry: string;
 }
 
+function parseEventDate(event: SportsDbEvent): Date | null {
+  const directTs = event.strTimestamp?.trim();
+  if (directTs) {
+    const parsed = new Date(directTs);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+
+  const fallback = new Date(`${event.dateEvent}T${event.strTime || '00:00:00'}`);
+  if (!Number.isNaN(fallback.getTime())) return fallback;
+
+  return null;
+}
+
+function toStatusShort(status: string, hasScore: boolean): string {
+  const normalized = status.toUpperCase().trim();
+  if (
+    normalized === 'MATCH FINISHED' ||
+    normalized === 'FT' ||
+    normalized === 'AET' ||
+    normalized === 'AP' ||
+    normalized === 'PEN'
+  ) return 'FT';
+
+  if (
+    normalized === '1H' ||
+    normalized === '2H' ||
+    normalized === 'HT' ||
+    normalized === 'ET' ||
+    normalized === 'LIVE' ||
+    normalized === 'IN PLAY'
+  ) return 'LIVE';
+
+  if (normalized === 'POSTPONED' || normalized === 'PST') return 'PST';
+
+  return hasScore ? 'FT' : 'NS';
+}
 
 function eventToFixture(
   event: SportsDbEvent,
@@ -92,27 +129,29 @@ function eventToFixture(
   homeBadge: string,
   awayBadge: string
 ): ApiFixture {
-  const dateStr = event.strTimestamp
-    ? new Date(event.strTimestamp).toISOString()
-    : `${event.dateEvent}T${event.strTime || '00:00:00'}`;
+  const parsedDate = parseEventDate(event);
+  if (!parsedDate) {
+    throw new Error(`Invalid event date for event ${event.idEvent}`);
+  }
 
   const homeScore = event.intHomeScore !== null && event.intHomeScore !== '' ? parseInt(event.intHomeScore) : null;
   const awayScore = event.intAwayScore !== null && event.intAwayScore !== '' ? parseInt(event.intAwayScore) : null;
+  const hasScore = homeScore !== null && awayScore !== null;
 
-  const homeWinner = homeScore !== null && awayScore !== null
+  const homeWinner = hasScore
     ? (homeScore > awayScore ? true : homeScore < awayScore ? false : null)
     : null;
-  const awayWinner = homeScore !== null && awayScore !== null
+  const awayWinner = hasScore
     ? (awayScore > homeScore ? true : awayScore < homeScore ? false : null)
     : null;
 
   return {
     fixture: {
       id: parseInt(event.idEvent),
-      date: dateStr,
-      timestamp: new Date(dateStr).getTime() / 1000,
+      date: parsedDate.toISOString(),
+      timestamp: Math.floor(parsedDate.getTime() / 1000),
       status: {
-        short: event.strStatus === 'Match Finished' ? 'FT' : 'NS',
+        short: toStatusShort(event.strStatus || '', hasScore),
         long: event.strStatus || 'Not Started',
       },
     },
@@ -207,16 +246,13 @@ export async function fetchFixturesByLeague(
   }
 
   try {
-    // Fetch next events, past events, and full season in parallel for broader coverage
-    const [nextData, pastData, seasonData] = await Promise.allSettled([
+    // Start with lightweight endpoints to avoid request bursts.
+    const [nextData, pastData] = await Promise.allSettled([
       sportsDbFetch<{ events: SportsDbEvent[] | null }>(
         `eventsnextleague.php?id=${league.sportsDbId}`
       ),
       sportsDbFetch<{ events: SportsDbEvent[] | null }>(
         `eventspastleague.php?id=${league.sportsDbId}`
-      ),
-      sportsDbFetch<{ events: SportsDbEvent[] | null }>(
-        `eventsseason.php?id=${league.sportsDbId}&s=${league.season}`
       ),
     ]);
 
@@ -229,38 +265,51 @@ export async function fetchFixturesByLeague(
 
     if (nextData.status === 'fulfilled') addEvents(nextData.value?.events);
     if (pastData.status === 'fulfilled') addEvents(pastData.value?.events);
-    if (seasonData.status === 'fulfilled') addEvents(seasonData.value?.events);
+
+    // Fetch full season only when coverage is still too small.
+    if (allEvents.size < 8) {
+      try {
+        const seasonData = await sportsDbFetch<{ events: SportsDbEvent[] | null }>(
+          `eventsseason.php?id=${league.sportsDbId}&s=${league.season}`
+        );
+        addEvents(seasonData?.events);
+      } catch (seasonErr) {
+        console.warn(`[Oracle] ${league.name} season fallback failed:`, seasonErr);
+      }
+    }
 
     if (allEvents.size === 0) return [];
 
-    // Filter to events within ±30 days
     const now = Date.now();
     const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
     const minDate = now - thirtyDaysMs;
     const maxDate = now + thirtyDaysMs;
 
-    const filtered = Array.from(allEvents.values()).filter(event => {
-      const eventDate = event.strTimestamp
-        ? new Date(event.strTimestamp).getTime()
-        : new Date(`${event.dateEvent}T${event.strTime || '00:00:00'}`).getTime();
-      return eventDate >= minDate && eventDate <= maxDate;
-    });
+    const filtered = Array.from(allEvents.values())
+      .map((event) => ({ event, parsedDate: parseEventDate(event) }))
+      .filter((entry): entry is { event: SportsDbEvent; parsedDate: Date } => {
+        if (!entry.parsedDate) return false;
+        const eventDate = entry.parsedDate.getTime();
+        return eventDate >= minDate && eventDate <= maxDate;
+      })
+      .sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime())
+      .map(({ event }) => event);
 
-    // Sort by date ascending
-    filtered.sort((a, b) => {
-      const dateA = a.strTimestamp ? new Date(a.strTimestamp).getTime() : new Date(`${a.dateEvent}T${a.strTime || '00:00:00'}`).getTime();
-      const dateB = b.strTimestamp ? new Date(b.strTimestamp).getTime() : new Date(`${b.dateEvent}T${b.strTime || '00:00:00'}`).getTime();
-      return dateA - dateB;
+    return filtered.flatMap((event) => {
+      try {
+        return [
+          eventToFixture(
+            event,
+            league,
+            event.strHomeTeamBadge || '/placeholder.svg',
+            event.strAwayTeamBadge || '/placeholder.svg'
+          ),
+        ];
+      } catch (e) {
+        console.warn(`[Oracle] Skipping invalid fixture ${event.idEvent}:`, e);
+        return [];
+      }
     });
-
-    return filtered.map(event =>
-      eventToFixture(
-        event,
-        league,
-        event.strHomeTeamBadge || '/placeholder.svg',
-        event.strAwayTeamBadge || '/placeholder.svg'
-      )
-    );
   } catch (err) {
     console.warn(`[Oracle] ${league.name} failed:`, err);
     return [];
@@ -273,25 +322,29 @@ export async function fetchAllFixtures(
   lastApiError = '';
 
   try {
-    const results = await Promise.allSettled(
-      LEAGUES.map(async (league) => ({
-        league,
-        fixtures: await fetchFixturesByLeague(league, options),
-      }))
-    );
+    const successful: { league: LeagueConfig; fixtures: ApiFixture[] }[] = [];
 
-    results.forEach((r, i) => {
-      if (r.status === 'rejected') {
-        console.warn(`[Oracle] ${LEAGUES[i].name} failed:`, r.reason?.message || r.reason);
-      }
-    });
+    for (let i = 0; i < LEAGUES.length; i += LEAGUE_BATCH_SIZE) {
+      const batch = LEAGUES.slice(i, i + LEAGUE_BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map(async (league) => ({
+          league,
+          fixtures: await fetchFixturesByLeague(league, options),
+        }))
+      );
 
-    const successful = results
-      .filter((r): r is PromiseFulfilledResult<{ league: LeagueConfig; fixtures: ApiFixture[] }> =>
-        r.status === 'fulfilled'
-      )
-      .map((r) => r.value)
-      .filter((r) => r.fixtures.length > 0);
+      results.forEach((result, index) => {
+        const league = batch[index];
+        if (result.status === 'rejected') {
+          console.warn(`[Oracle] ${league.name} failed:`, result.reason?.message || result.reason);
+          return;
+        }
+
+        if (result.value.fixtures.length > 0) {
+          successful.push(result.value);
+        }
+      });
+    }
 
     if (successful.length > 0) {
       usingRealData = true;
