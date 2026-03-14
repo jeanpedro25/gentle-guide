@@ -171,6 +171,10 @@ export default function MatchLobby() {
             ))}
           </div>
         )}
+
+        {/* Spacer for fixed bottom bar */}
+        {<div className="h-20" />}
+        <MultiplaBar />
       </div>
     </div>
   );
