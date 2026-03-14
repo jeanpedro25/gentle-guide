@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ApiFixture } from '@/types/fixture';
-import { MatchAnalysis, OracleAnalysis, oracleToLegacy } from '@/types/prediction';
+import { MatchAnalysis, OracleAnalysis, oracleToLegacy, normalizeProbabilities } from '@/types/prediction';
 import { fetchMatchContext } from '@/services/footballApi';
 import { analyzeMatch } from '@/services/oracleService';
+import { AnalysisSummary } from '@/components/oracle/AnalysisSummary';
 import { VerdictCard } from '@/components/oracle/VerdictCard';
 import { CircularGauge } from '@/components/oracle/CircularGauge';
 import { ConfidenceGradeCard } from '@/components/oracle/ConfidenceGradeCard';
@@ -16,6 +17,10 @@ import { BettingInsight } from '@/components/oracle/BettingInsight';
 import { RedFlagsCard } from '@/components/oracle/RedFlagsCard';
 import { BankrollCalculator } from '@/components/oracle/BankrollCalculator';
 import { H2HHistory } from '@/components/oracle/H2HHistory';
+import { PlayerLineup } from '@/components/oracle/PlayerLineup';
+import { FormationPitch } from '@/components/oracle/FormationPitch';
+import { GoalkeeperDuelCard } from '@/components/oracle/GoalkeeperDuelCard';
+import { PlayerMatchups } from '@/components/oracle/PlayerMatchups';
 import { LoadingState } from '@/components/oracle/LoadingState';
 import { H2HFixture } from '@/types/fixture';
 import { motion } from 'framer-motion';
@@ -24,6 +29,7 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { usePredictionHistory } from '@/hooks/usePredictionHistory';
+import profetaLogo from '@/assets/profeta-bet-logo.png';
 
 export default function MatchDetail() {
   const navigate = useNavigate();
@@ -99,8 +105,14 @@ export default function MatchDetail() {
 
   const matchDate = parseISO(fixture.fixture.date);
 
+  // Safely get normalized percentages for gauges
+  const getGaugeValue = (prob: number) => {
+    const val = prob > 1 ? prob : prob * 100;
+    return Math.min(100, Math.max(0, Math.round(val)));
+  };
+
   return (
-    <div className="min-h-screen bg-oracle-bg">
+    <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto p-3 md:p-6 space-y-4">
         {/* Back button */}
         <motion.button
@@ -118,6 +130,10 @@ export default function MatchDetail() {
           animate={{ opacity: 1, y: 0 }}
           className="glass-card p-6 md:p-8"
         >
+          <div className="flex items-center justify-center gap-1 mb-4">
+            <img src={profetaLogo} alt="Profeta Bet" className="w-6 h-6" />
+            <span className="font-display text-sm tracking-wider text-muted-foreground">PROFETA BET</span>
+          </div>
           <div className="flex items-center justify-center gap-4 md:gap-8 mb-4">
             <div className="flex flex-col items-center gap-2 min-w-0">
               <img
@@ -177,6 +193,13 @@ export default function MatchDetail() {
         {/* Results */}
         {analysis && oracle && (
           <div className="space-y-4">
+            {/* 0. Complete Analysis Summary - TOP */}
+            <AnalysisSummary
+              oracle={oracle}
+              homeTeam={analysis.homeTeam}
+              awayTeam={analysis.awayTeam}
+            />
+
             {/* 1. Verdict */}
             <VerdictCard
               result={analysis.result}
@@ -188,7 +211,7 @@ export default function MatchDetail() {
             {/* 2. Confidence Grade */}
             <ConfidenceGradeCard oracle={oracle} />
 
-            {/* 3. Circular Gauges */}
+            {/* 3. Circular Gauges - with normalization */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -199,19 +222,19 @@ export default function MatchDetail() {
               <div className="flex items-center justify-around">
                 <CircularGauge
                   label={analysis.homeTeam}
-                  value={Math.round(oracle.probabilities.homeWin * 100)}
+                  value={getGaugeValue(oracle.probabilities.homeWin)}
                   color="hsl(var(--oracle-win))"
                   delay={0.4}
                 />
                 <CircularGauge
                   label="Empate"
-                  value={Math.round(oracle.probabilities.draw * 100)}
+                  value={getGaugeValue(oracle.probabilities.draw)}
                   color="hsl(var(--oracle-draw))"
                   delay={0.6}
                 />
                 <CircularGauge
                   label={analysis.awayTeam}
-                  value={Math.round(oracle.probabilities.awayWin * 100)}
+                  value={getGaugeValue(oracle.probabilities.awayWin)}
                   color="hsl(var(--oracle-loss))"
                   delay={0.8}
                 />
@@ -221,8 +244,8 @@ export default function MatchDetail() {
             {/* 4. EV + Kelly */}
             <EVDisplay oracle={oracle} />
 
-            {/* 5. Poisson xG + Top Scores */}
-            <PoissonSection oracle={oracle} />
+            {/* 5. Poisson xG + Predicted Score + Top Scores */}
+            <PoissonSection oracle={oracle} homeTeam={analysis.homeTeam} awayTeam={analysis.awayTeam} />
 
             {/* 6. Poisson Heatmap Matrix 7x7 */}
             <PoissonHeatmap
@@ -231,22 +254,50 @@ export default function MatchDetail() {
               awayTeam={analysis.awayTeam}
             />
 
-            {/* 7. Market Comparison */}
+            {/* 7. Formation Pitch */}
+            <FormationPitch
+              oracle={oracle}
+              homeTeam={analysis.homeTeam}
+              awayTeam={analysis.awayTeam}
+            />
+
+            {/* 8. Player Lineup */}
+            <PlayerLineup
+              oracle={oracle}
+              homeTeam={analysis.homeTeam}
+              awayTeam={analysis.awayTeam}
+            />
+
+            {/* 9. Goalkeeper Duel */}
+            <GoalkeeperDuelCard
+              oracle={oracle}
+              homeTeam={analysis.homeTeam}
+              awayTeam={analysis.awayTeam}
+            />
+
+            {/* 10. Key Player Matchups */}
+            <PlayerMatchups
+              oracle={oracle}
+              homeTeam={analysis.homeTeam}
+              awayTeam={analysis.awayTeam}
+            />
+
+            {/* 11. Market Comparison */}
             <MarketComparisonCard oracle={oracle} />
 
-            {/* 8. Tactical Analysis */}
+            {/* 12. Tactical Analysis */}
             <AnalysisBreakdown result={analysis.result} oracle={oracle} />
 
-            {/* 9. Betting Insight */}
+            {/* 13. Betting Insight */}
             <BettingInsight result={analysis.result} oracle={oracle} />
 
-            {/* 10. Red Flags */}
+            {/* 14. Red Flags */}
             {oracle.redFlags.length > 0 && <RedFlagsCard redFlags={oracle.redFlags} />}
 
-            {/* 11. H2H History */}
+            {/* 15. H2H History */}
             <H2HHistory h2h={h2h} homeTeamId={fixture.teams.home.id} />
 
-            {/* 12. Bankroll Calculator */}
+            {/* 16. Bankroll Calculator */}
             <BankrollCalculator oracle={oracle} />
 
             {/* Analyze again */}
