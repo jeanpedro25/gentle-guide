@@ -9,17 +9,22 @@ export interface PredictionResult {
   riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
   suggestedBet: string;
   oddsTrend: string;
+  bothTeamsScore?: boolean;
+  expectedGoals?: number;
 }
 
 export interface MatchAnalysis {
   id: string;
   homeTeam: string;
   awayTeam: string;
+  homeTeamLogo?: string;
+  awayTeamLogo?: string;
   sport: string;
   league: string;
   date: string;
   result: PredictionResult;
   timestamp: number;
+  fixtureId?: number;
 }
 
 export const confidenceLabels: Record<string, string> = {
