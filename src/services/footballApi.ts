@@ -3,14 +3,15 @@ import { getDemoFixtures } from '@/data/demoFixtures';
 
 const BASE_URL = 'https://v3.football.api-sports.io';
 
-function getApiKey(): string | null {
-  return import.meta.env.VITE_FOOTBALL_API_KEY || null;
+// Publishable API-Football key (free tier, client-side usage)
+const API_FOOTBALL_KEY = '3ffd74d8f5b404975b2f3b24cb383a23';
+
+function getApiKey(): string {
+  return import.meta.env.VITE_FOOTBALL_API_KEY || API_FOOTBALL_KEY;
 }
 
 function getHeaders(): HeadersInit {
-  const key = getApiKey();
-  if (!key) throw new Error('API Key não configurada');
-  return { 'x-apisports-key': key };
+  return { 'x-apisports-key': getApiKey() };
 }
 
 // Simple in-memory cache (30 min TTL)
