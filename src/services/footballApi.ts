@@ -75,6 +75,7 @@ interface SportsDbEvent {
   strSquare?: string;
   strHomeTeamBadge?: string;
   strAwayTeamBadge?: string;
+  strVenue?: string;
 }
 
 interface SportsDbTeam {
