@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { clearFootballCache, fetchAllFixtures, fetchFixturesByLeague } from '@/services/footballApi';
+import { clearFootballCache, fetchAllFixtures, fetchFixturesByLeague, fetchTodayMatches } from '@/services/footballApi';
 import { LeagueConfig, ApiFixture } from '@/types/fixture';
 
 const FIXTURES_STALE_TIME = 2 * 60 * 1000;
@@ -21,6 +21,16 @@ export function useLeagueFixtures(league: LeagueConfig | null) {
     queryFn: () => (league ? fetchFixturesByLeague(league) : Promise.resolve([])),
     enabled: !!league,
     staleTime: FIXTURES_STALE_TIME,
+    retry: 2,
+  });
+}
+
+export function useTodayFixtures() {
+  return useQuery({
+    queryKey: ['fixtures', 'today'],
+    queryFn: fetchTodayMatches,
+    staleTime: FIXTURES_STALE_TIME,
+    refetchOnWindowFocus: true,
     retry: 2,
   });
 }

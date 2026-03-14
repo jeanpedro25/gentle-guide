@@ -1,10 +1,10 @@
 import { motion } from 'framer-motion';
 import { ApiFixture } from '@/types/fixture';
-import { format, isToday, isValid, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { isValid, parseISO } from 'date-fns';
 import { ChevronRight, Plus, Check } from 'lucide-react';
 import { useMultipla } from '@/contexts/MultiplaContext';
 import { useState } from 'react';
+import { getRelativeDayLabel, getStatusDisplay, formatBrazilTime } from '@/services/footballApi';
 
 interface MatchCardProps {
   fixture: ApiFixture;
@@ -19,10 +19,17 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
   const fallbackDate = new Date(fixture.fixture.timestamp * 1000);
   const matchDate = isValid(parsedDate) ? parsedDate : fallbackDate;
   const hasValidDate = isValid(matchDate);
-  const isTodayMatch = hasValidDate ? isToday(matchDate) : false;
-  const formattedDate = hasValidDate
-    ? format(matchDate, "EEE, dd MMM '•' HH:mm", { locale: ptBR })
-    : 'Data a confirmar';
+
+  // Brazil timezone formatting
+  const dateStr = fixture.fixture.date.slice(0, 10);
+  const timeStr = fixture.fixture.date.slice(11, 19);
+  const formattedDate = hasValidDate ? formatBrazilTime(dateStr, timeStr) : 'Data a confirmar';
+  const dayLabel = hasValidDate ? getRelativeDayLabel(fixture.fixture.date) : null;
+
+  // Status display
+  const statusShort = fixture.fixture.status.short;
+  const statusDisplay = getStatusDisplay(statusShort);
+
   const { isSelected, getSelection, toggleSelection, maxReached } = useMultipla();
   const [showPicks, setShowPicks] = useState(false);
 
@@ -113,7 +120,15 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
         {/* Teams */}
         <div className="flex items-center justify-between gap-2 mb-3">
           <TeamBadge name={fixture.teams.home.name} logo={fixture.teams.home.logo} align="left" badge="🏠" />
-          <span className="font-display text-lg text-muted-foreground shrink-0">VS</span>
+          {statusShort === 'FT' || statusShort === '1H' || statusShort === '2H' || statusShort === 'HT' ? (
+            <div className="text-center shrink-0">
+              <span className="font-display text-xl text-foreground">
+                {fixture.goals.home ?? 0} - {fixture.goals.away ?? 0}
+              </span>
+            </div>
+          ) : (
+            <span className="font-display text-lg text-muted-foreground shrink-0">VS</span>
+          )}
           <TeamBadge name={fixture.teams.away.name} logo={fixture.teams.away.logo} align="right" badge="✈️" />
         </div>
 
@@ -121,15 +136,19 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
         <div className="flex items-center justify-between">
           <span className="text-xs font-body text-muted-foreground capitalize">{formattedDate}</span>
           <div className="flex items-center gap-2">
-            {isTodayMatch ? (
-              <span className="flex items-center gap-1 text-xs font-display text-oracle-draw">
-                <span className="w-2 h-2 rounded-full bg-oracle-draw animate-pulse" />
-                HOJE
+            {dayLabel ? (
+              <span className={`flex items-center gap-1 text-xs font-display ${
+                dayLabel === 'HOJE' ? 'text-oracle-draw' : dayLabel === 'AMANHÃ' ? 'text-oracle-win' : 'text-muted-foreground'
+              }`}>
+                {dayLabel === 'HOJE' && <span className="w-2 h-2 rounded-full bg-oracle-draw animate-pulse" />}
+                {dayLabel}
               </span>
             ) : (
-              <span className="flex items-center gap-1 text-xs font-display text-oracle-win">
-                <span className="w-2 h-2 rounded-full bg-oracle-win animate-pulse" />
-                EM BREVE
+              <span className={`flex items-center gap-1 text-xs font-display ${statusDisplay.color}`}>
+                {statusDisplay.pulse && <span className={`w-2 h-2 rounded-full ${
+                  statusDisplay.color.includes('red') ? 'bg-red-500' : 'bg-oracle-win'
+                } animate-pulse`} />}
+                {statusDisplay.label}
               </span>
             )}
             <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
