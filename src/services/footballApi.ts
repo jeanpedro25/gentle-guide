@@ -124,7 +124,7 @@ function eventToFixture(
       id: league.id,
       name: league.name,
       country: league.country,
-      logo: '', // TheSportsDB doesn't have league logo in event response
+      logo: event.strLeagueBadge || '',
       round: `Regular Season - ${event.intRound || '?'}`,
     },
     teams: {
