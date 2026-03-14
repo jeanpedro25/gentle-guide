@@ -200,18 +200,60 @@ export async function fetchFixturesByLeague(
   league: LeagueConfig,
   options: { forceRefresh?: boolean } = {}
 ): Promise<ApiFixture[]> {
-  if (options.forceRefresh) clearFootballCache(`eventsnextleague.php?id=${league.sportsDbId}`);
+  if (options.forceRefresh) {
+    clearFootballCache(`eventsnextleague.php?id=${league.sportsDbId}`);
+    clearFootballCache(`eventspastleague.php?id=${league.sportsDbId}`);
+    clearFootballCache(`eventsseason.php?id=${league.sportsDbId}`);
+  }
 
   try {
-    const data = await sportsDbFetch<{ events: SportsDbEvent[] | null }>(
-      `eventsnextleague.php?id=${league.sportsDbId}`
-    );
+    // Fetch next events, past events, and full season in parallel for broader coverage
+    const [nextData, pastData, seasonData] = await Promise.allSettled([
+      sportsDbFetch<{ events: SportsDbEvent[] | null }>(
+        `eventsnextleague.php?id=${league.sportsDbId}`
+      ),
+      sportsDbFetch<{ events: SportsDbEvent[] | null }>(
+        `eventspastleague.php?id=${league.sportsDbId}`
+      ),
+      sportsDbFetch<{ events: SportsDbEvent[] | null }>(
+        `eventsseason.php?id=${league.sportsDbId}&s=${league.season}`
+      ),
+    ]);
 
-    const events = data?.events;
-    if (!events || events.length === 0) return [];
+    const allEvents = new Map<string, SportsDbEvent>();
 
-    // Badges come inline from TheSportsDB events
-    return events.map(event =>
+    const addEvents = (events: SportsDbEvent[] | null | undefined) => {
+      if (!events) return;
+      events.forEach(e => allEvents.set(e.idEvent, e));
+    };
+
+    if (nextData.status === 'fulfilled') addEvents(nextData.value?.events);
+    if (pastData.status === 'fulfilled') addEvents(pastData.value?.events);
+    if (seasonData.status === 'fulfilled') addEvents(seasonData.value?.events);
+
+    if (allEvents.size === 0) return [];
+
+    // Filter to events within ±30 days
+    const now = Date.now();
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+    const minDate = now - thirtyDaysMs;
+    const maxDate = now + thirtyDaysMs;
+
+    const filtered = Array.from(allEvents.values()).filter(event => {
+      const eventDate = event.strTimestamp
+        ? new Date(event.strTimestamp).getTime()
+        : new Date(`${event.dateEvent}T${event.strTime || '00:00:00'}`).getTime();
+      return eventDate >= minDate && eventDate <= maxDate;
+    });
+
+    // Sort by date ascending
+    filtered.sort((a, b) => {
+      const dateA = a.strTimestamp ? new Date(a.strTimestamp).getTime() : new Date(`${a.dateEvent}T${a.strTime || '00:00:00'}`).getTime();
+      const dateB = b.strTimestamp ? new Date(b.strTimestamp).getTime() : new Date(`${b.dateEvent}T${b.strTime || '00:00:00'}`).getTime();
+      return dateA - dateB;
+    });
+
+    return filtered.map(event =>
       eventToFixture(
         event,
         league,
