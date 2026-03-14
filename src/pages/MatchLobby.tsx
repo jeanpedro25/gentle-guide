@@ -30,31 +30,6 @@ export default function MatchLobby() {
       <div className="max-w-7xl mx-auto p-3 md:p-6 space-y-4">
         <LobbyHeader onRefresh={() => refetch()} />
 
-        {/* Demo mode warning */}
-        {!isLoading && !realData && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-start gap-3 px-4 py-3 rounded-xl bg-oracle-loss/10 border border-oracle-loss/30"
-          >
-            <AlertTriangle className="w-5 h-5 text-oracle-loss shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-display text-oracle-loss">MODO DEMONSTRAÇÃO</p>
-              <p className="text-xs font-body text-muted-foreground mt-1">
-                {apiError
-                  ? `Erro da API: ${apiError}`
-                  : 'Não foi possível obter jogos reais da API-Football.'}
-              </p>
-              <p className="text-xs font-body text-muted-foreground mt-1">
-                Os jogos abaixo são <strong className="text-foreground">fictícios</strong>. Para dados reais, configure uma API key válida da{' '}
-                <a href="https://www.api-football.com/" target="_blank" rel="noopener noreferrer" className="text-primary underline">
-                  API-Football
-                </a>.
-              </p>
-            </div>
-          </motion.div>
-        )}
-
         {/* Real data indicator */}
         {!isLoading && realData && (
           <motion.div
