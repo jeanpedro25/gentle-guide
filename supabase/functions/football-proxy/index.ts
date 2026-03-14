@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const BASE_URL = "https://www.thesportsdb.com/api/v1/json/123";
+const BASE_URL = "https://www.thesportsdb.com/api/v1/json/3";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {

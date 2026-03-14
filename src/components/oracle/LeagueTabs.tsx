@@ -1,25 +1,42 @@
 import { motion } from 'framer-motion';
-import { LEAGUES, LeagueConfig } from '@/types/fixture';
+import { LEAGUES } from '@/types/fixture';
 
 interface LeagueTabsProps {
   selectedLeagueId: number | null;
   onSelect: (id: number | null) => void;
+  /** Pass 'today' to enable the HOJE tab as the special filter */
+  todayMode?: boolean;
+  onTodayToggle?: () => void;
 }
 
-export function LeagueTabs({ selectedLeagueId, onSelect }: LeagueTabsProps) {
+export function LeagueTabs({ selectedLeagueId, onSelect, todayMode, onTodayToggle }: LeagueTabsProps) {
   return (
     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+      {/* HOJE special tab */}
       <TabButton
-        label="🔥 Todos"
-        isActive={selectedLeagueId === null}
-        onClick={() => onSelect(null)}
+        label="🔥 HOJE"
+        isActive={!!todayMode}
+        onClick={() => {
+          onTodayToggle?.();
+        }}
+      />
+      <TabButton
+        label="📋 Todos"
+        isActive={selectedLeagueId === null && !todayMode}
+        onClick={() => {
+          if (todayMode) onTodayToggle?.();
+          onSelect(null);
+        }}
       />
       {LEAGUES.map((league) => (
         <TabButton
           key={league.id}
           label={`${league.emoji} ${league.name}`}
-          isActive={selectedLeagueId === league.id}
-          onClick={() => onSelect(league.id)}
+          isActive={selectedLeagueId === league.id && !todayMode}
+          onClick={() => {
+            if (todayMode) onTodayToggle?.();
+            onSelect(league.id);
+          }}
         />
       ))}
     </div>
