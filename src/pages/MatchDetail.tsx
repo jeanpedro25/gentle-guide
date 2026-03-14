@@ -145,9 +145,23 @@ export default function MatchDetail() {
               <span className="text-sm font-body text-foreground text-center truncate max-w-[120px]">
                 {fixture.teams.home.name}
               </span>
+              <span className="text-[10px] font-display tracking-wider px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                🏠 CASA
+              </span>
             </div>
 
-            <span className="font-display text-3xl md:text-4xl text-muted-foreground">VS</span>
+            {oracle?.predictedScore ? (
+              <div className="flex flex-col items-center shrink-0">
+                <div className="flex items-center gap-1">
+                  <span className="font-display text-5xl md:text-6xl text-oracle-win">{oracle.predictedScore.home}</span>
+                  <span className="font-display text-3xl md:text-4xl text-muted-foreground">×</span>
+                  <span className="font-display text-5xl md:text-6xl text-oracle-win">{oracle.predictedScore.away}</span>
+                </div>
+                <span className="text-[10px] font-body text-muted-foreground uppercase tracking-wider mt-1">Placar mais provável</span>
+              </div>
+            ) : (
+              <span className="font-display text-3xl md:text-4xl text-muted-foreground">VS</span>
+            )}
 
             <div className="flex flex-col items-center gap-2 min-w-0">
               <img
@@ -158,6 +172,9 @@ export default function MatchDetail() {
               />
               <span className="text-sm font-body text-foreground text-center truncate max-w-[120px]">
                 {fixture.teams.away.name}
+              </span>
+              <span className="text-[10px] font-display tracking-wider px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                ✈️ VISITANTE
               </span>
             </div>
           </div>

@@ -38,6 +38,21 @@ export function EVDisplay({ oracle }: EVDisplayProps) {
         <p className={`text-sm font-body mt-2 ${evColor}`}>
           {evLabel}
         </p>
+        {ev === 0 && (
+          <p className="text-xs font-body mt-3 text-oracle-draw flex items-center justify-center gap-1">
+            ⚠️ Odds reais não conectadas — configure VITE_ODDS_API_KEY para EV real
+          </p>
+        )}
+        {ev > 0 && (
+          <p className="text-xs font-body mt-3 text-oracle-win flex items-center justify-center gap-1">
+            ✅ Edge positivo detectado
+          </p>
+        )}
+        {ev < 0 && (
+          <p className="text-xs font-body mt-3 text-oracle-loss flex items-center justify-center gap-1">
+            ❌ Valor negativo — considere não apostar
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
