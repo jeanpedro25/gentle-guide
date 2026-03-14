@@ -44,9 +44,12 @@ export function AnalysisSummary({ oracle, homeTeam, awayTeam }: AnalysisSummaryP
     'A+': 'MUITO BAIXO', 'A': 'BAIXO', 'B': 'MÉDIO', 'C': 'ALTO', 'D': 'MUITO ALTO'
   };
 
+  const winnerBadge = maxP === probs.homeWin ? '🏠' : maxP === probs.awayWin ? '✈️' : '⚖️';
+  const winnerSuffix = maxP === probs.homeWin ? '(casa)' : maxP === probs.awayWin ? '(visitante)' : '';
+
   const rows = [
-    { icon: <Target className="w-4 h-4" />, label: 'PLACAR PROVÁVEL', value: scoreStr, highlight: true },
-    { icon: <Trophy className="w-4 h-4" />, label: 'VENCEDOR PROVÁVEL', value: winner },
+    { icon: <Target className="w-4 h-4" />, label: 'PLACAR PROVÁVEL', value: scoreStr, highlight: true, scoreCard: true },
+    { icon: <Trophy className="w-4 h-4" />, label: 'VENCEDOR PROVÁVEL', value: `${winnerBadge} ${winner} ${winnerSuffix}` },
     { icon: <Shield className="w-4 h-4" />, label: 'CONFIANÇA', value: `${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} GRAU ${confGrade}` },
     { icon: <TrendingUp className="w-4 h-4" />, label: 'EV', value: `${oracle.primaryBet.ev > 0 ? '+' : ''}${oracle.primaryBet.ev.toFixed(1)}%`, color: oracle.primaryBet.ev > 0 ? 'text-oracle-win' : 'text-oracle-loss' },
     { icon: <TrendingUp className="w-4 h-4" />, label: 'APOSTA COM VALOR', value: oracle.primaryBet.market },
