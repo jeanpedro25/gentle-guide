@@ -1,12 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchAllFixtures, fetchFixturesByLeague } from '@/services/footballApi';
+import { clearFootballCache, fetchAllFixtures, fetchFixturesByLeague } from '@/services/footballApi';
 import { LeagueConfig, ApiFixture } from '@/types/fixture';
+
+const FIXTURES_STALE_TIME = 2 * 60 * 1000;
 
 export function useAllFixtures() {
   return useQuery({
     queryKey: ['fixtures', 'all'],
-    queryFn: fetchAllFixtures,
-    staleTime: 30 * 60 * 1000,
+    queryFn: () => fetchAllFixtures(),
+    staleTime: FIXTURES_STALE_TIME,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     retry: 2,
   });
 }
@@ -16,7 +20,7 @@ export function useLeagueFixtures(league: LeagueConfig | null) {
     queryKey: ['fixtures', league?.id],
     queryFn: () => (league ? fetchFixturesByLeague(league) : Promise.resolve([])),
     enabled: !!league,
-    staleTime: 30 * 60 * 1000,
+    staleTime: FIXTURES_STALE_TIME,
     retry: 2,
   });
 }
@@ -35,6 +39,9 @@ export function useFilteredFixtures(selectedLeagueId: number | null) {
     isLoading: allQuery.isLoading,
     isError: allQuery.isError,
     error: allQuery.error,
-    refetch: allQuery.refetch,
+    refetch: async () => {
+      clearFootballCache('/fixtures?');
+      return allQuery.refetch();
+    },
   };
 }
