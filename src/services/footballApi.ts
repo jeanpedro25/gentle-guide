@@ -129,27 +129,29 @@ function eventToFixture(
   homeBadge: string,
   awayBadge: string
 ): ApiFixture {
-  const dateStr = event.strTimestamp
-    ? new Date(event.strTimestamp).toISOString()
-    : `${event.dateEvent}T${event.strTime || '00:00:00'}`;
+  const parsedDate = parseEventDate(event);
+  if (!parsedDate) {
+    throw new Error(`Invalid event date for event ${event.idEvent}`);
+  }
 
   const homeScore = event.intHomeScore !== null && event.intHomeScore !== '' ? parseInt(event.intHomeScore) : null;
   const awayScore = event.intAwayScore !== null && event.intAwayScore !== '' ? parseInt(event.intAwayScore) : null;
+  const hasScore = homeScore !== null && awayScore !== null;
 
-  const homeWinner = homeScore !== null && awayScore !== null
+  const homeWinner = hasScore
     ? (homeScore > awayScore ? true : homeScore < awayScore ? false : null)
     : null;
-  const awayWinner = homeScore !== null && awayScore !== null
+  const awayWinner = hasScore
     ? (awayScore > homeScore ? true : awayScore < homeScore ? false : null)
     : null;
 
   return {
     fixture: {
       id: parseInt(event.idEvent),
-      date: dateStr,
-      timestamp: new Date(dateStr).getTime() / 1000,
+      date: parsedDate.toISOString(),
+      timestamp: Math.floor(parsedDate.getTime() / 1000),
       status: {
-        short: event.strStatus === 'Match Finished' ? 'FT' : 'NS',
+        short: toStatusShort(event.strStatus || '', hasScore),
         long: event.strStatus || 'Not Started',
       },
     },
