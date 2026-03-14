@@ -11,7 +11,6 @@ import { motion } from 'framer-motion';
 import { Loader2, AlertCircle, RefreshCw, Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { MultiplaBar } from '@/components/oracle/MultiplaBar';
-import { useNavigate } from 'react-router-dom';
 
 export default function MatchLobby() {
   const [selectedLeague, setSelectedLeague] = useState<number | null>(null);
