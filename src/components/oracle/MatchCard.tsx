@@ -44,9 +44,9 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
 
       {/* Teams */}
       <div className="flex items-center justify-between gap-2 mb-3">
-        <TeamBadge name={fixture.teams.home.name} logo={fixture.teams.home.logo} align="left" />
+        <TeamBadge name={fixture.teams.home.name} logo={fixture.teams.home.logo} align="left" badge="🏠" />
         <span className="font-display text-lg text-muted-foreground shrink-0">VS</span>
-        <TeamBadge name={fixture.teams.away.name} logo={fixture.teams.away.logo} align="right" />
+        <TeamBadge name={fixture.teams.away.name} logo={fixture.teams.away.logo} align="right" badge="✈️" />
       </div>
 
       {/* Date + status */}
@@ -71,7 +71,7 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
   );
 }
 
-function TeamBadge({ name, logo, align }: { name: string; logo: string; align: 'left' | 'right' }) {
+function TeamBadge({ name, logo, align, badge }: { name: string; logo: string; align: 'left' | 'right'; badge?: string }) {
   return (
     <div className={`flex items-center gap-2 min-w-0 ${align === 'right' ? 'flex-row-reverse text-right' : ''}`}>
       <img
@@ -82,7 +82,10 @@ function TeamBadge({ name, logo, align }: { name: string; logo: string; align: '
           (e.target as HTMLImageElement).src = '/placeholder.svg';
         }}
       />
-      <span className="text-sm font-body text-foreground truncate">{name}</span>
+      <div className="flex items-center gap-1 min-w-0">
+        {badge && <span className="text-xs shrink-0">{badge}</span>}
+        <span className="text-sm font-body text-foreground truncate">{name}</span>
+      </div>
     </div>
   );
 }

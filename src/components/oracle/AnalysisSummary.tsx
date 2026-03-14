@@ -44,9 +44,12 @@ export function AnalysisSummary({ oracle, homeTeam, awayTeam }: AnalysisSummaryP
     'A+': 'MUITO BAIXO', 'A': 'BAIXO', 'B': 'MÉDIO', 'C': 'ALTO', 'D': 'MUITO ALTO'
   };
 
+  const winnerBadge = maxP === probs.homeWin ? '🏠' : maxP === probs.awayWin ? '✈️' : '⚖️';
+  const winnerSuffix = maxP === probs.homeWin ? '(casa)' : maxP === probs.awayWin ? '(visitante)' : '';
+
   const rows = [
-    { icon: <Target className="w-4 h-4" />, label: 'PLACAR PROVÁVEL', value: scoreStr, highlight: true },
-    { icon: <Trophy className="w-4 h-4" />, label: 'VENCEDOR PROVÁVEL', value: winner },
+    { icon: <Target className="w-4 h-4" />, label: 'PLACAR PROVÁVEL', value: scoreStr, highlight: true, scoreCard: true },
+    { icon: <Trophy className="w-4 h-4" />, label: 'VENCEDOR PROVÁVEL', value: `${winnerBadge} ${winner} ${winnerSuffix}` },
     { icon: <Shield className="w-4 h-4" />, label: 'CONFIANÇA', value: `${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} GRAU ${confGrade}` },
     { icon: <TrendingUp className="w-4 h-4" />, label: 'EV', value: `${oracle.primaryBet.ev > 0 ? '+' : ''}${oracle.primaryBet.ev.toFixed(1)}%`, color: oracle.primaryBet.ev > 0 ? 'text-oracle-win' : 'text-oracle-loss' },
     { icon: <TrendingUp className="w-4 h-4" />, label: 'APOSTA COM VALOR', value: oracle.primaryBet.market },
@@ -68,7 +71,7 @@ export function AnalysisSummary({ oracle, homeTeam, awayTeam }: AnalysisSummaryP
       </h3>
 
       <div className="space-y-2">
-        {rows.map((row, i) => (
+        {rows.map((row: any, i: number) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, x: -20 }}
@@ -80,9 +83,24 @@ export function AnalysisSummary({ oracle, homeTeam, awayTeam }: AnalysisSummaryP
               {row.icon}
               <span className="text-xs font-body uppercase tracking-wider">{row.label}</span>
             </div>
-            <span className={`text-sm font-display tracking-wider ${row.color || (row.highlight ? 'text-primary' : 'text-foreground')}`}>
-              {row.value}
-            </span>
+            {row.scoreCard && predicted ? (
+              <div className="flex flex-col items-end">
+                <div className="flex items-center gap-1 bg-secondary/60 border border-oracle-win/30 rounded-lg px-3 py-1">
+                  <span className="font-display text-2xl text-oracle-win">{predicted.home}</span>
+                  <span className="font-display text-lg text-muted-foreground">×</span>
+                  <span className="font-display text-2xl text-oracle-win">{predicted.away}</span>
+                </div>
+                {oracle.scoreScenarios && oracle.scoreScenarios.length > 1 && (
+                  <span className="text-[10px] font-body text-muted-foreground mt-1">
+                    Outros: {oracle.scoreScenarios.slice(1, 4).map(s => `${s.score} (${s.prob.toFixed(1)}%)`).join(' · ')}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <span className={`text-sm font-display tracking-wider ${row.color || (row.highlight ? 'text-primary' : 'text-foreground')}`}>
+                {row.value}
+              </span>
+            )}
           </motion.div>
         ))}
       </div>
