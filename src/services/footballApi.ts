@@ -246,16 +246,13 @@ export async function fetchFixturesByLeague(
   }
 
   try {
-    // Fetch next events, past events, and full season in parallel for broader coverage
-    const [nextData, pastData, seasonData] = await Promise.allSettled([
+    // Start with lightweight endpoints to avoid request bursts.
+    const [nextData, pastData] = await Promise.allSettled([
       sportsDbFetch<{ events: SportsDbEvent[] | null }>(
         `eventsnextleague.php?id=${league.sportsDbId}`
       ),
       sportsDbFetch<{ events: SportsDbEvent[] | null }>(
         `eventspastleague.php?id=${league.sportsDbId}`
-      ),
-      sportsDbFetch<{ events: SportsDbEvent[] | null }>(
-        `eventsseason.php?id=${league.sportsDbId}&s=${league.season}`
       ),
     ]);
 
@@ -268,38 +265,51 @@ export async function fetchFixturesByLeague(
 
     if (nextData.status === 'fulfilled') addEvents(nextData.value?.events);
     if (pastData.status === 'fulfilled') addEvents(pastData.value?.events);
-    if (seasonData.status === 'fulfilled') addEvents(seasonData.value?.events);
+
+    // Fetch full season only when coverage is still too small.
+    if (allEvents.size < 8) {
+      try {
+        const seasonData = await sportsDbFetch<{ events: SportsDbEvent[] | null }>(
+          `eventsseason.php?id=${league.sportsDbId}&s=${league.season}`
+        );
+        addEvents(seasonData?.events);
+      } catch (seasonErr) {
+        console.warn(`[Oracle] ${league.name} season fallback failed:`, seasonErr);
+      }
+    }
 
     if (allEvents.size === 0) return [];
 
-    // Filter to events within ±30 days
     const now = Date.now();
     const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
     const minDate = now - thirtyDaysMs;
     const maxDate = now + thirtyDaysMs;
 
-    const filtered = Array.from(allEvents.values()).filter(event => {
-      const eventDate = event.strTimestamp
-        ? new Date(event.strTimestamp).getTime()
-        : new Date(`${event.dateEvent}T${event.strTime || '00:00:00'}`).getTime();
-      return eventDate >= minDate && eventDate <= maxDate;
-    });
+    const filtered = Array.from(allEvents.values())
+      .map((event) => ({ event, parsedDate: parseEventDate(event) }))
+      .filter((entry): entry is { event: SportsDbEvent; parsedDate: Date } => {
+        if (!entry.parsedDate) return false;
+        const eventDate = entry.parsedDate.getTime();
+        return eventDate >= minDate && eventDate <= maxDate;
+      })
+      .sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime())
+      .map(({ event }) => event);
 
-    // Sort by date ascending
-    filtered.sort((a, b) => {
-      const dateA = a.strTimestamp ? new Date(a.strTimestamp).getTime() : new Date(`${a.dateEvent}T${a.strTime || '00:00:00'}`).getTime();
-      const dateB = b.strTimestamp ? new Date(b.strTimestamp).getTime() : new Date(`${b.dateEvent}T${b.strTime || '00:00:00'}`).getTime();
-      return dateA - dateB;
+    return filtered.flatMap((event) => {
+      try {
+        return [
+          eventToFixture(
+            event,
+            league,
+            event.strHomeTeamBadge || '/placeholder.svg',
+            event.strAwayTeamBadge || '/placeholder.svg'
+          ),
+        ];
+      } catch (e) {
+        console.warn(`[Oracle] Skipping invalid fixture ${event.idEvent}:`, e);
+        return [];
+      }
     });
-
-    return filtered.map(event =>
-      eventToFixture(
-        event,
-        league,
-        event.strHomeTeamBadge || '/placeholder.svg',
-        event.strAwayTeamBadge || '/placeholder.svg'
-      )
-    );
   } catch (err) {
     console.warn(`[Oracle] ${league.name} failed:`, err);
     return [];
