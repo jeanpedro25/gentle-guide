@@ -1,10 +1,15 @@
 import { ApiFixture, LeagueConfig, LEAGUES, TeamStats, H2HFixture } from '@/types/fixture';
+import { getDemoFixtures } from '@/data/demoFixtures';
 
 const BASE_URL = 'https://v3.football.api-sports.io';
 
+function getApiKey(): string | null {
+  return import.meta.env.VITE_FOOTBALL_API_KEY || null;
+}
+
 function getHeaders(): HeadersInit {
-  const key = import.meta.env.VITE_FOOTBALL_API_KEY;
-  if (!key) throw new Error('VITE_FOOTBALL_API_KEY não configurada');
+  const key = getApiKey();
+  if (!key) throw new Error('API Key não configurada');
   return { 'x-apisports-key': key };
 }
 
@@ -29,6 +34,10 @@ async function cachedFetch<T>(url: string): Promise<T> {
   return json.response as T;
 }
 
+export function hasApiKey(): boolean {
+  return !!getApiKey();
+}
+
 export async function fetchFixturesByLeague(league: LeagueConfig): Promise<ApiFixture[]> {
   return cachedFetch<ApiFixture[]>(
     `${BASE_URL}/fixtures?next=30&league=${league.id}&season=${league.season}`
@@ -36,6 +45,11 @@ export async function fetchFixturesByLeague(league: LeagueConfig): Promise<ApiFi
 }
 
 export async function fetchAllFixtures(): Promise<{ league: LeagueConfig; fixtures: ApiFixture[] }[]> {
+  // If no API key, return demo data
+  if (!hasApiKey()) {
+    return getDemoFixtures();
+  }
+
   const results = await Promise.allSettled(
     LEAGUES.map(async (league) => ({
       league,
@@ -52,18 +66,19 @@ export async function fetchAllFixtures(): Promise<{ league: LeagueConfig; fixtur
 }
 
 export async function fetchTeamStats(teamId: number, leagueId: number, season: number): Promise<TeamStats | null> {
+  if (!hasApiKey()) return null;
   try {
-    const data = await cachedFetch<{ statistics: TeamStats }[]>(
+    const data = await cachedFetch<TeamStats>(
       `${BASE_URL}/teams/statistics?league=${leagueId}&season=${season}&team=${teamId}`
     );
-    // API returns the stats object directly, not in an array
-    return (data as unknown as TeamStats) ?? null;
+    return data ?? null;
   } catch {
     return null;
   }
 }
 
 export async function fetchH2H(homeId: number, awayId: number): Promise<H2HFixture[]> {
+  if (!hasApiKey()) return [];
   try {
     return await cachedFetch<H2HFixture[]>(
       `${BASE_URL}/fixtures/headtohead?h2h=${homeId}-${awayId}&last=5`
