@@ -85,10 +85,6 @@ interface SportsDbTeam {
   strCountry: string;
 }
 
-// Badge cache to avoid repeated lookups
-const badgeCache = new Map<string, string>();
-
-// Badge cache no longer needed - TheSportsDB returns badges inline with events
 
 function eventToFixture(
   event: SportsDbEvent,
