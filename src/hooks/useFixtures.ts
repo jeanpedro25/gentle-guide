@@ -48,7 +48,7 @@ export function useFilteredFixtures(selectedLeagueId: number | null) {
     isError: allQuery.isError,
     error: allQuery.error,
     refetch: async () => {
-      clearFootballCache('/fixtures?');
+      clearFootballCache();
       return allQuery.refetch();
     },
   };
