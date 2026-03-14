@@ -44,14 +44,16 @@ export interface LeagueConfig {
 }
 
 export const LEAGUES: LeagueConfig[] = [
-  { id: 71, name: 'Brasileirão A', country: 'Brazil', emoji: '🇧🇷', season: 2025 },
-  { id: 72, name: 'Série B', country: 'Brazil', emoji: '🇧🇷', season: 2025 },
-  { id: 39, name: 'Premier League', country: 'England', emoji: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', season: 2024 },
-  { id: 140, name: 'La Liga', country: 'Spain', emoji: '🇪🇸', season: 2024 },
-  { id: 135, name: 'Serie A', country: 'Italy', emoji: '🇮🇹', season: 2024 },
-  { id: 78, name: 'Bundesliga', country: 'Germany', emoji: '🇩🇪', season: 2024 },
-  { id: 61, name: 'Ligue 1', country: 'France', emoji: '🇫🇷', season: 2024 },
-  { id: 2, name: 'Champions League', country: 'Europe', emoji: '⭐', season: 2024 },
+  // Brazilian leagues: calendar year (Jan-Dec), currently 2026 season
+  { id: 71, name: 'Brasileirão A', country: 'Brazil', emoji: '🇧🇷', season: 2026 },
+  { id: 72, name: 'Série B', country: 'Brazil', emoji: '🇧🇷', season: 2026 },
+  // European leagues: season spans two years (Aug 2025 - May 2026 = season 2025)
+  { id: 39, name: 'Premier League', country: 'England', emoji: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', season: 2025 },
+  { id: 140, name: 'La Liga', country: 'Spain', emoji: '🇪🇸', season: 2025 },
+  { id: 135, name: 'Serie A', country: 'Italy', emoji: '🇮🇹', season: 2025 },
+  { id: 78, name: 'Bundesliga', country: 'Germany', emoji: '🇩🇪', season: 2025 },
+  { id: 61, name: 'Ligue 1', country: 'France', emoji: '🇫🇷', season: 2025 },
+  { id: 2, name: 'Champions League', country: 'Europe', emoji: '⭐', season: 2025 },
 ];
 
 export interface TeamStats {
