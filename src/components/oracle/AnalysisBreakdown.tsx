@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion';
-import { AnalysisBreakdown as AnalysisBreakdownOld } from './AnalysisBreakdown';
 import { PredictionResult, riskLabels } from '@/types/prediction';
 import { AlertTriangle, Shield, ShieldAlert, Brain } from 'lucide-react';
 
