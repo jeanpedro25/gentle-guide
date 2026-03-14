@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useFilteredFixtures } from '@/hooks/useFixtures';
+import { useLiveMatches } from '@/hooks/useLiveMatches';
 import { LeagueTabs } from '@/components/oracle/LeagueTabs';
 import { MatchCard } from '@/components/oracle/MatchCard';
 import { LobbyHeader } from '@/components/oracle/LobbyHeader';
+import { LiveMatches } from '@/components/oracle/LiveMatches';
 import { ApiFixture } from '@/types/fixture';
 import { isUsingRealData, getLastApiError } from '@/services/footballApi';
 import { motion } from 'framer-motion';
-import { Loader2, AlertCircle, RefreshCw, Info, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function MatchLobby() {
