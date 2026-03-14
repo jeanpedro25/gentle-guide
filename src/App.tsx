@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { MultiplaProvider } from "@/contexts/MultiplaContext";
 import MatchLobby from "./pages/MatchLobby";
 import MatchDetail from "./pages/MatchDetail";
 import NotFound from "./pages/NotFound";
@@ -12,15 +13,17 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<MatchLobby />} />
-          <Route path="/match/:id" element={<MatchDetail />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <MultiplaProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<MatchLobby />} />
+            <Route path="/match/:id" element={<MatchDetail />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </MultiplaProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
