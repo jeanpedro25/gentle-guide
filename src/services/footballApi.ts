@@ -1,5 +1,4 @@
 import { ApiFixture, LeagueConfig, LEAGUES, TeamStats, H2HFixture } from '@/types/fixture';
-import { getDemoFixtures } from '@/data/demoFixtures';
 import { supabase } from '@/integrations/supabase/client';
 
 const CACHE_TTL = 5 * 60 * 1000;
@@ -257,14 +256,14 @@ export async function fetchAllFixtures(
       return successful;
     }
 
-    console.warn('[Oracle] No real fixtures found, using demo data');
+    console.warn('[Oracle] No real fixtures found from any league');
     usingRealData = false;
-    return getDemoFixtures();
+    return [];
   } catch (err) {
     console.error('[Oracle] fetchAllFixtures error:', err);
     lastApiError = err instanceof Error ? err.message : 'Unknown error';
     usingRealData = false;
-    return getDemoFixtures();
+    return [];
   }
 }
 
