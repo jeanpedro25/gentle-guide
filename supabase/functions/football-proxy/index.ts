@@ -8,22 +8,6 @@ const corsHeaders = {
 
 const API_KEY = "3ffd74d8f5b404975b2f3b24cb383a23";
 
-const ENDPOINTS = [
-  {
-    url: "https://v3.football.api-sports.io",
-    headers: { "x-apisports-key": API_KEY },
-    name: "direct",
-  },
-  {
-    url: "https://api-football-v1.p.rapidapi.com",
-    headers: {
-      "x-rapidapi-key": API_KEY,
-      "x-rapidapi-host": "api-football-v1.p.rapidapi.com",
-    },
-    name: "rapidapi",
-  },
-];
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -43,41 +27,45 @@ serve(async (req) => {
       ? "?" + Object.entries(params).map(([k, v]) => `${k}=${v}`).join("&")
       : "";
 
-    let lastError = "";
+    // Try direct API-Football endpoint with x-apisports-key header
+    const url = `https://v3.football.api-sports.io${endpoint}${queryString}`;
+    console.log(`[football-proxy] Fetching: ${url}`);
 
-    for (const ep of ENDPOINTS) {
-      const url = `${ep.url}${endpoint}${queryString}`;
-      console.log(`[football-proxy] Trying ${ep.name}:`, url);
+    const res = await fetch(url, {
+      headers: { "x-apisports-key": API_KEY },
+    });
 
-      try {
-        const res = await fetch(url, { headers: ep.headers });
-        const json = await res.json();
+    const json = await res.json();
 
-        if (json.errors && Object.keys(json.errors).length > 0) {
-          lastError = Object.values(json.errors).join(", ");
-          console.warn(`[football-proxy] ${ep.name} failed:`, lastError);
-          continue;
-        }
+    // Log quota
+    const remaining = res.headers.get("x-ratelimit-requests-remaining");
+    const limit = res.headers.get("x-ratelimit-requests-limit");
+    console.log(`[football-proxy] Quota: ${remaining}/${limit} remaining`);
 
-        const remaining = res.headers.get("x-ratelimit-requests-remaining");
-        const limit = res.headers.get("x-ratelimit-requests-limit");
-        console.log(`[football-proxy] ✅ ${ep.name} worked! ${endpoint} → ${json.results || 0} results (quota: ${remaining}/${limit})`);
-
-        return new Response(JSON.stringify(json), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      } catch (fetchErr) {
-        lastError = fetchErr instanceof Error ? fetchErr.message : "Fetch failed";
-        console.warn(`[football-proxy] ${ep.name} fetch error:`, lastError);
-        continue;
-      }
+    // Check for API errors
+    if (json.errors && Object.keys(json.errors).length > 0) {
+      const errorMsg = Object.values(json.errors).join(", ");
+      console.error(`[football-proxy] API error: ${errorMsg}`);
+      return new Response(
+        JSON.stringify({ error: errorMsg, results: 0, response: [] }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    console.error("[football-proxy] All endpoints failed:", lastError);
-    return new Response(
-      JSON.stringify({ error: lastError || "All API endpoints failed", results: 0, response: [] }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    // Check for message-based errors (like "not subscribed")
+    if (json.message && !json.response) {
+      console.error(`[football-proxy] API message error: ${json.message}`);
+      return new Response(
+        JSON.stringify({ error: json.message, results: 0, response: [] }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`[football-proxy] ✅ ${endpoint} → ${json.results || 0} results`);
+
+    return new Response(JSON.stringify(json), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (e) {
     console.error("[football-proxy] Error:", e);
     return new Response(
