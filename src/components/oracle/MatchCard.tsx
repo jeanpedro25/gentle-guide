@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { ApiFixture } from '@/types/fixture';
-import { format, isToday, parseISO } from 'date-fns';
+import { format, isToday, isValid, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ChevronRight, Plus, Check } from 'lucide-react';
 import { useMultipla } from '@/contexts/MultiplaContext';
