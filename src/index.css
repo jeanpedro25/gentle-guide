@@ -2,95 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 220 20% 5%;
+    --foreground: 0 0% 100%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 220 20% 8%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 220 20% 8%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 153 100% 50%;
+    --primary-foreground: 220 20% 5%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 220 20% 14%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 15% 16%;
+    --muted-foreground: 213 18% 62%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 220 20% 14%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 349 100% 62%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 220 15% 18%;
+    --input: 220 15% 18%;
+    --ring: 153 100% 50%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Custom Oracle tokens */
+    --oracle-bg: 222 23% 6%;
+    --oracle-surface: 220 22% 11%;
+    --oracle-win: 153 100% 50%;
+    --oracle-draw: 42 100% 50%;
+    --oracle-loss: 349 100% 62%;
+    --oracle-text-muted: 213 18% 62%;
+    --oracle-glow-win: 0 0% 0% / 0;
+    --oracle-glow-draw: 0 0% 0% / 0;
+    --oracle-glow-loss: 0 0% 0% / 0;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 220 22% 8%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 153 100% 50%;
+    --sidebar-primary-foreground: 220 20% 5%;
+    --sidebar-accent: 220 20% 14%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 15% 18%;
+    --sidebar-ring: 153 100% 50%;
   }
 }
 
@@ -100,6 +62,132 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-body antialiased;
+    background-color: hsl(var(--oracle-bg));
   }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: 'Bebas Neue', sans-serif;
+  }
+
+  .font-body {
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .glass-card {
+    background: hsl(var(--oracle-surface) / 0.6);
+    backdrop-filter: blur(16px);
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+  }
+
+  .glass-card-win {
+    background: hsl(var(--oracle-surface) / 0.6);
+    backdrop-filter: blur(16px);
+    border: 1px solid hsl(var(--oracle-win) / 0.4);
+    border-radius: var(--radius);
+    box-shadow: 0 0 20px hsl(var(--oracle-win) / 0.1), inset 0 1px 0 hsl(var(--oracle-win) / 0.1);
+  }
+
+  .glass-card-draw {
+    background: hsl(var(--oracle-surface) / 0.6);
+    backdrop-filter: blur(16px);
+    border: 1px solid hsl(var(--oracle-draw) / 0.4);
+    border-radius: var(--radius);
+    box-shadow: 0 0 20px hsl(var(--oracle-draw) / 0.1), inset 0 1px 0 hsl(var(--oracle-draw) / 0.1);
+  }
+
+  .glass-card-loss {
+    background: hsl(var(--oracle-surface) / 0.6);
+    backdrop-filter: blur(16px);
+    border: 1px solid hsl(var(--oracle-loss) / 0.4);
+    border-radius: var(--radius);
+    box-shadow: 0 0 20px hsl(var(--oracle-loss) / 0.1), inset 0 1px 0 hsl(var(--oracle-loss) / 0.1);
+  }
+
+  .neon-glow-green {
+    box-shadow: 0 0 15px hsl(var(--oracle-win) / 0.4), 0 0 45px hsl(var(--oracle-win) / 0.1);
+  }
+
+  .neon-glow-amber {
+    box-shadow: 0 0 15px hsl(var(--oracle-draw) / 0.4), 0 0 45px hsl(var(--oracle-draw) / 0.1);
+  }
+
+  .neon-glow-crimson {
+    box-shadow: 0 0 15px hsl(var(--oracle-loss) / 0.4), 0 0 45px hsl(var(--oracle-loss) / 0.1);
+  }
+
+  .text-oracle-win {
+    color: hsl(var(--oracle-win));
+  }
+
+  .text-oracle-draw {
+    color: hsl(var(--oracle-draw));
+  }
+
+  .text-oracle-loss {
+    color: hsl(var(--oracle-loss));
+  }
+
+  .bg-oracle-win {
+    background-color: hsl(var(--oracle-win));
+  }
+
+  .bg-oracle-draw {
+    background-color: hsl(var(--oracle-draw));
+  }
+
+  .bg-oracle-loss {
+    background-color: hsl(var(--oracle-loss));
+  }
+
+  .bg-oracle-surface {
+    background-color: hsl(var(--oracle-surface));
+  }
+
+  .bg-oracle-bg {
+    background-color: hsl(var(--oracle-bg));
+  }
+
+  .text-oracle-muted {
+    color: hsl(var(--oracle-text-muted));
+  }
+
+  .border-oracle-win {
+    border-color: hsl(var(--oracle-win) / 0.4);
+  }
+
+  .border-oracle-draw {
+    border-color: hsl(var(--oracle-draw) / 0.4);
+  }
+
+  .border-oracle-loss {
+    border-color: hsl(var(--oracle-loss) / 0.4);
+  }
+}
+
+@keyframes pulse-neon {
+  0%, 100% {
+    box-shadow: 0 0 10px hsl(var(--oracle-win) / 0.3), 0 0 30px hsl(var(--oracle-win) / 0.1);
+  }
+  50% {
+    box-shadow: 0 0 20px hsl(var(--oracle-win) / 0.5), 0 0 50px hsl(var(--oracle-win) / 0.2);
+  }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-pulse-neon {
+  animation: pulse-neon 2s ease-in-out infinite;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 8s ease infinite;
 }
