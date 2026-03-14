@@ -6,12 +6,15 @@ import { fetchMatchContext } from '@/services/footballApi';
 import { analyzeMatch } from '@/services/oracleService';
 import { VerdictCard } from '@/components/oracle/VerdictCard';
 import { CircularGauge } from '@/components/oracle/CircularGauge';
+import { ConfidenceGradeCard } from '@/components/oracle/ConfidenceGradeCard';
+import { EVDisplay } from '@/components/oracle/EVDisplay';
+import { PoissonSection } from '@/components/oracle/PoissonSection';
+import { PoissonHeatmap } from '@/components/oracle/PoissonHeatmap';
+import { MarketComparisonCard } from '@/components/oracle/MarketComparisonCard';
 import { AnalysisBreakdown } from '@/components/oracle/AnalysisBreakdown';
 import { BettingInsight } from '@/components/oracle/BettingInsight';
-import { PoissonSection } from '@/components/oracle/PoissonSection';
-import { EVDisplay } from '@/components/oracle/EVDisplay';
-import { MarketComparisonCard } from '@/components/oracle/MarketComparisonCard';
 import { RedFlagsCard } from '@/components/oracle/RedFlagsCard';
+import { BankrollCalculator } from '@/components/oracle/BankrollCalculator';
 import { H2HHistory } from '@/components/oracle/H2HHistory';
 import { LoadingState } from '@/components/oracle/LoadingState';
 import { H2HFixture } from '@/types/fixture';
@@ -174,7 +177,7 @@ export default function MatchDetail() {
         {/* Results */}
         {analysis && oracle && (
           <div className="space-y-4">
-            {/* Verdict */}
+            {/* 1. Verdict */}
             <VerdictCard
               result={analysis.result}
               oracle={oracle}
@@ -182,14 +185,17 @@ export default function MatchDetail() {
               awayTeam={analysis.awayTeam}
             />
 
-            {/* Circular Gauges */}
+            {/* 2. Confidence Grade */}
+            <ConfidenceGradeCard oracle={oracle} />
+
+            {/* 3. Circular Gauges */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
               className="glass-card p-5"
             >
-              <h3 className="font-display text-lg tracking-wider text-foreground mb-4">PROBABILIDADES POISSON</h3>
+              <h3 className="font-display text-lg tracking-wider text-foreground mb-4">PROBABILIDADES</h3>
               <div className="flex items-center justify-around">
                 <CircularGauge
                   label={analysis.homeTeam}
@@ -212,26 +218,36 @@ export default function MatchDetail() {
               </div>
             </motion.div>
 
-            {/* EV + Kelly */}
+            {/* 4. EV + Kelly */}
             <EVDisplay oracle={oracle} />
 
-            {/* Poisson Scores */}
+            {/* 5. Poisson xG + Top Scores */}
             <PoissonSection oracle={oracle} />
 
-            {/* Market Comparison */}
+            {/* 6. Poisson Heatmap Matrix 7x7 */}
+            <PoissonHeatmap
+              oracle={oracle}
+              homeTeam={analysis.homeTeam}
+              awayTeam={analysis.awayTeam}
+            />
+
+            {/* 7. Market Comparison */}
             <MarketComparisonCard oracle={oracle} />
 
-            {/* Analysis Breakdown */}
+            {/* 8. Tactical Analysis */}
             <AnalysisBreakdown result={analysis.result} oracle={oracle} />
 
-            {/* Betting Insight */}
+            {/* 9. Betting Insight */}
             <BettingInsight result={analysis.result} oracle={oracle} />
 
-            {/* Red Flags */}
+            {/* 10. Red Flags */}
             {oracle.redFlags.length > 0 && <RedFlagsCard redFlags={oracle.redFlags} />}
 
-            {/* H2H */}
+            {/* 11. H2H History */}
             <H2HHistory h2h={h2h} homeTeamId={fixture.teams.home.id} />
+
+            {/* 12. Bankroll Calculator */}
+            <BankrollCalculator oracle={oracle} />
 
             {/* Analyze again */}
             <motion.button
