@@ -69,10 +69,12 @@ interface SportsDbEvent {
   strStatus?: string;
   idLeague: string;
   strLeague: string;
+  strLeagueBadge?: string;
   strSeason: string;
   strThumb?: string;
   strSquare?: string;
-  strBadge?: string;
+  strHomeTeamBadge?: string;
+  strAwayTeamBadge?: string;
 }
 
 interface SportsDbTeam {
