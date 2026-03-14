@@ -197,6 +197,7 @@ export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
   }
 }
 
+export async function fetchFixturesByLeague(
   league: LeagueConfig,
   options: { forceRefresh?: boolean } = {}
 ): Promise<ApiFixture[]> {
