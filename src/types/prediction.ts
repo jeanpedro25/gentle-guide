@@ -42,6 +42,60 @@ export interface KeyDuel {
   impact: string;
 }
 
+// ====== New: Enhanced Player & Tactical Types ======
+
+export interface PlayerRating {
+  name: string;
+  position: 'GOL' | 'ZAG' | 'LAT' | 'MEI' | 'ATA';
+  rating: number;
+  keyStats: Record<string, number>;
+}
+
+export interface PlayerDuel {
+  homePlayer: string;
+  homeRating: number;
+  awayPlayer: string;
+  awayRating: number;
+  advantage: 'HOME' | 'AWAY' | 'EQUAL';
+  homeStats: Record<string, number>;
+  awayStats: Record<string, number>;
+}
+
+export interface GoalkeeperDuel {
+  home: {
+    name: string;
+    rating: number;
+    reflexes: number;
+    positioning: number;
+    ballDistribution: number;
+  };
+  away: {
+    name: string;
+    rating: number;
+    reflexes: number;
+    positioning: number;
+    ballDistribution: number;
+  };
+  winner: 'HOME' | 'AWAY' | 'EQUAL';
+}
+
+export interface FormationAnalysis {
+  home: string;
+  away: string;
+  tacticalEdge: 'HOME' | 'AWAY' | 'EQUAL';
+  reason: string;
+}
+
+export interface ScoreScenario {
+  score: string;
+  prob: number;
+}
+
+export interface PredictedScore {
+  home: number;
+  away: number;
+}
+
 export interface OracleAnalysis {
   poisson: PoissonModel;
   probabilities: Probabilities;
@@ -56,6 +110,16 @@ export interface OracleAnalysis {
   injuryImpact: string;
   verdict: 'APOSTAR' | 'PASSAR';
   verdictReason: string;
+  // New enhanced fields
+  predictedScore?: PredictedScore;
+  scoreScenarios?: ScoreScenario[];
+  playerRatings?: {
+    home: PlayerRating[];
+    away: PlayerRating[];
+  };
+  playerDuels?: PlayerDuel[];
+  goalkeeperDuel?: GoalkeeperDuel;
+  formationAnalysis?: FormationAnalysis;
 }
 
 // Legacy compatibility wrapper
@@ -129,13 +193,40 @@ export const verdictLabels: Record<string, string> = {
   PASSAR: 'PASSAR',
 };
 
+/**
+ * Normalize probability values: detect if they are 0-1 (decimals) or 0-100 (percentages)
+ * and always return them in 0-1 format.
+ */
+export function normalizeProbabilities(probs: Probabilities): Probabilities {
+  const sum = probs.homeWin + probs.draw + probs.awayWin;
+  // If sum > 3, they're already percentages (0-100 range)
+  if (sum > 3) {
+    return {
+      homeWin: probs.homeWin / 100,
+      draw: probs.draw / 100,
+      awayWin: probs.awayWin / 100,
+      over25: probs.over25 > 1 ? probs.over25 / 100 : probs.over25,
+      btts: probs.btts > 1 ? probs.btts / 100 : probs.btts,
+    };
+  }
+  return probs;
+}
+
+/**
+ * Get probability as percentage (0-100) safely regardless of AI output format.
+ */
+export function probAsPercent(value: number): number {
+  // If value > 1, it's already a percentage
+  return value > 1 ? value : value * 100;
+}
+
 // Convert OracleAnalysis to legacy PredictionResult for backward compat
 export function oracleToLegacy(oracle: OracleAnalysis, homeTeam: string, awayTeam: string): PredictionResult {
-  const { probabilities, primaryBet } = oracle;
-  const maxP = Math.max(probabilities.homeWin, probabilities.draw, probabilities.awayWin);
+  const normalized = normalizeProbabilities(oracle.probabilities);
+  const maxP = Math.max(normalized.homeWin, normalized.draw, normalized.awayWin);
   const prediction =
-    maxP === probabilities.homeWin ? 'HOME_WIN' as const :
-    maxP === probabilities.draw ? 'DRAW' as const : 'AWAY_WIN' as const;
+    maxP === normalized.homeWin ? 'HOME_WIN' as const :
+    maxP === normalized.draw ? 'DRAW' as const : 'AWAY_WIN' as const;
 
   const confMap: Record<string, PredictionResult['confidence']> = {
     'A+': 'VERY_HIGH', 'A': 'HIGH', 'B': 'MEDIUM', 'C': 'LOW', 'D': 'LOW',
@@ -146,17 +237,17 @@ export function oracleToLegacy(oracle: OracleAnalysis, homeTeam: string, awayTea
   };
 
   return {
-    homeWinPercent: Math.round(probabilities.homeWin * 100),
-    drawPercent: Math.round(probabilities.draw * 100),
-    awayWinPercent: Math.round(probabilities.awayWin * 100),
+    homeWinPercent: Math.round(normalized.homeWin * 100),
+    drawPercent: Math.round(normalized.draw * 100),
+    awayWinPercent: Math.round(normalized.awayWin * 100),
     prediction,
-    confidence: confMap[primaryBet.confidence] || 'MEDIUM',
-    reasoning: primaryBet.reasoning,
+    confidence: confMap[oracle.primaryBet.confidence] || 'MEDIUM',
+    reasoning: oracle.primaryBet.reasoning,
     keyFactors: oracle.redFlags.length > 0 ? oracle.redFlags : [oracle.tacticalEdge],
-    riskLevel: riskMap[primaryBet.confidence] || 'MEDIUM',
-    suggestedBet: primaryBet.market,
+    riskLevel: riskMap[oracle.primaryBet.confidence] || 'MEDIUM',
+    suggestedBet: oracle.primaryBet.market,
     oddsTrend: oracle.verdictReason,
-    bothTeamsScore: probabilities.btts > 0.5,
+    bothTeamsScore: normalized.btts > 0.5,
     expectedGoals: oracle.poisson.homeExpectedGoals + oracle.poisson.awayExpectedGoals,
   };
 }
