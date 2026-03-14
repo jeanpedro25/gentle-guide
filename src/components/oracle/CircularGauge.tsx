@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { normalizeProbabilities, OracleAnalysis } from '@/types/prediction';
 import { CountUpNumber } from './CountUpNumber';
 
 interface CircularGaugeProps {
@@ -9,9 +10,11 @@ interface CircularGaugeProps {
 }
 
 export function CircularGauge({ label, value, color, delay = 0 }: CircularGaugeProps) {
+  // Clamp value to 0-100
+  const clampedValue = Math.min(100, Math.max(0, value));
   const radius = 48;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (value / 100) * circumference;
+  const strokeDashoffset = circumference - (clampedValue / 100) * circumference;
 
   return (
     <div className="flex flex-col items-center gap-2">
@@ -41,7 +44,7 @@ export function CircularGauge({ label, value, color, delay = 0 }: CircularGaugeP
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
           <span className="font-display text-2xl text-foreground">
-            <CountUpNumber value={value} duration={1200} />
+            <CountUpNumber value={clampedValue} duration={1200} />
             <span className="text-sm">%</span>
           </span>
         </div>

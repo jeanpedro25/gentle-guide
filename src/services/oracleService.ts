@@ -1,4 +1,4 @@
-import { OracleAnalysis } from '@/types/prediction';
+import { OracleAnalysis, normalizeProbabilities } from '@/types/prediction';
 import { ApiFixture, TeamStats, H2HFixture } from '@/types/fixture';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -85,5 +85,24 @@ export async function analyzeMatch(
     throw new Error(data.error);
   }
 
-  return data as OracleAnalysis;
+  // Normalize probabilities from AI (handles both 0-1 and 0-100 formats)
+  const raw = data as OracleAnalysis;
+  raw.probabilities = normalizeProbabilities(raw.probabilities);
+  
+  // Normalize score scenario probabilities too
+  if (raw.scoreScenarios) {
+    raw.scoreScenarios = raw.scoreScenarios.map(s => ({
+      ...s,
+      prob: s.prob > 1 ? s.prob : s.prob * 100, // ensure percentage format
+    }));
+  }
+  if (raw.poisson?.mostLikelyScores) {
+    // Normalize: if any prob > 1, they're already percentages
+    const anyOver1 = raw.poisson.mostLikelyScores.some(s => s.prob > 1);
+    if (!anyOver1) {
+      // They're decimals, keep as-is (display code multiplies by 100)
+    }
+  }
+
+  return raw;
 }

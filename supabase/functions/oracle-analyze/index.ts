@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `You are ORACLE, an elite sports betting quantitative analyst.
+const SYSTEM_PROMPT = `You are PROFETA, an elite sports betting quantitative analyst.
 You think like Ed Thorp (card counting math applied to sports),
 Billy Walters (finding market inefficiencies before they close),
 and Pinnacle's trading desk (closing line value).
@@ -36,8 +36,6 @@ Your analysis framework:
    - Set piece danger (corners, free kicks)
    - Fatigue (games in last 14 days, travel distance)
    - Motivation index (league position pressure, cup importance)
-   - Weather impact (heavy rain = fewer goals)
-   - Referee statistics (cards per game, home bias %)
 
 6. BETTING MARKETS to evaluate:
    - 1X2 (match result)
@@ -57,8 +55,19 @@ Your analysis framework:
    - Key player out injured (top scorer, key defender)
    - Team played 3+ games in 7 days
    - Motivation mismatch (one team has nothing to play for)
-   - Extreme weather forecast
-   - Line moved significantly against your selection
+
+9. PLAYER ANALYSIS:
+   - Create realistic player ratings (0-99) based on known player quality
+   - Generate 11 players per team in their likely formation
+   - Evaluate key position matchups
+   - Analyze goalkeeper strengths in detail
+
+CRITICAL RULES FOR PROBABILITIES:
+- All probability values in "probabilities" must be DECIMALS between 0.0 and 1.0
+- homeWin + draw + awayWin MUST sum to exactly 1.0
+- over25 and btts must be between 0.0 and 1.0
+- Score scenario probs must be decimals (e.g. 0.124 not 12.4)
+- Poisson mostLikelyScores probs must be decimals (e.g. 0.11 not 11)
 
 ALWAYS respond with ONLY a valid JSON object. No markdown. No explanation outside JSON.
 No emojis in JSON values. All text fields in Brazilian Portuguese.`;
@@ -124,7 +133,6 @@ serve(async (req) => {
       throw new Error("Empty AI response");
     }
 
-    // Parse JSON from the response (handle possible markdown wrapping)
     let analysisJson;
     try {
       const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
@@ -163,20 +171,28 @@ ${d.awayTeam} (fora) — Forma: ${d.awayForm || "N/A"}
 ${d.h2hSummary || "Sem dados de confronto direto disponíveis."}
 
 Analyze all data above using your full quantitative framework.
-Return ONLY this JSON:
+Return ONLY this JSON (ALL probability values must be DECIMALS 0.0-1.0, NOT percentages):
 {
   "poisson": {
     "homeExpectedGoals": number,
     "awayExpectedGoals": number,
-    "mostLikelyScores": [{"score":"2x1","prob":number}, ...] (top 6)
+    "mostLikelyScores": [{"score":"2x1","prob":0.085}, ...] (top 6, prob as DECIMAL)
   },
   "probabilities": {
-    "homeWin": number,
-    "draw": number,
-    "awayWin": number,
-    "over25": number,
-    "btts": number
+    "homeWin": number (DECIMAL 0-1, example: 0.45),
+    "draw": number (DECIMAL 0-1, example: 0.25),
+    "awayWin": number (DECIMAL 0-1, example: 0.30),
+    "over25": number (DECIMAL 0-1),
+    "btts": number (DECIMAL 0-1)
   },
+  "predictedScore": { "home": number, "away": number },
+  "scoreScenarios": [
+    {"score": "1x2", "prob": 0.124},
+    {"score": "0x1", "prob": 0.105},
+    {"score": "1x1", "prob": 0.088},
+    {"score": "1x0", "prob": 0.082},
+    {"score": "2x1", "prob": 0.064}
+  ],
   "marketComparison": {
     "homeImpliedProb": number,
     "drawImpliedProb": number,
@@ -202,6 +218,33 @@ Return ONLY this JSON:
   ],
   "injuryImpact": "CRITICO" | "ALTO" | "MEDIO" | "BAIXO" | "NENHUM",
   "verdict": "APOSTAR" | "PASSAR",
-  "verdictReason": "string"
-}`;
+  "verdictReason": "string",
+  "playerRatings": {
+    "home": [
+      {"name": "string", "position": "GOL"|"ZAG"|"LAT"|"MEI"|"ATA", "rating": number(0-99), "keyStats": {"stat1": number, "stat2": number}}
+    ],
+    "away": [same structure with 11 players]
+  },
+  "playerDuels": [
+    {"homePlayer": "string", "homeRating": number, "awayPlayer": "string", "awayRating": number, "advantage": "HOME"|"AWAY"|"EQUAL", "homeStats": {"stat1": number}, "awayStats": {"stat1": number}}
+  ],
+  "goalkeeperDuel": {
+    "home": {"name": "string", "rating": number, "reflexes": number, "positioning": number, "ballDistribution": number},
+    "away": {"name": "string", "rating": number, "reflexes": number, "positioning": number, "ballDistribution": number},
+    "winner": "HOME"|"AWAY"|"EQUAL"
+  },
+  "formationAnalysis": {
+    "home": "4-3-3",
+    "away": "4-2-3-1",
+    "tacticalEdge": "HOME"|"AWAY"|"EQUAL",
+    "reason": "string"
+  }
+}
+
+IMPORTANT REMINDERS:
+- probabilities.homeWin + probabilities.draw + probabilities.awayWin MUST equal 1.0
+- All prob fields are DECIMALS (0.xx), NOT percentages
+- Generate realistic 11 players per team with Brazilian Portuguese positions
+- playerDuels should have 3-5 key matchups
+- scoreScenarios should have top 5 most likely exact scores`;
 }
