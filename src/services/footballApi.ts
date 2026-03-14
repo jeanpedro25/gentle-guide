@@ -162,24 +162,13 @@ export async function fetchFixturesByLeague(
     const events = data?.events;
     if (!events || events.length === 0) return [];
 
-    // Fetch badges for all unique teams in parallel
-    const teamIds = new Set<string>();
-    events.forEach(e => {
-      teamIds.add(e.idHomeTeam);
-      teamIds.add(e.idAwayTeam);
-    });
-
-    await Promise.all(
-      Array.from(teamIds).map(id => getTeamBadge(id))
-    );
-
-    // Now convert all events
+    // Badges come inline from TheSportsDB events
     return events.map(event =>
       eventToFixture(
         event,
         league,
-        badgeCache.get(event.idHomeTeam) || '/placeholder.svg',
-        badgeCache.get(event.idAwayTeam) || '/placeholder.svg'
+        event.strHomeTeamBadge || '/placeholder.svg',
+        event.strAwayTeamBadge || '/placeholder.svg'
       )
     );
   } catch (err) {
