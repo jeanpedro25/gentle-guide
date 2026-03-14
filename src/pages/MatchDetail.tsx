@@ -1,12 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ApiFixture } from '@/types/fixture';
-import { MatchAnalysis, PredictionResult } from '@/types/prediction';
+import { MatchAnalysis, OracleAnalysis, oracleToLegacy } from '@/types/prediction';
 import { fetchMatchContext } from '@/services/footballApi';
+import { analyzeMatch } from '@/services/oracleService';
 import { VerdictCard } from '@/components/oracle/VerdictCard';
 import { CircularGauge } from '@/components/oracle/CircularGauge';
 import { AnalysisBreakdown } from '@/components/oracle/AnalysisBreakdown';
 import { BettingInsight } from '@/components/oracle/BettingInsight';
+import { PoissonSection } from '@/components/oracle/PoissonSection';
+import { EVDisplay } from '@/components/oracle/EVDisplay';
+import { MarketComparisonCard } from '@/components/oracle/MarketComparisonCard';
+import { RedFlagsCard } from '@/components/oracle/RedFlagsCard';
 import { H2HHistory } from '@/components/oracle/H2HHistory';
 import { LoadingState } from '@/components/oracle/LoadingState';
 import { H2HFixture } from '@/types/fixture';
@@ -17,43 +22,12 @@ import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { usePredictionHistory } from '@/hooks/usePredictionHistory';
 
-function generateMockPrediction(homeTeam: string, awayTeam: string): PredictionResult {
-  const homeWin = Math.floor(Math.random() * 40) + 20;
-  const draw = Math.floor(Math.random() * 25) + 10;
-  const awayWin = 100 - homeWin - draw;
-
-  const maxVal = Math.max(homeWin, draw, awayWin);
-  const prediction = maxVal === homeWin ? 'HOME_WIN' as const :
-    maxVal === draw ? 'DRAW' as const : 'AWAY_WIN' as const;
-
-  const confidences = ['LOW', 'MEDIUM', 'HIGH', 'VERY_HIGH'] as const;
-  const risks = ['LOW', 'MEDIUM', 'HIGH'] as const;
-
-  return {
-    homeWinPercent: homeWin,
-    drawPercent: draw,
-    awayWinPercent: awayWin,
-    prediction,
-    confidence: confidences[Math.floor(Math.random() * 4)],
-    reasoning: `Baseado na análise histórica, ${homeTeam} possui vantagem de mandante significativa contra ${awayTeam}. A forma recente e estatísticas de confronto direto indicam uma tendência clara nesta partida.`,
-    keyFactors: [
-      'Forma recente do mandante',
-      'Histórico de confrontos',
-      'Jogadores lesionados',
-      'Desempenho em casa/fora',
-      'Motivação competitiva',
-    ].slice(0, Math.floor(Math.random() * 3) + 3),
-    riskLevel: risks[Math.floor(Math.random() * 3)],
-    suggestedBet: `Vitória do ${prediction === 'HOME_WIN' ? homeTeam : prediction === 'AWAY_WIN' ? awayTeam : 'Empate'} com handicap`,
-    oddsTrend: 'Odds estáveis com leve tendência de queda para o favorito',
-  };
-}
-
 export default function MatchDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
   const [fixture, setFixture] = useState<ApiFixture | null>(null);
   const [analysis, setAnalysis] = useState<MatchAnalysis | null>(null);
+  const [oracle, setOracle] = useState<OracleAnalysis | null>(null);
   const [h2h, setH2h] = useState<H2HFixture[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { addPrediction } = usePredictionHistory();
@@ -70,15 +44,24 @@ export default function MatchDetail() {
   const handleAnalyze = async () => {
     if (!fixture) return;
     setIsAnalyzing(true);
+    setOracle(null);
+    setAnalysis(null);
 
     try {
-      // Fetch context data in parallel
       const context = await fetchMatchContext(fixture);
       setH2h(context.h2h);
 
-      // For now, mock prediction (will be replaced with Lovable Cloud edge function)
-      await new Promise((r) => setTimeout(r, 2000));
-      const result = generateMockPrediction(
+      const oracleResult = await analyzeMatch(
+        fixture,
+        context.homeStats,
+        context.awayStats,
+        context.h2h
+      );
+
+      setOracle(oracleResult);
+
+      const legacyResult = oracleToLegacy(
+        oracleResult,
         fixture.teams.home.name,
         fixture.teams.away.name
       );
@@ -92,17 +75,18 @@ export default function MatchDetail() {
         sport: 'football',
         league: fixture.league.name,
         date: fixture.fixture.date,
-        result,
+        result: legacyResult,
+        oracle: oracleResult,
         timestamp: Date.now(),
         fixtureId: fixture.fixture.id,
       };
 
       setAnalysis(matchAnalysis);
       addPrediction(matchAnalysis);
-      toast.success('Análise concluída!');
+      toast.success('Análise quantitativa concluída!');
     } catch (err) {
-      toast.error('Erro ao analisar. Tente novamente.');
-      console.error(err);
+      console.error('[Oracle] Analysis error:', err);
+      toast.error(err instanceof Error ? err.message : 'Erro ao analisar. Tente novamente.');
     } finally {
       setIsAnalyzing(false);
     }
@@ -188,10 +172,12 @@ export default function MatchDetail() {
         {isAnalyzing && <LoadingState />}
 
         {/* Results */}
-        {analysis && (
+        {analysis && oracle && (
           <div className="space-y-4">
+            {/* Verdict */}
             <VerdictCard
               result={analysis.result}
+              oracle={oracle}
               homeTeam={analysis.homeTeam}
               awayTeam={analysis.awayTeam}
             />
@@ -203,31 +189,48 @@ export default function MatchDetail() {
               transition={{ delay: 0.3 }}
               className="glass-card p-5"
             >
-              <h3 className="font-display text-lg tracking-wider text-foreground mb-4">PROBABILIDADES</h3>
+              <h3 className="font-display text-lg tracking-wider text-foreground mb-4">PROBABILIDADES POISSON</h3>
               <div className="flex items-center justify-around">
                 <CircularGauge
                   label={analysis.homeTeam}
-                  value={analysis.result.homeWinPercent}
+                  value={Math.round(oracle.probabilities.homeWin * 100)}
                   color="hsl(var(--oracle-win))"
                   delay={0.4}
                 />
                 <CircularGauge
                   label="Empate"
-                  value={analysis.result.drawPercent}
+                  value={Math.round(oracle.probabilities.draw * 100)}
                   color="hsl(var(--oracle-draw))"
                   delay={0.6}
                 />
                 <CircularGauge
                   label={analysis.awayTeam}
-                  value={analysis.result.awayWinPercent}
+                  value={Math.round(oracle.probabilities.awayWin * 100)}
                   color="hsl(var(--oracle-loss))"
                   delay={0.8}
                 />
               </div>
             </motion.div>
 
-            <AnalysisBreakdown result={analysis.result} />
-            <BettingInsight result={analysis.result} />
+            {/* EV + Kelly */}
+            <EVDisplay oracle={oracle} />
+
+            {/* Poisson Scores */}
+            <PoissonSection oracle={oracle} />
+
+            {/* Market Comparison */}
+            <MarketComparisonCard oracle={oracle} />
+
+            {/* Analysis Breakdown */}
+            <AnalysisBreakdown result={analysis.result} oracle={oracle} />
+
+            {/* Betting Insight */}
+            <BettingInsight result={analysis.result} oracle={oracle} />
+
+            {/* Red Flags */}
+            {oracle.redFlags.length > 0 && <RedFlagsCard redFlags={oracle.redFlags} />}
+
+            {/* H2H */}
             <H2HHistory h2h={h2h} homeTeamId={fixture.teams.home.id} />
 
             {/* Analyze again */}
