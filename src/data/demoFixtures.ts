@@ -1,5 +1,5 @@
 import { ApiFixture, LeagueConfig, LEAGUES } from '@/types/fixture';
-import { addDays, format } from 'date-fns';
+import { addDays } from 'date-fns';
 
 // Generate realistic demo fixtures for all leagues
 function generateDemoFixtures(): { league: LeagueConfig; fixtures: ApiFixture[] }[] {

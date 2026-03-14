@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchAllFixtures, fetchFixturesByLeague } from '@/services/footballApi';
-import { LEAGUES, LeagueConfig, ApiFixture } from '@/types/fixture';
+import { LeagueConfig, ApiFixture } from '@/types/fixture';
 
 export function useAllFixtures() {
   return useQuery({
