@@ -88,20 +88,7 @@ interface SportsDbTeam {
 // Badge cache to avoid repeated lookups
 const badgeCache = new Map<string, string>();
 
-async function getTeamBadge(teamId: string): Promise<string> {
-  if (badgeCache.has(teamId)) return badgeCache.get(teamId)!;
-
-  try {
-    const data = await sportsDbFetch<{ teams: SportsDbTeam[] | null }>(
-      `lookupteam.php?id=${teamId}`
-    );
-    const badge = data?.teams?.[0]?.strBadge || '/placeholder.svg';
-    badgeCache.set(teamId, badge);
-    return badge;
-  } catch {
-    return '/placeholder.svg';
-  }
-}
+// Badge cache no longer needed - TheSportsDB returns badges inline with events
 
 function eventToFixture(
   event: SportsDbEvent,
