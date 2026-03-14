@@ -47,14 +47,15 @@ export interface LeagueConfig {
 
 export const LEAGUES: LeagueConfig[] = [
   // Brazil
-  { id: 71, name: 'Brasileirão A', country: 'Brazil', emoji: '🇧🇷', season: 2025, sportsDbId: 4351 },
-  { id: 72, name: 'Série B', country: 'Brazil', emoji: '🇧🇷', season: 2025, sportsDbId: 4404 },
-  { id: 73, name: 'Copa do Brasil', country: 'Brazil', emoji: '🇧🇷', season: 2025, sportsDbId: 4725 },
+  { id: 71, name: 'Brasileirão A', country: 'Brazil', emoji: '🇧🇷', season: 2026, sportsDbId: 4351 },
+  { id: 72, name: 'Série B', country: 'Brazil', emoji: '🇧🇷', season: 2026, sportsDbId: 4404 },
+  { id: 73, name: 'Copa do Brasil', country: 'Brazil', emoji: '🇧🇷🏆', season: 2026, sportsDbId: 4725 },
+  { id: 74, name: 'Brasileiro Feminino', country: 'Brazil', emoji: '🇧🇷👩', season: 2026, sportsDbId: 5201 },
   // Argentina
-  { id: 128, name: 'Liga Argentina', country: 'Argentina', emoji: '🇦🇷', season: 2025, sportsDbId: 4406 },
+  { id: 128, name: 'Liga Argentina', country: 'Argentina', emoji: '🇦🇷', season: 2026, sportsDbId: 4406 },
   // South American cups
-  { id: 13, name: 'Libertadores', country: 'South America', emoji: '🏆', season: 2025, sportsDbId: 4350 },
-  { id: 26, name: 'Copa Sul-Americana', country: 'South America', emoji: '🌎', season: 2025, sportsDbId: 4724 },
+  { id: 13, name: 'Libertadores', country: 'South America', emoji: '🏆', season: 2026, sportsDbId: 4350 },
+  { id: 26, name: 'Copa Sul-Americana', country: 'South America', emoji: '🌎', season: 2026, sportsDbId: 4724 },
   { id: 11, name: 'Copa América', country: 'Worldwide', emoji: '🌎', season: 2024, sportsDbId: 4499 },
   // Europe
   { id: 39, name: 'Premier League', country: 'England', emoji: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', season: 2024, sportsDbId: 4328 },
