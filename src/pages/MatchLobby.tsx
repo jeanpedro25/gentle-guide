@@ -69,6 +69,9 @@ export default function MatchLobby() {
           </motion.div>
         )}
 
+        {/* Live Matches */}
+        <LiveMatches matches={liveQuery.data ?? []} isLoading={liveQuery.isLoading} />
+
         <LeagueTabs selectedLeagueId={selectedLeague} onSelect={setSelectedLeague} />
 
         {isLoading && (
