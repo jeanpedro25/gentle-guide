@@ -30,9 +30,17 @@ export function useFilteredFixtures(selectedLeagueId: number | null) {
 
   const fixtures: { league: LeagueConfig; fixtures: ApiFixture[] }[] = allQuery.data ?? [];
 
-  const filtered = selectedLeagueId
+  const filtered = (selectedLeagueId
     ? fixtures.filter((g) => g.league.id === selectedLeagueId)
-    : fixtures;
+    : fixtures
+  ).map(group => ({
+    ...group,
+    fixtures: group.fixtures.filter(f => {
+      const s = f.fixture.status.short;
+      // Exclude finished matches
+      return s !== 'FT' && s !== 'AET' && s !== 'PEN';
+    }),
+  })).filter(group => group.fixtures.length > 0);
 
   return {
     data: filtered,
