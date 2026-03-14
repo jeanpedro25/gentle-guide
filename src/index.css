@@ -4,55 +4,62 @@
 
 @layer base {
   :root {
-    --background: 220 20% 5%;
-    --foreground: 0 0% 100%;
+    /* bg-primary: #0A0C12 → hsl(225, 31%, 5%) */
+    --background: 225 31% 5%;
+    --foreground: 228 50% 96%;
 
-    --card: 220 20% 8%;
-    --card-foreground: 0 0% 100%;
+    /* bg-card: #12151E → hsl(225, 25%, 9%) */
+    --card: 225 25% 9%;
+    --card-foreground: 228 50% 96%;
 
-    --popover: 220 20% 8%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 225 25% 9%;
+    --popover-foreground: 228 50% 96%;
 
-    --primary: 153 100% 50%;
-    --primary-foreground: 220 20% 5%;
+    /* accent-green: #00FF87 → hsl(152, 100%, 50%) */
+    --primary: 152 100% 50%;
+    --primary-foreground: 225 31% 5%;
 
-    --secondary: 220 20% 14%;
-    --secondary-foreground: 0 0% 100%;
+    /* bg-card-hover: #1A1F2E → hsl(225 24% 14%) */
+    --secondary: 225 24% 14%;
+    --secondary-foreground: 228 50% 96%;
 
-    --muted: 220 15% 16%;
-    --muted-foreground: 213 18% 62%;
+    --muted: 225 20% 16%;
+    /* text-muted: #6B7280 → hsl(220, 9%, 46%) */
+    --muted-foreground: 220 9% 46%;
 
-    --accent: 220 20% 14%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 225 24% 14%;
+    --accent-foreground: 228 50% 96%;
 
+    /* accent-red: #FF3B5C → hsl(349, 100%, 62%) */
     --destructive: 349 100% 62%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 228 50% 96%;
 
-    --border: 220 15% 18%;
-    --input: 220 15% 18%;
-    --ring: 153 100% 50%;
+    /* border: rgba(255,255,255,0.08) → hsl(0, 0%, 100%, 0.08) */
+    --border: 225 15% 15%;
+    --input: 225 15% 15%;
+    --ring: 152 100% 50%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
-    /* Custom Oracle tokens */
-    --oracle-bg: 222 23% 6%;
-    --oracle-surface: 220 22% 11%;
-    --oracle-win: 153 100% 50%;
-    --oracle-draw: 42 100% 50%;
+    /* Oracle tokens */
+    --oracle-bg: 225 31% 5%;
+    --oracle-surface: 225 25% 9%;
+    --oracle-win: 152 100% 50%;
+    /* accent-amber: #FFB800 → hsl(43, 100%, 50%) */
+    --oracle-draw: 43 100% 50%;
     --oracle-loss: 349 100% 62%;
-    --oracle-text-muted: 213 18% 62%;
-    --oracle-glow-win: 0 0% 0% / 0;
-    --oracle-glow-draw: 0 0% 0% / 0;
-    --oracle-glow-loss: 0 0% 0% / 0;
+    /* accent-blue: #4B9FFF → hsl(214, 100%, 65%) */
+    --oracle-blue: 214 100% 65%;
+    --oracle-text-muted: 220 9% 46%;
 
-    --sidebar-background: 220 22% 8%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 153 100% 50%;
-    --sidebar-primary-foreground: 220 20% 5%;
-    --sidebar-accent: 220 20% 14%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 220 15% 18%;
-    --sidebar-ring: 153 100% 50%;
+    --sidebar-background: 225 25% 8%;
+    --sidebar-foreground: 228 50% 96%;
+    --sidebar-primary: 152 100% 50%;
+    --sidebar-primary-foreground: 225 31% 5%;
+    --sidebar-accent: 225 24% 14%;
+    --sidebar-accent-foreground: 228 50% 96%;
+    --sidebar-border: 225 15% 15%;
+    --sidebar-ring: 152 100% 50%;
   }
 }
 
@@ -63,7 +70,6 @@
 
   body {
     @apply bg-background text-foreground font-body antialiased;
-    background-color: hsl(var(--oracle-bg));
   }
 }
 
@@ -77,34 +83,34 @@
   }
 
   .glass-card {
-    background: hsl(var(--oracle-surface) / 0.6);
-    backdrop-filter: blur(16px);
-    border: 1px solid hsl(var(--border));
+    background: hsl(var(--oracle-surface) / 0.7);
+    backdrop-filter: blur(20px);
+    border: 1px solid hsl(var(--border) / 0.5);
     border-radius: var(--radius);
   }
 
   .glass-card-win {
-    background: hsl(var(--oracle-surface) / 0.6);
-    backdrop-filter: blur(16px);
+    background: hsl(var(--oracle-surface) / 0.7);
+    backdrop-filter: blur(20px);
     border: 1px solid hsl(var(--oracle-win) / 0.4);
     border-radius: var(--radius);
-    box-shadow: 0 0 20px hsl(var(--oracle-win) / 0.1), inset 0 1px 0 hsl(var(--oracle-win) / 0.1);
+    box-shadow: 0 0 30px hsl(var(--oracle-win) / 0.15), inset 0 1px 0 hsl(var(--oracle-win) / 0.1);
   }
 
   .glass-card-draw {
-    background: hsl(var(--oracle-surface) / 0.6);
-    backdrop-filter: blur(16px);
+    background: hsl(var(--oracle-surface) / 0.7);
+    backdrop-filter: blur(20px);
     border: 1px solid hsl(var(--oracle-draw) / 0.4);
     border-radius: var(--radius);
-    box-shadow: 0 0 20px hsl(var(--oracle-draw) / 0.1), inset 0 1px 0 hsl(var(--oracle-draw) / 0.1);
+    box-shadow: 0 0 30px hsl(var(--oracle-draw) / 0.15), inset 0 1px 0 hsl(var(--oracle-draw) / 0.1);
   }
 
   .glass-card-loss {
-    background: hsl(var(--oracle-surface) / 0.6);
-    backdrop-filter: blur(16px);
+    background: hsl(var(--oracle-surface) / 0.7);
+    backdrop-filter: blur(20px);
     border: 1px solid hsl(var(--oracle-loss) / 0.4);
     border-radius: var(--radius);
-    box-shadow: 0 0 20px hsl(var(--oracle-loss) / 0.1), inset 0 1px 0 hsl(var(--oracle-loss) / 0.1);
+    box-shadow: 0 0 30px hsl(var(--oracle-loss) / 0.15), inset 0 1px 0 hsl(var(--oracle-loss) / 0.1);
   }
 
   .neon-glow-green {
@@ -119,52 +125,25 @@
     box-shadow: 0 0 15px hsl(var(--oracle-loss) / 0.4), 0 0 45px hsl(var(--oracle-loss) / 0.1);
   }
 
-  .text-oracle-win {
-    color: hsl(var(--oracle-win));
-  }
+  .text-oracle-win { color: hsl(var(--oracle-win)); }
+  .text-oracle-draw { color: hsl(var(--oracle-draw)); }
+  .text-oracle-loss { color: hsl(var(--oracle-loss)); }
+  .bg-oracle-win { background-color: hsl(var(--oracle-win)); }
+  .bg-oracle-draw { background-color: hsl(var(--oracle-draw)); }
+  .bg-oracle-loss { background-color: hsl(var(--oracle-loss)); }
+  .bg-oracle-surface { background-color: hsl(var(--oracle-surface)); }
+  .bg-oracle-bg { background-color: hsl(var(--oracle-bg)); }
+  .text-oracle-muted { color: hsl(var(--oracle-text-muted)); }
+  .border-oracle-win { border-color: hsl(var(--oracle-win) / 0.4); }
+  .border-oracle-draw { border-color: hsl(var(--oracle-draw) / 0.4); }
+  .border-oracle-loss { border-color: hsl(var(--oracle-loss) / 0.4); }
 
-  .text-oracle-draw {
-    color: hsl(var(--oracle-draw));
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
-
-  .text-oracle-loss {
-    color: hsl(var(--oracle-loss));
-  }
-
-  .bg-oracle-win {
-    background-color: hsl(var(--oracle-win));
-  }
-
-  .bg-oracle-draw {
-    background-color: hsl(var(--oracle-draw));
-  }
-
-  .bg-oracle-loss {
-    background-color: hsl(var(--oracle-loss));
-  }
-
-  .bg-oracle-surface {
-    background-color: hsl(var(--oracle-surface));
-  }
-
-  .bg-oracle-bg {
-    background-color: hsl(var(--oracle-bg));
-  }
-
-  .text-oracle-muted {
-    color: hsl(var(--oracle-text-muted));
-  }
-
-  .border-oracle-win {
-    border-color: hsl(var(--oracle-win) / 0.4);
-  }
-
-  .border-oracle-draw {
-    border-color: hsl(var(--oracle-draw) / 0.4);
-  }
-
-  .border-oracle-loss {
-    border-color: hsl(var(--oracle-loss) / 0.4);
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }
 
@@ -177,17 +156,6 @@
   }
 }
 
-@keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
 .animate-pulse-neon {
   animation: pulse-neon 2s ease-in-out infinite;
-}
-
-.animate-gradient {
-  background-size: 200% 200%;
-  animation: gradient-shift 8s ease infinite;
 }
