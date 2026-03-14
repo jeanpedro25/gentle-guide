@@ -11,9 +11,7 @@ function getApiKey(): string {
 }
 
 function getHeaders(): HeadersInit {
-  const key = getApiKey();
-  if (!key) throw new Error('API Key não configurada');
-  return { 'x-apisports-key': key };
+  return { 'x-apisports-key': getApiKey() };
 }
 
 // Simple in-memory cache (30 min TTL)
