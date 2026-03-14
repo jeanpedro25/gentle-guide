@@ -8,22 +8,6 @@ const corsHeaders = {
 
 const API_KEY = "3ffd74d8f5b404975b2f3b24cb383a23";
 
-const ENDPOINTS = [
-  {
-    url: "https://v3.football.api-sports.io",
-    headers: { "x-apisports-key": API_KEY },
-    name: "direct",
-  },
-  {
-    url: "https://api-football-v1.p.rapidapi.com",
-    headers: {
-      "x-rapidapi-key": API_KEY,
-      "x-rapidapi-host": "api-football-v1.p.rapidapi.com",
-    },
-    name: "rapidapi",
-  },
-];
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -40,42 +24,92 @@ serve(async (req) => {
     }
 
     const queryString = params
-      ? "?" + Object.entries(params).map(([k, v]) => `${k}=${v}`).join("&")
+      ? "&" + Object.entries(params).map(([k, v]) => `${k}=${v}`).join("&")
       : "";
 
-    let lastError = "";
+    // Try multiple auth methods
+    const attempts = [
+      {
+        name: "header-apisports",
+        url: `https://v3.football.api-sports.io${endpoint}?${queryString.replace(/^&/, '')}`,
+        headers: { "x-apisports-key": API_KEY },
+      },
+      {
+        name: "header-rapidapi",
+        url: `https://api-football-v1.p.rapidapi.com${endpoint}?${queryString.replace(/^&/, '')}`,
+        headers: {
+          "x-rapidapi-key": API_KEY,
+          "x-rapidapi-host": "api-football-v1.p.rapidapi.com",
+        },
+      },
+      {
+        name: "apiv3-apifootball",
+        url: `https://apiv3.apifootball.com/${endpoint.replace(/^\//, '')}?APIkey=${API_KEY}${queryString}`,
+        headers: {},
+      },
+    ];
 
-    for (const ep of ENDPOINTS) {
-      const url = `${ep.url}${endpoint}${queryString}`;
-      console.log(`[football-proxy] Trying ${ep.name}:`, url);
+    let lastError = "";
+    const debugLog: string[] = [];
+
+    for (const attempt of attempts) {
+      console.log(`[football-proxy] Trying ${attempt.name}: ${attempt.url}`);
 
       try {
-        const res = await fetch(url, { headers: ep.headers });
-        const json = await res.json();
+        const res = await fetch(attempt.url, {
+          headers: attempt.headers,
+        });
 
-        if (json.errors && Object.keys(json.errors).length > 0) {
-          lastError = Object.values(json.errors).join(", ");
-          console.warn(`[football-proxy] ${ep.name} failed:`, lastError);
+        const text = await res.text();
+        debugLog.push(`${attempt.name}: status=${res.status}, body=${text.substring(0, 200)}`);
+
+        let json: any;
+        try {
+          json = JSON.parse(text);
+        } catch {
+          console.warn(`[football-proxy] ${attempt.name}: non-JSON response`);
+          lastError = `${attempt.name}: non-JSON response`;
           continue;
         }
 
+        // Check for errors
+        if (json.errors && Object.keys(json.errors).length > 0) {
+          lastError = Object.values(json.errors).join(", ");
+          console.warn(`[football-proxy] ${attempt.name} API error:`, lastError);
+          continue;
+        }
+
+        if (json.error) {
+          lastError = typeof json.error === 'string' ? json.error : JSON.stringify(json.error);
+          console.warn(`[football-proxy] ${attempt.name} error:`, lastError);
+          continue;
+        }
+
+        // Success
         const remaining = res.headers.get("x-ratelimit-requests-remaining");
         const limit = res.headers.get("x-ratelimit-requests-limit");
-        console.log(`[football-proxy] ✅ ${ep.name} worked! ${endpoint} → ${json.results || 0} results (quota: ${remaining}/${limit})`);
+        console.log(`[football-proxy] ✅ ${attempt.name} SUCCESS! ${endpoint} → results=${json.results ?? '?'} (quota: ${remaining}/${limit})`);
 
         return new Response(JSON.stringify(json), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       } catch (fetchErr) {
         lastError = fetchErr instanceof Error ? fetchErr.message : "Fetch failed";
-        console.warn(`[football-proxy] ${ep.name} fetch error:`, lastError);
+        debugLog.push(`${attempt.name}: fetch error - ${lastError}`);
+        console.warn(`[football-proxy] ${attempt.name} fetch error:`, lastError);
         continue;
       }
     }
 
-    console.error("[football-proxy] All endpoints failed:", lastError);
+    // All failed — return debug info
+    console.error("[football-proxy] ALL attempts failed. Debug:", debugLog.join(" | "));
     return new Response(
-      JSON.stringify({ error: lastError || "All API endpoints failed", results: 0, response: [] }),
+      JSON.stringify({
+        error: lastError || "All API endpoints failed",
+        debug: debugLog,
+        results: 0,
+        response: [],
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {
