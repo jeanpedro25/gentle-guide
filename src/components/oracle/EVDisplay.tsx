@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { OracleAnalysis } from '@/types/prediction';
-import { TrendingUp, Calculator, Percent } from 'lucide-react';
+import { Calculator, Percent } from 'lucide-react';
 import { CountUpNumber } from './CountUpNumber';
 
 interface EVDisplayProps {
@@ -9,41 +9,45 @@ interface EVDisplayProps {
 
 export function EVDisplay({ oracle }: EVDisplayProps) {
   const { primaryBet } = oracle;
-  const evPositive = primaryBet.ev > 0;
-  const evColor = evPositive ? 'text-oracle-win' : 'text-oracle-loss';
-  const evBg = evPositive ? 'bg-oracle-win/10 border-oracle-win' : 'bg-oracle-loss/10 border-oracle-loss';
+  const ev = primaryBet.ev;
+
+  // Color rules based on EV
+  const evColor = ev > 10 ? 'text-oracle-win' : ev > 5 ? 'text-oracle-draw' : 'text-oracle-loss';
+  const evBg = ev > 10 ? 'bg-oracle-win/10 border-oracle-win/40' : ev > 5 ? 'bg-oracle-draw/10 border-oracle-draw/40' : 'bg-oracle-loss/10 border-oracle-loss/40';
+  const evGlow = ev > 10 ? 'neon-glow-green' : ev > 5 ? 'neon-glow-amber' : '';
+  const evLabel = ev > 10 ? 'Edge forte detectado' : ev > 5 ? 'Edge moderado — cautela' : ev > 0 ? 'Edge fraco — considere pular' : 'Sem edge — proteja sua banca';
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.4 }}
-      className="glass-card p-5 space-y-4"
+      className={`glass-card p-5 space-y-4 ${evGlow}`}
     >
       <h3 className="font-display text-lg tracking-wider text-foreground flex items-center gap-2">
         <Calculator className="w-5 h-5 text-primary" />
-        EXPECTED VALUE & KELLY
+        ANÁLISE DE VALOR
       </h3>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* EV */}
-        <div className={`rounded-xl border p-4 text-center ${evBg}`}>
-          <p className="text-xs font-body text-oracle-muted uppercase tracking-wider mb-1">Expected Value</p>
-          <div className={`font-display text-3xl ${evColor}`}>
-            {evPositive ? '+' : ''}<CountUpNumber value={Math.abs(primaryBet.ev)} duration={800} decimals={1} />%
-          </div>
-          <p className="text-xs font-body text-oracle-muted mt-1">
-            {evPositive ? 'Valor detectado ✓' : 'Sem valor ✗'}
-          </p>
+      {/* Main EV Card */}
+      <div className={`rounded-xl border p-5 text-center ${evBg}`}>
+        <p className="text-xs font-body text-oracle-muted uppercase tracking-wider mb-2">Expected Value</p>
+        <div className={`font-display text-5xl md:text-6xl ${evColor}`}>
+          {ev > 0 ? '+' : ''}<CountUpNumber value={Math.abs(ev)} duration={1000} decimals={1} />%
         </div>
+        <p className={`text-sm font-body mt-2 ${evColor}`}>
+          {evLabel}
+        </p>
+      </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Kelly */}
         <div className="rounded-xl border border-border bg-secondary/30 p-4 text-center">
-          <p className="text-xs font-body text-oracle-muted uppercase tracking-wider mb-1">Half-Kelly</p>
+          <p className="text-xs font-body text-oracle-muted uppercase tracking-wider mb-1">Half-Kelly Fraction</p>
           <div className="font-display text-3xl text-foreground">
             <CountUpNumber value={primaryBet.kellyFraction} duration={800} decimals={1} />%
           </div>
-          <p className="text-xs font-body text-oracle-muted mt-1">do bankroll</p>
+          <p className="text-xs font-body text-oracle-muted mt-1">do bankroll recomendado</p>
         </div>
 
         {/* Market */}
@@ -79,7 +83,7 @@ export function EVDisplay({ oracle }: EVDisplayProps) {
                   {bet.confidence}
                 </span>
                 <span className={`text-xs font-body ${bet.ev > 0 ? 'text-oracle-win' : 'text-oracle-loss'}`}>
-                  {bet.ev > 0 ? '+' : ''}{bet.ev.toFixed(1)}%
+                  {bet.ev > 0 ? '+' : ''}{typeof bet.ev === 'number' ? bet.ev.toFixed(1) : bet.ev}%
                 </span>
               </div>
             ))}
