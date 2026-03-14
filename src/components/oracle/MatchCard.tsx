@@ -44,9 +44,9 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
 
       {/* Teams */}
       <div className="flex items-center justify-between gap-2 mb-3">
-        <TeamBadge name={fixture.teams.home.name} logo={fixture.teams.home.logo} align="left" />
+        <TeamBadge name={fixture.teams.home.name} logo={fixture.teams.home.logo} align="left" badge="🏠" />
         <span className="font-display text-lg text-muted-foreground shrink-0">VS</span>
-        <TeamBadge name={fixture.teams.away.name} logo={fixture.teams.away.logo} align="right" />
+        <TeamBadge name={fixture.teams.away.name} logo={fixture.teams.away.logo} align="right" badge="✈️" />
       </div>
 
       {/* Date + status */}
