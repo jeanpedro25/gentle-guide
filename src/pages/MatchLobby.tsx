@@ -94,7 +94,7 @@ export default function MatchLobby() {
   const currentLoading = todayMode ? todayQuery.isLoading : isLoading;
   const currentError = todayMode ? todayQuery.isError : isError;
   const totalMatches = todayMode
-    ? (displayFixtures?.length ?? 0)
+    ? todayGrouped.reduce((sum, g) => sum + g.fixtures.length, 0)
     : filteredData.reduce((sum, g) => sum + g.fixtures.length, 0);
   const hasResults = totalMatches > 0;
 
