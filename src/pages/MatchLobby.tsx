@@ -44,20 +44,35 @@ export default function MatchLobby() {
 
   const realData = isUsingRealData();
 
-  // Determine which fixtures to show
-  const displayFixtures = useMemo(() => {
-    if (todayMode) {
-      const todayFixtures = todayQuery.data ?? [];
-      // Filter out finished if desired, and group by league
-      const active = todayFixtures.filter(f => f.fixture.status.short !== 'FT');
-      if (!searchQuery.trim()) return active;
-      const q = searchQuery.toLowerCase().trim();
-      return active.filter(f =>
-        f.teams.home.name.toLowerCase().includes(q) ||
-        f.teams.away.name.toLowerCase().includes(q)
-      );
+  // Group today's fixtures by league (like EstrelaBet)
+  const todayGrouped = useMemo(() => {
+    if (!todayMode) return [];
+    const todayFixtures = todayQuery.data ?? [];
+    const q = searchQuery.toLowerCase().trim();
+
+    const filtered = todayFixtures.filter(f => {
+      if (q && !f.teams.home.name.toLowerCase().includes(q) && !f.teams.away.name.toLowerCase().includes(q)) return false;
+      return true; // show all including FT
+    });
+
+    // Group by league name
+    const groups = new Map<string, { leagueName: string; leagueLogo: string; country: string; fixtures: ApiFixture[] }>();
+    for (const f of filtered) {
+      const key = f.league.name;
+      if (!groups.has(key)) {
+        groups.set(key, { leagueName: f.league.name, leagueLogo: f.league.logo, country: f.league.country, fixtures: [] });
+      }
+      groups.get(key)!.fixtures.push(f);
     }
-    return null; // Use grouped data instead
+
+    // Sort: live matches first, then by league name
+    return Array.from(groups.values()).sort((a, b) => {
+      const aLive = a.fixtures.some(f => ['1H', '2H', 'HT', 'LIVE'].includes(f.fixture.status.short));
+      const bLive = b.fixtures.some(f => ['1H', '2H', 'HT', 'LIVE'].includes(f.fixture.status.short));
+      if (aLive && !bLive) return -1;
+      if (!aLive && bLive) return 1;
+      return a.leagueName.localeCompare(b.leagueName);
+    });
   }, [todayMode, todayQuery.data, searchQuery]);
 
   // Filter grouped fixtures by search query (non-today mode)
@@ -79,7 +94,7 @@ export default function MatchLobby() {
   const currentLoading = todayMode ? todayQuery.isLoading : isLoading;
   const currentError = todayMode ? todayQuery.isError : isError;
   const totalMatches = todayMode
-    ? (displayFixtures?.length ?? 0)
+    ? todayGrouped.reduce((sum, g) => sum + g.fixtures.length, 0)
     : filteredData.reduce((sum, g) => sum + g.fixtures.length, 0);
   const hasResults = totalMatches > 0;
 
@@ -200,18 +215,33 @@ export default function MatchLobby() {
               {searchQuery && ` para "${searchQuery}"`}
             </p>
 
-            {todayMode && displayFixtures ? (
-              /* Today mode: flat list */
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                {displayFixtures.map((fixture, i) => (
-                  <MatchCard
-                    key={fixture.fixture.id}
-                    fixture={fixture}
-                    onClick={() => handleMatchClick(fixture)}
-                    index={i}
-                  />
-                ))}
-              </div>
+            {todayMode ? (
+              /* Today mode: grouped by league like EstrelaBet */
+              todayGrouped.map((group) => (
+                <div key={group.leagueName} className="space-y-3">
+                  <h2 className="font-display text-lg tracking-wider text-foreground flex items-center gap-2">
+                    {group.leagueLogo && (
+                      <img src={group.leagueLogo} alt="" className="w-5 h-5 object-contain" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    )}
+                    <span>⚽</span>
+                    {group.leagueName}
+                    {group.country && <span className="text-xs font-body text-muted-foreground">• {group.country}</span>}
+                    <span className="text-xs font-body text-muted-foreground ml-auto">
+                      {group.fixtures.length} {group.fixtures.length === 1 ? 'jogo' : 'jogos'}
+                    </span>
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                    {group.fixtures.map((fixture, i) => (
+                      <MatchCard
+                        key={fixture.fixture.id}
+                        fixture={fixture}
+                        onClick={() => handleMatchClick(fixture)}
+                        index={i}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))
             ) : (
               /* League grouped mode */
               filteredData.map(({ league, fixtures }) => (
