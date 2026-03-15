@@ -262,9 +262,6 @@ export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
 
 // ── Today's matches (all soccer) ──
 
-/** IDs of leagues we track */
-const TRACKED_LEAGUE_IDS = new Set(LEAGUES.map(l => String(l.sportsDbId)));
-
 export async function fetchTodayMatches(): Promise<ApiFixture[]> {
   const today = getBrazilDateString(0);
 
@@ -275,18 +272,24 @@ export async function fetchTodayMatches(): Promise<ApiFixture[]> {
 
     if (!data?.events) return [];
 
-    // Only include events from our tracked leagues
-    return data.events
-      .filter(e => TRACKED_LEAGUE_IDS.has(e.idLeague))
-      .flatMap(event => {
-        const league = LEAGUES.find(l => String(l.sportsDbId) === event.idLeague);
-        if (!league) return [];
-        try {
-          return [eventToFixture(event, league, event.strHomeTeamBadge || '/placeholder.svg', event.strAwayTeamBadge || '/placeholder.svg')];
-        } catch {
-          return [];
-        }
-      });
+    // Show ALL soccer matches (like EstrelaBet) — no league filter
+    return data.events.flatMap(event => {
+      // Try to find a matching tracked league config; otherwise create a dynamic one
+      const trackedLeague = LEAGUES.find(l => String(l.sportsDbId) === event.idLeague);
+      const league: LeagueConfig = trackedLeague || {
+        id: parseInt(event.idLeague) || 99999,
+        name: event.strLeague || 'Desconhecida',
+        country: '',
+        emoji: '⚽',
+        season: 2026,
+        sportsDbId: parseInt(event.idLeague) || 0,
+      };
+      try {
+        return [eventToFixture(event, league, event.strHomeTeamBadge || '/placeholder.svg', event.strAwayTeamBadge || '/placeholder.svg')];
+      } catch {
+        return [];
+      }
+    });
   } catch (err) {
     console.error('[Oracle] fetchTodayMatches error:', err);
     return [];

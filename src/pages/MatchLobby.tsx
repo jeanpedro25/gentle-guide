@@ -44,20 +44,35 @@ export default function MatchLobby() {
 
   const realData = isUsingRealData();
 
-  // Determine which fixtures to show
-  const displayFixtures = useMemo(() => {
-    if (todayMode) {
-      const todayFixtures = todayQuery.data ?? [];
-      // Filter out finished if desired, and group by league
-      const active = todayFixtures.filter(f => f.fixture.status.short !== 'FT');
-      if (!searchQuery.trim()) return active;
-      const q = searchQuery.toLowerCase().trim();
-      return active.filter(f =>
-        f.teams.home.name.toLowerCase().includes(q) ||
-        f.teams.away.name.toLowerCase().includes(q)
-      );
+  // Group today's fixtures by league (like EstrelaBet)
+  const todayGrouped = useMemo(() => {
+    if (!todayMode) return [];
+    const todayFixtures = todayQuery.data ?? [];
+    const q = searchQuery.toLowerCase().trim();
+
+    const filtered = todayFixtures.filter(f => {
+      if (q && !f.teams.home.name.toLowerCase().includes(q) && !f.teams.away.name.toLowerCase().includes(q)) return false;
+      return true; // show all including FT
+    });
+
+    // Group by league name
+    const groups = new Map<string, { leagueName: string; leagueLogo: string; country: string; fixtures: ApiFixture[] }>();
+    for (const f of filtered) {
+      const key = f.league.name;
+      if (!groups.has(key)) {
+        groups.set(key, { leagueName: f.league.name, leagueLogo: f.league.logo, country: f.league.country, fixtures: [] });
+      }
+      groups.get(key)!.fixtures.push(f);
     }
-    return null; // Use grouped data instead
+
+    // Sort: live matches first, then by league name
+    return Array.from(groups.values()).sort((a, b) => {
+      const aLive = a.fixtures.some(f => ['1H', '2H', 'HT', 'LIVE'].includes(f.fixture.status.short));
+      const bLive = b.fixtures.some(f => ['1H', '2H', 'HT', 'LIVE'].includes(f.fixture.status.short));
+      if (aLive && !bLive) return -1;
+      if (!aLive && bLive) return 1;
+      return a.leagueName.localeCompare(b.leagueName);
+    });
   }, [todayMode, todayQuery.data, searchQuery]);
 
   // Filter grouped fixtures by search query (non-today mode)
