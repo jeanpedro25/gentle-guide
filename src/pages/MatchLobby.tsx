@@ -215,18 +215,33 @@ export default function MatchLobby() {
               {searchQuery && ` para "${searchQuery}"`}
             </p>
 
-            {todayMode && displayFixtures ? (
-              /* Today mode: flat list */
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                {displayFixtures.map((fixture, i) => (
-                  <MatchCard
-                    key={fixture.fixture.id}
-                    fixture={fixture}
-                    onClick={() => handleMatchClick(fixture)}
-                    index={i}
-                  />
-                ))}
-              </div>
+            {todayMode ? (
+              /* Today mode: grouped by league like EstrelaBet */
+              todayGrouped.map((group) => (
+                <div key={group.leagueName} className="space-y-3">
+                  <h2 className="font-display text-lg tracking-wider text-foreground flex items-center gap-2">
+                    {group.leagueLogo && (
+                      <img src={group.leagueLogo} alt="" className="w-5 h-5 object-contain" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    )}
+                    <span>⚽</span>
+                    {group.leagueName}
+                    {group.country && <span className="text-xs font-body text-muted-foreground">• {group.country}</span>}
+                    <span className="text-xs font-body text-muted-foreground ml-auto">
+                      {group.fixtures.length} {group.fixtures.length === 1 ? 'jogo' : 'jogos'}
+                    </span>
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                    {group.fixtures.map((fixture, i) => (
+                      <MatchCard
+                        key={fixture.fixture.id}
+                        fixture={fixture}
+                        onClick={() => handleMatchClick(fixture)}
+                        index={i}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))
             ) : (
               /* League grouped mode */
               filteredData.map(({ league, fixtures }) => (
