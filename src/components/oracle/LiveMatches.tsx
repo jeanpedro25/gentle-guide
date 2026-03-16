@@ -28,14 +28,16 @@ function statusLabel(status: string): string {
     case 'HT': return 'INTERVALO';
     case 'ET': return 'PRORROGAÇÃO';
     case 'P': return 'PÊNALTIS';
+    case 'LIVE': return 'AO VIVO';
     case 'Match Finished': return 'ENCERRADO';
     case 'FT': return 'ENCERRADO';
+    case 'PST': return 'ADIADO';
     default: return status.toUpperCase();
   }
 }
 
 function isLive(status: string): boolean {
-  return ['1H', '2H', 'HT', 'ET', 'P'].includes(status);
+  return ['1H', '2H', 'HT', 'ET', 'P', 'LIVE'].includes(status);
 }
 
 export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
