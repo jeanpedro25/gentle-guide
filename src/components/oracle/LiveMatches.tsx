@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Radio, Clock, Zap, Loader2, X } from 'lucide-react';
-import { getTeamLogo, preloadTeamLogos } from '@/services/teamLogos';
+import { preloadTeamLogos } from '@/services/teamLogos';
+import { useTeamLogos } from '@/hooks/useTeamLogos';
 import { useLiveAdvisor, LiveAdvice } from '@/hooks/useLiveAdvisor';
 import { useState, useEffect, useMemo } from 'react';
 
