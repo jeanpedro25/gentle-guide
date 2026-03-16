@@ -4,21 +4,24 @@ import { LEAGUES } from '@/types/fixture';
 interface LeagueTabsProps {
   selectedLeagueId: number | null;
   onSelect: (id: number | null) => void;
-  /** Pass 'today' to enable the HOJE tab as the special filter */
   todayMode?: boolean;
   onTodayToggle?: () => void;
 }
 
+const CATEGORIES = [
+  { key: 'brazil', label: '🇧🇷 Brasil' },
+  { key: 'europe', label: '🌍 Europa' },
+  { key: 'americas', label: '🌎 Américas' },
+  { key: 'cups', label: '🏆 Copas' },
+] as const;
+
 export function LeagueTabs({ selectedLeagueId, onSelect, todayMode, onTodayToggle }: LeagueTabsProps) {
   return (
     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-      {/* HOJE special tab */}
       <TabButton
         label="🔥 HOJE"
         isActive={!!todayMode}
-        onClick={() => {
-          onTodayToggle?.();
-        }}
+        onClick={() => onTodayToggle?.()}
       />
       <TabButton
         label="📋 Todos"

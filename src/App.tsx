@@ -7,6 +7,7 @@ import { MultiplaProvider } from "@/contexts/MultiplaContext";
 import { clearFootballCache } from "@/services/footballApi";
 import MatchLobby from "./pages/MatchLobby";
 import MatchDetail from "./pages/MatchDetail";
+import BankrollPage from "./pages/BankrollPage";
 import NotFound from "./pages/NotFound";
 
 // Clear old API cache and sessionStorage on app load
@@ -25,6 +26,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<MatchLobby />} />
             <Route path="/match/:id" element={<MatchDetail />} />
+            <Route path="/banca" element={<BankrollPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
