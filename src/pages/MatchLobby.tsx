@@ -32,11 +32,14 @@ export default function MatchLobby() {
   const handleForceRefresh = useCallback(async () => {
     clearFootballCache();
     queryClient.removeQueries({ queryKey: ['fixtures'] });
-    const result = await refetch();
-    await todayQuery.refetch();
+    const [result] = await Promise.all([
+      refetch(),
+      todayQuery.refetch(),
+      liveQuery.refetch(),
+    ]);
     const total = result.data?.reduce((sum, g) => sum + g.fixtures.length, 0) ?? 0;
     toast.success(`Atualizado! ${total} jogos encontrados`);
-  }, [refetch, todayQuery, queryClient]);
+  }, [refetch, todayQuery, liveQuery, queryClient]);
 
   const handleTodayToggle = useCallback(() => {
     setTodayMode(prev => !prev);

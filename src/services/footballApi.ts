@@ -226,34 +226,68 @@ export interface LiveMatchData {
 
 export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
   const today = getBrazilDateString(0);
+  const yesterday = getBrazilDateString(-1);
 
   try {
-    const data = await sportsDbFetch<{ events: SportsDbEvent[] | null }>(
-      `eventsday.php?d=${today}&s=Soccer`
-    );
+    const allEvents = new Map<string, SportsDbEvent>();
 
-    if (!data?.events) return [];
+    for (let i = 0; i < LEAGUES.length; i += LEAGUE_BATCH_SIZE) {
+      const batch = LEAGUES.slice(i, i + LEAGUE_BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.flatMap((league) => [
+          sportsDbFetch<{ events: SportsDbEvent[] | null }>(`eventsnextleague.php?id=${league.sportsDbId}`)
+            .then((data) => data?.events ?? []),
+          sportsDbFetch<{ events: SportsDbEvent[] | null }>(`eventspastleague.php?id=${league.sportsDbId}`)
+            .then((data) => data?.events ?? []),
+        ])
+      );
 
-    return data.events
-      .filter(e => {
-        const status = e.strStatus || '';
-        return ['1H', '2H', 'HT', 'ET', 'P', 'FT', 'Match Finished', 'AET', 'AP'].includes(status)
-          || (e.intHomeScore !== null && e.intHomeScore !== '');
+      for (const result of results) {
+        if (result.status !== 'fulfilled') continue;
+        for (const event of result.value) {
+          allEvents.set(event.idEvent, event);
+        }
+      }
+    }
+
+    const liveStatuses = new Set(['1H', '2H', 'HT', 'LIVE']);
+
+    return Array.from(allEvents.values())
+      .map((event) => {
+        const homeScore = event.intHomeScore !== null && event.intHomeScore !== '' ? parseInt(event.intHomeScore) : null;
+        const awayScore = event.intAwayScore !== null && event.intAwayScore !== '' ? parseInt(event.intAwayScore) : null;
+        const hasScore = homeScore !== null && awayScore !== null;
+
+        const statusShort = toStatusShort(event.strStatus || '', hasScore);
+        const eventDate = event.dateEvent?.slice(0, 10) || '';
+
+        const isLive = liveStatuses.has(statusShort);
+        const isRecentScored = (eventDate === today || eventDate === yesterday) && hasScore;
+
+        if (!isLive && !isRecentScored) return null;
+
+        return {
+          id: event.idEvent,
+          homeTeam: event.strHomeTeam,
+          awayTeam: event.strAwayTeam,
+          homeBadge: event.strHomeTeamBadge || '/placeholder.svg',
+          awayBadge: event.strAwayTeamBadge || '/placeholder.svg',
+          homeScore: event.intHomeScore,
+          awayScore: event.intAwayScore,
+          status: statusShort,
+          league: event.strLeague,
+          leagueBadge: event.strLeagueBadge || '',
+          time: event.strTime || '',
+          venue: event.strVenue || '',
+        } satisfies LiveMatchData;
       })
-      .map(e => ({
-        id: e.idEvent,
-        homeTeam: e.strHomeTeam,
-        awayTeam: e.strAwayTeam,
-        homeBadge: e.strHomeTeamBadge || '/placeholder.svg',
-        awayBadge: e.strAwayTeamBadge || '/placeholder.svg',
-        homeScore: e.intHomeScore,
-        awayScore: e.intAwayScore,
-        status: e.strStatus || '',
-        league: e.strLeague,
-        leagueBadge: e.strLeagueBadge || '',
-        time: e.strTime || '',
-        venue: e.strVenue || '',
-      }));
+      .filter((match): match is LiveMatchData => match !== null)
+      .sort((a, b) => {
+        const aLive = liveStatuses.has(a.status) ? 0 : 1;
+        const bLive = liveStatuses.has(b.status) ? 0 : 1;
+        if (aLive !== bLive) return aLive - bLive;
+        return a.league.localeCompare(b.league);
+      });
   } catch (err) {
     console.error('[Oracle] fetchLiveMatches error:', err);
     return [];
