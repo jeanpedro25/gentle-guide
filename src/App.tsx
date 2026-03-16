@@ -4,9 +4,14 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MultiplaProvider } from "@/contexts/MultiplaContext";
+import { clearFootballCache } from "@/services/footballApi";
 import MatchLobby from "./pages/MatchLobby";
 import MatchDetail from "./pages/MatchDetail";
 import NotFound from "./pages/NotFound";
+
+// Clear old API cache and sessionStorage on app load
+clearFootballCache();
+sessionStorage.removeItem('selected-fixture');
 
 const queryClient = new QueryClient();
 

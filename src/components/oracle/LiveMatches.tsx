@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Radio, Clock } from 'lucide-react';
+import { getTeamLogo } from '@/services/teamLogos';
 
 export interface LiveMatch {
   id: string;
@@ -165,7 +166,7 @@ function LiveMatchCard({ match, finished = false }: { match: LiveMatch; finished
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <img
-            src={match.homeBadge}
+            src={getTeamLogo(match.homeTeam, match.homeBadge)}
             alt={match.homeTeam}
             className="w-6 h-6 object-contain shrink-0"
             onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
@@ -183,7 +184,7 @@ function LiveMatchCard({ match, finished = false }: { match: LiveMatch; finished
         </div>
         <div className="flex items-center gap-2 min-w-0 flex-1 flex-row-reverse">
           <img
-            src={match.awayBadge}
+            src={getTeamLogo(match.awayTeam, match.awayBadge)}
             alt={match.awayTeam}
             className="w-6 h-6 object-contain shrink-0"
             onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}

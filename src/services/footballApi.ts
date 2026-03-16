@@ -34,7 +34,7 @@ interface ISportsMatch {
   subLeagueId: string;
   subLeagueName?: string;
   matchTime: number; // unix timestamp
-  status: number; // -1=not started, 0=first half, 1=half time, 2=second half, 3=finished, 4=postponed, etc.
+  status: number; // -1=not started, 0=first half, 1=half time, 2=second half, 3=finished, 4=postponed
   homeName: string;
   homeId: string;
   awayName: string;
@@ -50,17 +50,18 @@ interface ISportsMatch {
   homeCorner?: number;
   awayCorner?: number;
   explain?: string;
+  round?: string;
+  location?: string;
+  season?: string;
+  weather?: string;
+  temperature?: string;
+  hasLineup?: boolean;
+  injuryTime?: number;
+  halfStartTime?: number;
   extraExplain?: {
-    minute?: string;
+    minute?: number;
     extraTime?: number;
-    homePosition?: number;
-    awayPosition?: number;
-    season?: string;
-    round?: string;
-    group?: string;
-    location?: string;
-    weather?: string;
-    temperature?: string;
+    winner?: number;
   };
 }
 
@@ -195,12 +196,21 @@ function findLeagueByISportsId(iSportsLeagueId: string): LeagueConfig | null {
 
 function iSportsMatchToFixture(match: ISportsMatch): ApiFixture | null {
   const league = findLeagueByISportsId(match.leagueId);
-  if (!league) return null; // Not a tracked league
+  if (!league) return null;
 
-  const statusShort = iSportsStatusToShort(match.status);
-  const hasScore = match.status >= 0; // any status that's not "not started"
-  const homeScore = hasScore ? match.homeScore : null;
-  const awayScore = hasScore ? match.awayScore : null;
+  let statusShort = iSportsStatusToShort(match.status);
+  
+  // schedule/basic returns status -1 for all matches. Determine if it's finished:
+  // If matchTime is in the past and scores > 0, it's a finished match
+  const now = Math.floor(Date.now() / 1000);
+  const isPast = match.matchTime < now - 7200; // 2h buffer for match duration
+  if (statusShort === 'NS' && isPast && (match.homeScore > 0 || match.awayScore > 0)) {
+    statusShort = 'FT';
+  }
+
+  const isLiveOrFinished = statusShort !== 'NS';
+  const homeScore = isLiveOrFinished ? match.homeScore : null;
+  const awayScore = isLiveOrFinished ? match.awayScore : null;
 
   const homeWinner = homeScore !== null && awayScore !== null
     ? (homeScore > awayScore ? true : homeScore < awayScore ? false : null)
@@ -226,7 +236,7 @@ function iSportsMatchToFixture(match: ISportsMatch): ApiFixture | null {
       name: league.name,
       country: league.country,
       logo: '',
-      round: match.extraExplain?.round ? `Rodada ${match.extraExplain.round}` : '',
+      round: match.round ? `Rodada ${match.round}` : '',
     },
     teams: {
       home: { id: parseInt(match.homeId), name: match.homeName, logo: '/placeholder.svg', winner: homeWinner },
@@ -278,8 +288,8 @@ export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
           status: statusShort,
           league: match.leagueName,
           leagueBadge: '',
-          time: match.extraExplain?.minute || '',
-          venue: match.extraExplain?.location || '',
+          time: match.extraExplain?.minute ? String(match.extraExplain.minute) : '',
+          venue: match.location || '',
         } satisfies LiveMatchData;
       })
       .sort((a, b) => {
