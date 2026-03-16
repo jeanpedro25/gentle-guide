@@ -140,7 +140,7 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
           ) : (
             <span className="font-display text-lg text-muted-foreground shrink-0">VS</span>
           )}
-          <TeamBadge name={fixture.teams.away.name} logo={getTeamLogo(fixture.teams.away.name, fixture.teams.away.logo)} align="right" badge="✈️" />
+          <TeamBadge name={fixture.teams.away.name} logo={getTeamLogoLive(fixture.teams.away.name, fixture.teams.away.logo)} align="right" badge="✈️" />
         </div>
 
         {/* Date + status */}
