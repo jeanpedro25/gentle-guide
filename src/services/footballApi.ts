@@ -264,32 +264,85 @@ export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
 
 export async function fetchTodayMatches(): Promise<ApiFixture[]> {
   const today = getBrazilDateString(0);
+  const tomorrow = getBrazilDateString(1);
 
   try {
-    const data = await sportsDbFetch<{ events: SportsDbEvent[] | null }>(
-      `eventsday.php?d=${today}&s=Soccer`
-    );
+    // Fetch next events from ALL configured leagues in parallel batches
+    const allFixtures: ApiFixture[] = [];
 
-    if (!data?.events) return [];
+    for (let i = 0; i < LEAGUES.length; i += LEAGUE_BATCH_SIZE) {
+      const batch = LEAGUES.slice(i, i + LEAGUE_BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map(league =>
+          sportsDbFetch<{ events: SportsDbEvent[] | null }>(
+            `eventsnextleague.php?id=${league.sportsDbId}`
+          ).then(data => ({ league, events: data?.events || [] }))
+        )
+      );
 
-    // Show ALL soccer matches (like EstrelaBet) — no league filter
-    return data.events.flatMap(event => {
-      // Try to find a matching tracked league config; otherwise create a dynamic one
-      const trackedLeague = LEAGUES.find(l => String(l.sportsDbId) === event.idLeague);
-      const league: LeagueConfig = trackedLeague || {
-        id: parseInt(event.idLeague) || 99999,
-        name: event.strLeague || 'Desconhecida',
-        country: '',
-        emoji: '⚽',
-        season: 2026,
-        sportsDbId: parseInt(event.idLeague) || 0,
-      };
-      try {
-        return [eventToFixture(event, league, event.strHomeTeamBadge || '/placeholder.svg', event.strAwayTeamBadge || '/placeholder.svg')];
-      } catch {
-        return [];
+      for (const result of results) {
+        if (result.status !== 'fulfilled') continue;
+        const { league, events } = result.value;
+
+        for (const event of events) {
+          const eventDate = event.dateEvent?.slice(0, 10);
+          // Include today and tomorrow matches
+          if (eventDate !== today && eventDate !== tomorrow) continue;
+
+          try {
+            allFixtures.push(
+              eventToFixture(event, league, event.strHomeTeamBadge || '/placeholder.svg', event.strAwayTeamBadge || '/placeholder.svg')
+            );
+          } catch {
+            // skip invalid
+          }
+        }
       }
+    }
+
+    // Also try past league events for live/recently finished matches today
+    for (let i = 0; i < LEAGUES.length; i += LEAGUE_BATCH_SIZE) {
+      const batch = LEAGUES.slice(i, i + LEAGUE_BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map(league =>
+          sportsDbFetch<{ events: SportsDbEvent[] | null }>(
+            `eventspastleague.php?id=${league.sportsDbId}`
+          ).then(data => ({ league, events: data?.events || [] }))
+        )
+      );
+
+      for (const result of results) {
+        if (result.status !== 'fulfilled') continue;
+        const { league, events } = result.value;
+
+        for (const event of events) {
+          const eventDate = event.dateEvent?.slice(0, 10);
+          if (eventDate !== today) continue;
+
+          try {
+            const fixture = eventToFixture(event, league, event.strHomeTeamBadge || '/placeholder.svg', event.strAwayTeamBadge || '/placeholder.svg');
+            // Avoid duplicates
+            if (!allFixtures.some(f => f.fixture.id === fixture.fixture.id)) {
+              allFixtures.push(fixture);
+            }
+          } catch {
+            // skip invalid
+          }
+        }
+      }
+    }
+
+    // Sort: live first, then by time
+    allFixtures.sort((a, b) => {
+      const liveStatuses = ['1H', '2H', 'HT', 'LIVE'];
+      const aLive = liveStatuses.includes(a.fixture.status.short) ? 0 : 1;
+      const bLive = liveStatuses.includes(b.fixture.status.short) ? 0 : 1;
+      if (aLive !== bLive) return aLive - bLive;
+      return a.fixture.timestamp - b.fixture.timestamp;
     });
+
+    console.log(`[Oracle] fetchTodayMatches: found ${allFixtures.length} matches for ${today}/${tomorrow}`);
+    return allFixtures;
   } catch (err) {
     console.error('[Oracle] fetchTodayMatches error:', err);
     return [];
