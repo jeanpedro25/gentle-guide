@@ -19,7 +19,7 @@ export default function MatchLobby() {
   const [selectedLeague, setSelectedLeague] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [todayMode, setTodayMode] = useState(true); // Start with HOJE active
-  const { data, isLoading, isError, error, refetch } = useFilteredFixtures(selectedLeague);
+  const { data, isLoading, isError, error, refetch } = useFilteredFixtures(selectedLeague, !todayMode);
   const todayQuery = useTodayFixtures();
   const liveQuery = useLiveMatches();
   const navigate = useNavigate();
