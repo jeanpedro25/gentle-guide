@@ -2,14 +2,23 @@ import { ApiFixture, LeagueConfig, LEAGUES, ESTRELABET_LEAGUES, TeamStats, H2HFi
 import { supabase } from '@/integrations/supabase/client';
 
 const CACHE_TTL = 5 * 60 * 1000;
+const PERSISTENT_CACHE_TTL = 6 * 60 * 60 * 1000;
+const PERSISTENT_CACHE_PREFIX = 'oracle_api_cache_v2|';
 const LEAGUE_BATCH_SIZE = 4;
 
-interface CachedValue {
-  data: unknown;
+interface CachedValue<T = unknown> {
+  data: T;
   ts: number;
 }
 
-const cache = new Map<string, CachedValue>();
+const cache = new Map<string, CachedValue<ISportsResponse>>();
+
+class ApiLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ApiLimitError';
+  }
+}
 
 let usingRealData = false;
 let lastApiError = '';
@@ -71,12 +80,69 @@ interface ISportsResponse {
   data: ISportsMatch[] | null;
 }
 
+function isBrowserEnv(): boolean {
+  return typeof window !== 'undefined' && !!window.localStorage;
+}
+
+function persistentCacheKey(cacheKey: string): string {
+  return `${PERSISTENT_CACHE_PREFIX}${cacheKey}`;
+}
+
+function readPersistentCache(cacheKey: string, allowStale = false): ISportsResponse | null {
+  if (!isBrowserEnv()) return null;
+  try {
+    const raw = window.localStorage.getItem(persistentCacheKey(cacheKey));
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as CachedValue<ISportsResponse>;
+    if (!parsed?.data || typeof parsed.ts !== 'number') return null;
+
+    if (!allowStale && Date.now() - parsed.ts > PERSISTENT_CACHE_TTL) return null;
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
+function writePersistentCache(cacheKey: string, data: ISportsResponse): void {
+  if (!isBrowserEnv()) return;
+  try {
+    const payload: CachedValue<ISportsResponse> = { data, ts: Date.now() };
+    window.localStorage.setItem(persistentCacheKey(cacheKey), JSON.stringify(payload));
+  } catch {
+    // Ignore quota/storage errors
+  }
+}
+
+function isRateLimitedResponse(response: ISportsResponse): boolean {
+  if (response.code === 2) return true;
+  return /trials|try again tomorrow|rate limit|too many/i.test(response.message || '');
+}
+
+function getRateLimitMessage(rawMessage?: string): string {
+  if (rawMessage?.trim()) {
+    return `Limite diário da API de jogos atingido: ${rawMessage}`;
+  }
+  return 'Limite diário da API de jogos atingido. Tente novamente mais tarde.';
+}
+
+function isApiLimitError(error: unknown): boolean {
+  return error instanceof ApiLimitError;
+}
+
 // ── API fetch via proxy ──
 
 async function iSportsFetch(path: string, params?: Record<string, string>): Promise<ISportsResponse> {
   const cacheKey = `${path}|${JSON.stringify(params || {})}`;
-  const cached = cache.get(cacheKey);
-  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data as ISportsResponse;
+
+  const memoryCached = cache.get(cacheKey);
+  if (memoryCached && Date.now() - memoryCached.ts < CACHE_TTL) return memoryCached.data;
+
+  const persistentCached = readPersistentCache(cacheKey);
+  if (persistentCached) {
+    cache.set(cacheKey, { data: persistentCached, ts: Date.now() });
+    return persistentCached;
+  }
 
   console.log('[Oracle] iSports →', path, params || '');
 
@@ -85,18 +151,58 @@ async function iSportsFetch(path: string, params?: Record<string, string>): Prom
   });
 
   if (error) {
+    const stale = readPersistentCache(cacheKey, true);
+    if (stale) {
+      console.warn('[Oracle] Proxy failed, using stale cache:', path);
+      cache.set(cacheKey, { data: stale, ts: Date.now() });
+      return stale;
+    }
+
     console.error('[Oracle] Proxy error:', error);
     throw new Error(error.message || 'Proxy error');
   }
 
-  cache.set(cacheKey, { data, ts: Date.now() });
-  return data as ISportsResponse;
+  const response = data as ISportsResponse;
+
+  if (response.code === 0) {
+    cache.set(cacheKey, { data: response, ts: Date.now() });
+    writePersistentCache(cacheKey, response);
+    lastApiError = '';
+    return response;
+  }
+
+  if (isRateLimitedResponse(response)) {
+    lastApiError = getRateLimitMessage(response.message);
+    const stale = readPersistentCache(cacheKey, true);
+    if (stale) {
+      console.warn('[Oracle] Rate limited, using stale cache:', path);
+      cache.set(cacheKey, { data: stale, ts: Date.now() });
+      return stale;
+    }
+    throw new ApiLimitError(lastApiError);
+  }
+
+  return response;
 }
 
 export function clearFootballCache(pathIncludes?: string): void {
-  if (!pathIncludes) { cache.clear(); return; }
-  for (const key of cache.keys()) {
-    if (key.includes(pathIncludes)) cache.delete(key);
+  cache.clear();
+
+  if (!isBrowserEnv()) return;
+
+  if (!pathIncludes) {
+    for (const key of Object.keys(window.localStorage)) {
+      if (key.startsWith(PERSISTENT_CACHE_PREFIX)) {
+        window.localStorage.removeItem(key);
+      }
+    }
+    return;
+  }
+
+  for (const key of Object.keys(window.localStorage)) {
+    if (key.startsWith(PERSISTENT_CACHE_PREFIX) && key.includes(pathIncludes)) {
+      window.localStorage.removeItem(key);
+    }
   }
 }
 
@@ -314,6 +420,7 @@ export async function fetchTodayMatches(): Promise<ApiFixture[]> {
   try {
     const allFixtures: ApiFixture[] = [];
     const seenIds = new Set<number>();
+    let rateLimited = false;
 
     const addFixture = (f: ApiFixture) => {
       if (!seenIds.has(f.fixture.id)) {
@@ -329,7 +436,11 @@ export async function fetchTodayMatches(): Promise<ApiFixture[]> {
     ]);
 
     const processResponse = (result: PromiseSettledResult<ISportsResponse>) => {
-      if (result.status !== 'fulfilled') return;
+      if (result.status === 'rejected') {
+        if (isApiLimitError(result.reason)) rateLimited = true;
+        return;
+      }
+
       const matches = result.value?.data || [];
       for (const match of matches) {
         if (!ESTRELABET_LEAGUES.has(match.leagueId)) continue;
@@ -351,7 +462,9 @@ export async function fetchTodayMatches(): Promise<ApiFixture[]> {
           if (fixture) addFixture(fixture);
         }
       }
-    } catch { /* livescores optional */ }
+    } catch (err) {
+      if (isApiLimitError(err)) rateLimited = true;
+    }
 
     // Sort: live first, then by time
     allFixtures.sort((a, b) => {
@@ -362,10 +475,15 @@ export async function fetchTodayMatches(): Promise<ApiFixture[]> {
       return a.fixture.timestamp - b.fixture.timestamp;
     });
 
+    if (allFixtures.length === 0 && rateLimited) {
+      throw new ApiLimitError(lastApiError || 'Limite diário da API de jogos atingido.');
+    }
+
     console.log(`[Oracle] fetchTodayMatches: found ${allFixtures.length} matches for ${today}/${tomorrow}`);
     return allFixtures;
   } catch (err) {
     console.error('[Oracle] fetchTodayMatches error:', err);
+    if (isApiLimitError(err)) throw err;
     return [];
   }
 }
@@ -409,6 +527,7 @@ export async function fetchFixturesByLeague(
       });
   } catch (err) {
     console.warn(`[Oracle] ${league.name} failed:`, err);
+    if (isApiLimitError(err)) throw err;
     return [];
   }
 }
@@ -422,6 +541,7 @@ export async function fetchAllFixtures(
 
   try {
     const successful: { league: LeagueConfig; fixtures: ApiFixture[] }[] = [];
+    let rateLimited = false;
 
     for (let i = 0; i < LEAGUES.length; i += LEAGUE_BATCH_SIZE) {
       const batch = LEAGUES.slice(i, i + LEAGUE_BATCH_SIZE);
@@ -435,6 +555,7 @@ export async function fetchAllFixtures(
       results.forEach((result, index) => {
         const league = batch[index];
         if (result.status === 'rejected') {
+          if (isApiLimitError(result.reason)) rateLimited = true;
           console.warn(`[Oracle] ${league.name} failed:`, result.reason?.message || result.reason);
           return;
         }
@@ -449,6 +570,10 @@ export async function fetchAllFixtures(
       return successful;
     }
 
+    if (rateLimited) {
+      throw new ApiLimitError(lastApiError || 'Limite diário da API de jogos atingido.');
+    }
+
     console.warn('[Oracle] No real fixtures found from any league');
     usingRealData = false;
     return [];
@@ -456,6 +581,7 @@ export async function fetchAllFixtures(
     console.error('[Oracle] fetchAllFixtures error:', err);
     lastApiError = err instanceof Error ? err.message : 'Unknown error';
     usingRealData = false;
+    if (isApiLimitError(err)) throw err;
     return [];
   }
 }

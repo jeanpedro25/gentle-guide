@@ -5,8 +5,9 @@ export function useLiveMatches() {
   return useQuery({
     queryKey: ['fixtures', 'live'],
     queryFn: fetchLiveMatches,
-    refetchInterval: 60_000, // refresh every 60s
-    staleTime: 30_000,
-    refetchOnWindowFocus: true,
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: false,
   });
 }

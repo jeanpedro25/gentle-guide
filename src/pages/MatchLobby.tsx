@@ -19,7 +19,7 @@ export default function MatchLobby() {
   const [selectedLeague, setSelectedLeague] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [todayMode, setTodayMode] = useState(true); // Start with HOJE active
-  const { data, isLoading, isError, error, refetch } = useFilteredFixtures(selectedLeague);
+  const { data, isLoading, isError, error, refetch } = useFilteredFixtures(selectedLeague, !todayMode);
   const todayQuery = useTodayFixtures();
   const liveQuery = useLiveMatches();
   const navigate = useNavigate();
@@ -104,6 +104,7 @@ export default function MatchLobby() {
 
   const currentLoading = todayMode ? todayQuery.isLoading : isLoading;
   const currentError = todayMode ? todayQuery.isError : isError;
+  const currentErrorObj = todayMode ? todayQuery.error : error;
   const totalMatches = todayMode
     ? todayGrouped.reduce((sum, g) => sum + g.fixtures.length, 0)
     : filteredData.reduce((sum, g) => sum + g.fixtures.length, 0);
@@ -184,7 +185,7 @@ export default function MatchLobby() {
             <AlertCircle className="w-12 h-12 text-destructive" />
             <p className="font-body text-foreground text-center">Erro ao buscar jogos.</p>
             <p className="font-body text-muted-foreground text-sm text-center max-w-md">
-              {error instanceof Error ? error.message : 'Verifique sua conexão.'}
+              {currentErrorObj instanceof Error ? currentErrorObj.message : 'Verifique sua conexão.'}
             </p>
             <button
               onClick={handleForceRefresh}

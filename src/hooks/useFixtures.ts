@@ -4,14 +4,15 @@ import { LeagueConfig, ApiFixture } from '@/types/fixture';
 
 const FIXTURES_STALE_TIME = 2 * 60 * 1000;
 
-export function useAllFixtures() {
+export function useAllFixtures(enabled = true) {
   return useQuery({
     queryKey: ['fixtures', 'all'],
     queryFn: () => fetchAllFixtures(),
+    enabled,
     staleTime: FIXTURES_STALE_TIME,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    retry: 2,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: false,
   });
 }
 
@@ -21,7 +22,7 @@ export function useLeagueFixtures(league: LeagueConfig | null) {
     queryFn: () => (league ? fetchFixturesByLeague(league) : Promise.resolve([])),
     enabled: !!league,
     staleTime: FIXTURES_STALE_TIME,
-    retry: 2,
+    retry: false,
   });
 }
 
@@ -30,13 +31,14 @@ export function useTodayFixtures() {
     queryKey: ['fixtures', 'today'],
     queryFn: fetchTodayMatches,
     staleTime: FIXTURES_STALE_TIME,
-    refetchOnWindowFocus: true,
-    retry: 2,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: false,
   });
 }
 
-export function useFilteredFixtures(selectedLeagueId: number | null) {
-  const allQuery = useAllFixtures();
+export function useFilteredFixtures(selectedLeagueId: number | null, enabled = true) {
+  const allQuery = useAllFixtures(enabled);
 
   const fixtures: { league: LeagueConfig; fixtures: ApiFixture[] }[] = allQuery.data ?? [];
 
