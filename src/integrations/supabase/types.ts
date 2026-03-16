@@ -14,7 +14,113 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bankroll: {
+        Row: {
+          amount: number
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      bet_results: {
+        Row: {
+          actual_score: string | null
+          id: string
+          prediction_id: string
+          profit_loss: number | null
+          resolved_at: string
+          won: boolean | null
+        }
+        Insert: {
+          actual_score?: string | null
+          id?: string
+          prediction_id: string
+          profit_loss?: number | null
+          resolved_at?: string
+          won?: boolean | null
+        }
+        Update: {
+          actual_score?: string | null
+          id?: string
+          prediction_id?: string
+          profit_loss?: number | null
+          resolved_at?: string
+          won?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bet_results_prediction_id_fkey"
+            columns: ["prediction_id"]
+            isOneToOne: false
+            referencedRelation: "predictions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      predictions: {
+        Row: {
+          away_team: string
+          confidence: number | null
+          created_at: string
+          fixture_id: number
+          home_team: string
+          id: string
+          justification: string | null
+          league: string
+          min_odd: number | null
+          oracle_data: Json | null
+          predicted_score: string | null
+          predicted_winner: string | null
+          recommended_market: string | null
+          stake_pct: number | null
+          status: string
+        }
+        Insert: {
+          away_team: string
+          confidence?: number | null
+          created_at?: string
+          fixture_id: number
+          home_team: string
+          id?: string
+          justification?: string | null
+          league: string
+          min_odd?: number | null
+          oracle_data?: Json | null
+          predicted_score?: string | null
+          predicted_winner?: string | null
+          recommended_market?: string | null
+          stake_pct?: number | null
+          status?: string
+        }
+        Update: {
+          away_team?: string
+          confidence?: number | null
+          created_at?: string
+          fixture_id?: number
+          home_team?: string
+          id?: string
+          justification?: string | null
+          league?: string
+          min_odd?: number | null
+          oracle_data?: Json | null
+          predicted_score?: string | null
+          predicted_winner?: string | null
+          recommended_market?: string | null
+          stake_pct?: number | null
+          status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
