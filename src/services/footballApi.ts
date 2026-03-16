@@ -420,6 +420,7 @@ export async function fetchTodayMatches(): Promise<ApiFixture[]> {
   try {
     const allFixtures: ApiFixture[] = [];
     const seenIds = new Set<number>();
+    let rateLimited = false;
 
     const addFixture = (f: ApiFixture) => {
       if (!seenIds.has(f.fixture.id)) {
@@ -435,7 +436,11 @@ export async function fetchTodayMatches(): Promise<ApiFixture[]> {
     ]);
 
     const processResponse = (result: PromiseSettledResult<ISportsResponse>) => {
-      if (result.status !== 'fulfilled') return;
+      if (result.status === 'rejected') {
+        if (isApiLimitError(result.reason)) rateLimited = true;
+        return;
+      }
+
       const matches = result.value?.data || [];
       for (const match of matches) {
         if (!ESTRELABET_LEAGUES.has(match.leagueId)) continue;
@@ -457,7 +462,9 @@ export async function fetchTodayMatches(): Promise<ApiFixture[]> {
           if (fixture) addFixture(fixture);
         }
       }
-    } catch { /* livescores optional */ }
+    } catch (err) {
+      if (isApiLimitError(err)) rateLimited = true;
+    }
 
     // Sort: live first, then by time
     allFixtures.sort((a, b) => {
@@ -468,10 +475,15 @@ export async function fetchTodayMatches(): Promise<ApiFixture[]> {
       return a.fixture.timestamp - b.fixture.timestamp;
     });
 
+    if (allFixtures.length === 0 && rateLimited) {
+      throw new ApiLimitError(lastApiError || 'Limite diário da API de jogos atingido.');
+    }
+
     console.log(`[Oracle] fetchTodayMatches: found ${allFixtures.length} matches for ${today}/${tomorrow}`);
     return allFixtures;
   } catch (err) {
     console.error('[Oracle] fetchTodayMatches error:', err);
+    if (isApiLimitError(err)) throw err;
     return [];
   }
 }
