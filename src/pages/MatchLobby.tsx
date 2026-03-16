@@ -185,7 +185,7 @@ export default function MatchLobby() {
             <AlertCircle className="w-12 h-12 text-destructive" />
             <p className="font-body text-foreground text-center">Erro ao buscar jogos.</p>
             <p className="font-body text-muted-foreground text-sm text-center max-w-md">
-              {error instanceof Error ? error.message : 'Verifique sua conexão.'}
+              {currentErrorObj instanceof Error ? currentErrorObj.message : 'Verifique sua conexão.'}
             </p>
             <button
               onClick={handleForceRefresh}
