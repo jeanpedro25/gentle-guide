@@ -404,7 +404,12 @@ export async function fetchFixturesByLeague(
     const allEvents = new Map<string, SportsDbEvent>();
     const addEvents = (events: SportsDbEvent[] | null | undefined) => {
       if (!events) return;
-      events.forEach(e => allEvents.set(e.idEvent, e));
+      events.forEach(e => {
+        // Only include events that actually belong to this league
+        if (e.idLeague === String(league.sportsDbId)) {
+          allEvents.set(e.idEvent, e);
+        }
+      });
     };
 
     if (nextData.status === 'fulfilled') addEvents(nextData.value?.events);
