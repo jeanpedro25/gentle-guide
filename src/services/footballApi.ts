@@ -541,6 +541,7 @@ export async function fetchAllFixtures(
 
   try {
     const successful: { league: LeagueConfig; fixtures: ApiFixture[] }[] = [];
+    let rateLimited = false;
 
     for (let i = 0; i < LEAGUES.length; i += LEAGUE_BATCH_SIZE) {
       const batch = LEAGUES.slice(i, i + LEAGUE_BATCH_SIZE);
@@ -554,6 +555,7 @@ export async function fetchAllFixtures(
       results.forEach((result, index) => {
         const league = batch[index];
         if (result.status === 'rejected') {
+          if (isApiLimitError(result.reason)) rateLimited = true;
           console.warn(`[Oracle] ${league.name} failed:`, result.reason?.message || result.reason);
           return;
         }
@@ -568,6 +570,10 @@ export async function fetchAllFixtures(
       return successful;
     }
 
+    if (rateLimited) {
+      throw new ApiLimitError(lastApiError || 'Limite diário da API de jogos atingido.');
+    }
+
     console.warn('[Oracle] No real fixtures found from any league');
     usingRealData = false;
     return [];
@@ -575,6 +581,7 @@ export async function fetchAllFixtures(
     console.error('[Oracle] fetchAllFixtures error:', err);
     lastApiError = err instanceof Error ? err.message : 'Unknown error';
     usingRealData = false;
+    if (isApiLimitError(err)) throw err;
     return [];
   }
 }
