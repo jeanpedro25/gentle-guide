@@ -1,6 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Radio, Clock } from 'lucide-react';
-import { getTeamLogo } from '@/services/teamLogos';
+import { Radio, Clock, Zap, Loader2, X } from 'lucide-react';
+import { getTeamLogo, preloadTeamLogos } from '@/services/teamLogos';
+import { useLiveAdvisor, LiveAdvice } from '@/hooks/useLiveAdvisor';
+import { useState, useEffect, useMemo } from 'react';
 
 export interface LiveMatch {
   id: string;
@@ -41,9 +43,30 @@ function isLive(status: string): boolean {
   return ['1H', '2H', 'HT', 'ET', 'P', 'LIVE'].includes(status);
 }
 
+const ACTION_CONFIG: Record<string, { bg: string; text: string; label: string }> = {
+  CASHOUT: { bg: 'bg-red-500/20 border-red-500/40', text: 'text-red-400', label: '💰 ENCERRAR' },
+  HOLD: { bg: 'bg-blue-500/20 border-blue-500/40', text: 'text-blue-400', label: '✊ MANTER' },
+  BET_MORE: { bg: 'bg-green-500/20 border-green-500/40', text: 'text-green-400', label: '🚀 AUMENTAR' },
+  HEDGE: { bg: 'bg-yellow-500/20 border-yellow-500/40', text: 'text-yellow-400', label: '🛡️ PROTEGER' },
+};
+
 export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
   const liveMatches = matches.filter(m => isLive(m.status));
   const finishedMatches = matches.filter(m => !isLive(m.status) && (m.homeScore !== null));
+  const { advice, loading, getAdvice, clearAdvice } = useLiveAdvisor();
+  const [logoVersion, setLogoVersion] = useState(0);
+
+  // Preload logos for all teams
+  const teamNames = useMemo(() =>
+    matches.flatMap(m => [m.homeTeam, m.awayTeam]),
+    [matches]
+  );
+
+  useEffect(() => {
+    if (teamNames.length > 0) {
+      preloadTeamLogos(teamNames).then(() => setLogoVersion(v => v + 1));
+    }
+  }, [teamNames.join(',')]);
 
   if (isLoading) {
     return (
@@ -95,7 +118,23 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
             <AnimatePresence>
               {liveMatches.map((match) => (
-                <LiveMatchCard key={match.id} match={match} />
+                <LiveMatchCard
+                  key={match.id}
+                  match={match}
+                  advice={advice[match.id]}
+                  isLoadingAdvice={loading[match.id] || false}
+                  onRequestAdvice={() => getAdvice(match.id, {
+                    homeTeam: match.homeTeam,
+                    awayTeam: match.awayTeam,
+                    homeScore: match.homeScore || '0',
+                    awayScore: match.awayScore || '0',
+                    league: match.league,
+                    status: statusLabel(match.status),
+                    minute: match.time,
+                  })}
+                  onClearAdvice={() => clearAdvice(match.id)}
+                  logoVersion={logoVersion}
+                />
               ))}
             </AnimatePresence>
           </div>
@@ -115,7 +154,7 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
           </div>
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
             {finishedMatches.map((match) => (
-              <LiveMatchCard key={match.id} match={match} finished />
+              <LiveMatchCard key={match.id} match={match} finished logoVersion={logoVersion} />
             ))}
           </div>
         </div>
@@ -124,18 +163,39 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
   );
 }
 
-function LiveMatchCard({ match, finished = false }: { match: LiveMatch; finished?: boolean }) {
+interface LiveMatchCardProps {
+  match: LiveMatch;
+  finished?: boolean;
+  advice?: LiveAdvice;
+  isLoadingAdvice?: boolean;
+  onRequestAdvice?: () => void;
+  onClearAdvice?: () => void;
+  logoVersion: number;
+}
+
+function LiveMatchCard({
+  match,
+  finished = false,
+  advice,
+  isLoadingAdvice,
+  onRequestAdvice,
+  onClearAdvice,
+  logoVersion,
+}: LiveMatchCardProps) {
   const live = isLive(match.status);
+  const actionCfg = advice ? ACTION_CONFIG[advice.action] || ACTION_CONFIG.HOLD : null;
 
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className={`min-w-[240px] rounded-xl p-3 border transition-all ${
-        live
-          ? 'bg-destructive/5 border-destructive/30'
-          : 'bg-secondary/50 border-border'
+      className={`min-w-[260px] rounded-xl p-3 border transition-all ${
+        advice
+          ? `${actionCfg!.bg} border`
+          : live
+            ? 'bg-destructive/5 border-destructive/30'
+            : 'bg-secondary/50 border-border'
       }`}
     >
       {/* League + Status */}
@@ -159,6 +219,7 @@ function LiveMatchCard({ match, finished = false }: { match: LiveMatch; finished
             : 'bg-muted text-muted-foreground'
         }`}>
           {statusLabel(match.status)}
+          {match.time && live && ` ${match.time}'`}
         </span>
       </div>
 
@@ -168,7 +229,7 @@ function LiveMatchCard({ match, finished = false }: { match: LiveMatch; finished
           <img
             src={getTeamLogo(match.homeTeam, match.homeBadge)}
             alt={match.homeTeam}
-            className="w-6 h-6 object-contain shrink-0"
+            className="w-6 h-6 object-contain shrink-0 rounded"
             onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
           />
           <span className="text-xs font-body text-foreground truncate">{match.homeTeam}</span>
@@ -186,12 +247,65 @@ function LiveMatchCard({ match, finished = false }: { match: LiveMatch; finished
           <img
             src={getTeamLogo(match.awayTeam, match.awayBadge)}
             alt={match.awayTeam}
-            className="w-6 h-6 object-contain shrink-0"
+            className="w-6 h-6 object-contain shrink-0 rounded"
             onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
           />
           <span className="text-xs font-body text-foreground truncate text-right">{match.awayTeam}</span>
         </div>
       </div>
+
+      {/* Live Advisor */}
+      {live && !finished && (
+        <div className="mt-2 pt-2 border-t border-border/50">
+          {!advice && !isLoadingAdvice && (
+            <button
+              onClick={onRequestAdvice}
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-[11px] font-display tracking-wider transition-colors"
+            >
+              <Zap className="w-3 h-3" />
+              CONSULTAR PROFETA
+            </button>
+          )}
+
+          {isLoadingAdvice && (
+            <div className="flex items-center justify-center gap-1.5 py-1.5 text-[11px] text-muted-foreground">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Analisando...
+            </div>
+          )}
+
+          {advice && actionCfg && (
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-1"
+            >
+              <div className="flex items-center justify-between">
+                <span className={`text-xs font-display tracking-wider ${actionCfg.text}`}>
+                  {actionCfg.label}
+                </span>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-muted-foreground">
+                    {advice.confidence}% confiança
+                  </span>
+                  <button
+                    onClick={onClearAdvice}
+                    className="p-0.5 rounded hover:bg-secondary/50 text-muted-foreground"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+              <p className="text-[10px] font-body text-muted-foreground leading-relaxed">
+                {advice.suggestion}
+              </p>
+              <p className="text-[10px] font-body text-oracle-draw">
+                💡 {advice.profitTip}
+              </p>
+            </motion.div>
+          )}
+        </div>
+      )}
     </motion.div>
   );
 }
