@@ -1,8 +1,9 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Radio, Clock, Zap, Loader2, X } from 'lucide-react';
-import { getTeamLogo, preloadTeamLogos } from '@/services/teamLogos';
+import { preloadTeamLogos } from '@/services/teamLogos';
+import { useTeamLogos } from '@/hooks/useTeamLogos';
 import { useLiveAdvisor, LiveAdvice } from '@/hooks/useLiveAdvisor';
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
 export interface LiveMatch {
   id: string;
@@ -54,7 +55,6 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
   const liveMatches = matches.filter(m => isLive(m.status));
   const finishedMatches = matches.filter(m => !isLive(m.status) && (m.homeScore !== null));
   const { advice, loading, getAdvice, clearAdvice } = useLiveAdvisor();
-  const [logoVersion, setLogoVersion] = useState(0);
 
   // Preload logos for all teams
   const teamNames = useMemo(() =>
@@ -64,7 +64,7 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
 
   useEffect(() => {
     if (teamNames.length > 0) {
-      preloadTeamLogos(teamNames).then(() => setLogoVersion(v => v + 1));
+      preloadTeamLogos(teamNames);
     }
   }, [teamNames.join(',')]);
 
@@ -133,7 +133,6 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
                     minute: match.time,
                   })}
                   onClearAdvice={() => clearAdvice(match.id)}
-                  logoVersion={logoVersion}
                 />
               ))}
             </AnimatePresence>
@@ -154,7 +153,7 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
           </div>
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
             {finishedMatches.map((match) => (
-              <LiveMatchCard key={match.id} match={match} finished logoVersion={logoVersion} />
+              <LiveMatchCard key={match.id} match={match} finished />
             ))}
           </div>
         </div>
@@ -170,7 +169,6 @@ interface LiveMatchCardProps {
   isLoadingAdvice?: boolean;
   onRequestAdvice?: () => void;
   onClearAdvice?: () => void;
-  logoVersion: number;
 }
 
 function LiveMatchCard({
@@ -180,8 +178,8 @@ function LiveMatchCard({
   isLoadingAdvice,
   onRequestAdvice,
   onClearAdvice,
-  logoVersion,
 }: LiveMatchCardProps) {
+  const { getTeamLogoLive } = useTeamLogos();
   const live = isLive(match.status);
   const actionCfg = advice ? ACTION_CONFIG[advice.action] || ACTION_CONFIG.HOLD : null;
 
@@ -227,7 +225,7 @@ function LiveMatchCard({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <img
-            src={getTeamLogo(match.homeTeam, match.homeBadge)}
+            src={getTeamLogoLive(match.homeTeam, match.homeBadge)}
             alt={match.homeTeam}
             className="w-6 h-6 object-contain shrink-0 rounded"
             onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
@@ -245,7 +243,7 @@ function LiveMatchCard({
         </div>
         <div className="flex items-center gap-2 min-w-0 flex-1 flex-row-reverse">
           <img
-            src={getTeamLogo(match.awayTeam, match.awayBadge)}
+            src={getTeamLogoLive(match.awayTeam, match.awayBadge)}
             alt={match.awayTeam}
             className="w-6 h-6 object-contain shrink-0 rounded"
             onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}

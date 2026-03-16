@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { ApiFixture, ESTRELABET_LEAGUES, LEAGUES } from '@/types/fixture';
-import { getTeamLogo } from '@/services/teamLogos';
+import { useTeamLogos } from '@/hooks/useTeamLogos';
 import { Badge } from '@/components/ui/badge';
 import { isValid, parseISO } from 'date-fns';
 import { ChevronRight, Plus, Check, Star } from 'lucide-react';
@@ -19,6 +19,7 @@ interface MatchCardProps {
 const DEFAULT_ODDS = { home: 2.05, draw: 3.25, away: 3.50 };
 
 export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
+  const { getTeamLogoLive } = useTeamLogos();
   const parsedDate = parseISO(fixture.fixture.date);
   const fallbackDate = new Date(fixture.fixture.timestamp * 1000);
   const matchDate = isValid(parsedDate) ? parsedDate : fallbackDate;
@@ -129,7 +130,7 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
 
         {/* Teams */}
         <div className="flex items-center justify-between gap-2 mb-3">
-          <TeamBadge name={fixture.teams.home.name} logo={getTeamLogo(fixture.teams.home.name, fixture.teams.home.logo)} align="left" badge="🏠" />
+          <TeamBadge name={fixture.teams.home.name} logo={getTeamLogoLive(fixture.teams.home.name, fixture.teams.home.logo)} align="left" badge="🏠" />
           {statusShort === 'FT' || statusShort === '1H' || statusShort === '2H' || statusShort === 'HT' ? (
             <div className="text-center shrink-0">
               <span className="font-display text-xl text-foreground">
@@ -139,7 +140,7 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
           ) : (
             <span className="font-display text-lg text-muted-foreground shrink-0">VS</span>
           )}
-          <TeamBadge name={fixture.teams.away.name} logo={getTeamLogo(fixture.teams.away.name, fixture.teams.away.logo)} align="right" badge="✈️" />
+          <TeamBadge name={fixture.teams.away.name} logo={getTeamLogoLive(fixture.teams.away.name, fixture.teams.away.logo)} align="right" badge="✈️" />
         </div>
 
         {/* Date + status */}

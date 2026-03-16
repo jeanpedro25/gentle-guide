@@ -1,36 +1,22 @@
-import { useState, useEffect, useCallback } from 'react';
-import { getTeamLogo, preloadTeamLogos } from '@/services/teamLogos';
+import { useState, useEffect, useSyncExternalStore, useCallback } from 'react';
+import { getTeamLogo, subscribeToLogoUpdates } from '@/services/teamLogos';
 
 /**
- * Hook that provides team logos with automatic refresh when real logos load.
- * Pass an array of team names and get back resolved logo URLs.
+ * Hook that re-renders when team logos finish loading from API.
+ * Use getTeamLogoLive() instead of getTeamLogo() in components.
  */
-export function useTeamLogos(teamNames: string[]) {
-  const [logos, setLogos] = useState<Record<string, string>>({});
-  const [loaded, setLoaded] = useState(false);
+export function useTeamLogos() {
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
-    // Initial sync logos (may be fallback)
-    const initial: Record<string, string> = {};
-    teamNames.forEach(name => {
-      initial[name] = getTeamLogo(name);
-    });
-    setLogos(initial);
+    return subscribeToLogoUpdates(() => setVersion(v => v + 1));
+  }, []);
 
-    // Preload real logos in background
-    preloadTeamLogos(teamNames).then(() => {
-      const updated: Record<string, string> = {};
-      teamNames.forEach(name => {
-        updated[name] = getTeamLogo(name);
-      });
-      setLogos(updated);
-      setLoaded(true);
-    });
-  }, [teamNames.join(',')]);
+  const getTeamLogoLive = useCallback((teamName: string, currentLogo?: string) => {
+    // version is captured to force re-evaluation
+    void version;
+    return getTeamLogo(teamName, currentLogo);
+  }, [version]);
 
-  const getLogo = useCallback((name: string) => {
-    return logos[name] || getTeamLogo(name);
-  }, [logos]);
-
-  return { logos, getLogo, loaded };
+  return { getTeamLogoLive };
 }
