@@ -153,7 +153,7 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
           </div>
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
             {finishedMatches.map((match) => (
-              <LiveMatchCard key={match.id} match={match} finished logoVersion={logoVersion} />
+              <LiveMatchCard key={match.id} match={match} finished />
             ))}
           </div>
         </div>
