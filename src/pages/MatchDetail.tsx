@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ApiFixture } from '@/types/fixture';
-import { getTeamLogo } from '@/services/teamLogos';
+import { useTeamLogos } from '@/hooks/useTeamLogos';
 import { MatchAnalysis, OracleAnalysis, oracleToLegacy, normalizeProbabilities } from '@/types/prediction';
 import { fetchMatchContext } from '@/services/footballApi';
 import { analyzeMatch } from '@/services/oracleService';
