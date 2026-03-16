@@ -64,7 +64,7 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
 
   useEffect(() => {
     if (teamNames.length > 0) {
-      preloadTeamLogos(teamNames).then(() => setLogoVersion(v => v + 1));
+      preloadTeamLogos(teamNames);
     }
   }, [teamNames.join(',')]);
 
