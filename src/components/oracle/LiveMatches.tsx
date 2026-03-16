@@ -169,7 +169,6 @@ interface LiveMatchCardProps {
   isLoadingAdvice?: boolean;
   onRequestAdvice?: () => void;
   onClearAdvice?: () => void;
-  logoVersion: number;
 }
 
 function LiveMatchCard({
@@ -179,8 +178,8 @@ function LiveMatchCard({
   isLoadingAdvice,
   onRequestAdvice,
   onClearAdvice,
-  logoVersion,
 }: LiveMatchCardProps) {
+  const { getTeamLogoLive } = useTeamLogos();
   const live = isLive(match.status);
   const actionCfg = advice ? ACTION_CONFIG[advice.action] || ACTION_CONFIG.HOLD : null;
 
