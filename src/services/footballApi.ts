@@ -27,7 +27,6 @@ export function getLastApiError(): string {
 interface ISportsMatch {
   matchId: string;
   leagueType: number;
-  leagueType: number;
   leagueId: string;
   leagueName: string;
   leagueShortName: string;
