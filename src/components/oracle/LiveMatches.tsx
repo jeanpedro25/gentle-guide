@@ -55,7 +55,6 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
   const liveMatches = matches.filter(m => isLive(m.status));
   const finishedMatches = matches.filter(m => !isLive(m.status) && (m.homeScore !== null));
   const { advice, loading, getAdvice, clearAdvice } = useLiveAdvisor();
-  const [logoVersion, setLogoVersion] = useState(0);
 
   // Preload logos for all teams
   const teamNames = useMemo(() =>
