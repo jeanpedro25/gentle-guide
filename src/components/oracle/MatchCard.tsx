@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import { ApiFixture } from '@/types/fixture';
+import { ApiFixture, ESTRELABET_LEAGUES } from '@/types/fixture';
+import { Badge } from '@/components/ui/badge';
 import { isValid, parseISO } from 'date-fns';
 import { ChevronRight, Plus, Check } from 'lucide-react';
 import { useMultipla } from '@/contexts/MultiplaContext';
