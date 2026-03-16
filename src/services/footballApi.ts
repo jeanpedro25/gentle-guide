@@ -230,13 +230,12 @@ export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
 
   try {
     const allEvents = new Map<string, SportsDbEvent>();
-    const trackedLeagueIds = new Set(LEAGUES.map(l => String(l.sportsDbId)));
 
     for (let i = 0; i < LEAGUES.length; i += LEAGUE_BATCH_SIZE) {
       const batch = LEAGUES.slice(i, i + LEAGUE_BATCH_SIZE);
       const results = await Promise.allSettled(
         batch.flatMap((league) => [
-          sportsDbFetch<{ events: SportsDbEvent[] | null }>(`eventsnextleague.php?id=${league.sportsDbId}`)
+          sportsDbFetch<{ events: SportsDbEvent[] | null }>(`eventsday.php?d=${today}&l=${league.sportsDbId}`)
             .then((data) => data?.events ?? []),
           sportsDbFetch<{ events: SportsDbEvent[] | null }>(`eventspastleague.php?id=${league.sportsDbId}`)
             .then((data) => data?.events ?? []),
@@ -246,8 +245,7 @@ export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
       for (const result of results) {
         if (result.status !== 'fulfilled') continue;
         for (const event of result.value) {
-          // Only include events from tracked leagues
-          if (trackedLeagueIds.has(event.idLeague)) {
+          if (ESTRELABET_LEAGUES.has(Number(event.idLeague))) {
             allEvents.set(event.idEvent, event);
           }
         }
