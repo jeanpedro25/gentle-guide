@@ -196,12 +196,21 @@ function findLeagueByISportsId(iSportsLeagueId: string): LeagueConfig | null {
 
 function iSportsMatchToFixture(match: ISportsMatch): ApiFixture | null {
   const league = findLeagueByISportsId(match.leagueId);
-  if (!league) return null; // Not a tracked league
+  if (!league) return null;
 
-  const statusShort = iSportsStatusToShort(match.status);
-  const hasScore = match.status >= 0; // any status that's not "not started"
-  const homeScore = hasScore ? match.homeScore : null;
-  const awayScore = hasScore ? match.awayScore : null;
+  let statusShort = iSportsStatusToShort(match.status);
+  
+  // schedule/basic returns status -1 for all matches. Determine if it's finished:
+  // If matchTime is in the past and scores > 0, it's a finished match
+  const now = Math.floor(Date.now() / 1000);
+  const isPast = match.matchTime < now - 7200; // 2h buffer for match duration
+  if (statusShort === 'NS' && isPast && (match.homeScore > 0 || match.awayScore > 0)) {
+    statusShort = 'FT';
+  }
+
+  const isLiveOrFinished = statusShort !== 'NS';
+  const homeScore = isLiveOrFinished ? match.homeScore : null;
+  const awayScore = isLiveOrFinished ? match.awayScore : null;
 
   const homeWinner = homeScore !== null && awayScore !== null
     ? (homeScore > awayScore ? true : homeScore < awayScore ? false : null)
