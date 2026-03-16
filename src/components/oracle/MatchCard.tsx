@@ -7,7 +7,7 @@ import { useMultipla } from '@/contexts/MultiplaContext';
 import { useState } from 'react';
 import { getRelativeDayLabel, getStatusDisplay, formatBrazilTime } from '@/services/footballApi';
 
-const LEAGUE_ID_TO_SPORTSDB = new Map(LEAGUES.map(l => [l.id, l.sportsDbId]));
+const LEAGUE_ID_TO_ISPORTS = new Map(LEAGUES.map(l => [l.id, l.iSportsId]));
 
 interface MatchCardProps {
   fixture: ApiFixture;
