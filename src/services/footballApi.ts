@@ -230,6 +230,7 @@ export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
 
   try {
     const allEvents = new Map<string, SportsDbEvent>();
+    const trackedLeagueIds = new Set(LEAGUES.map(l => String(l.sportsDbId)));
 
     for (let i = 0; i < LEAGUES.length; i += LEAGUE_BATCH_SIZE) {
       const batch = LEAGUES.slice(i, i + LEAGUE_BATCH_SIZE);
@@ -245,7 +246,10 @@ export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
       for (const result of results) {
         if (result.status !== 'fulfilled') continue;
         for (const event of result.value) {
-          allEvents.set(event.idEvent, event);
+          // Only include events from tracked leagues
+          if (trackedLeagueIds.has(event.idLeague)) {
+            allEvents.set(event.idEvent, event);
+          }
         }
       }
     }
