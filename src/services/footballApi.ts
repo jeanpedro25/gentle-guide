@@ -303,49 +303,31 @@ export async function fetchTodayMatches(): Promise<ApiFixture[]> {
   const tomorrow = getBrazilDateString(1);
 
   try {
-    // Fetch next events from ALL configured leagues in parallel batches
     const allFixtures: ApiFixture[] = [];
+    const seenIds = new Set<number>();
 
-    for (let i = 0; i < LEAGUES.length; i += LEAGUE_BATCH_SIZE) {
-      const batch = LEAGUES.slice(i, i + LEAGUE_BATCH_SIZE);
-      const results = await Promise.allSettled(
-        batch.map(league =>
-          sportsDbFetch<{ events: SportsDbEvent[] | null }>(
-            `eventsnextleague.php?id=${league.sportsDbId}`
-          ).then(data => ({ league, events: data?.events || [] }))
-        )
-      );
-
-      for (const result of results) {
-        if (result.status !== 'fulfilled') continue;
-        const { league, events } = result.value;
-
-        for (const event of events) {
-          const eventDate = event.dateEvent?.slice(0, 10);
-          // Include today and tomorrow matches, only from the correct league
-          if (eventDate !== today && eventDate !== tomorrow) continue;
-          if (event.idLeague !== String(league.sportsDbId)) continue;
-
-          try {
-            allFixtures.push(
-              eventToFixture(event, league, event.strHomeTeamBadge || '/placeholder.svg', event.strAwayTeamBadge || '/placeholder.svg')
-            );
-          } catch {
-            // skip invalid
-          }
-        }
+    const addFixture = (f: ApiFixture) => {
+      if (!seenIds.has(f.fixture.id)) {
+        seenIds.add(f.fixture.id);
+        allFixtures.push(f);
       }
-    }
+    };
 
-    // Also try past league events for live/recently finished matches today
+    // Use eventsday.php for today + tomorrow per league
     for (let i = 0; i < LEAGUES.length; i += LEAGUE_BATCH_SIZE) {
       const batch = LEAGUES.slice(i, i + LEAGUE_BATCH_SIZE);
       const results = await Promise.allSettled(
-        batch.map(league =>
+        batch.flatMap(league => [
+          sportsDbFetch<{ events: SportsDbEvent[] | null }>(
+            `eventsday.php?d=${today}&l=${league.sportsDbId}`
+          ).then(data => ({ league, events: data?.events || [] })),
+          sportsDbFetch<{ events: SportsDbEvent[] | null }>(
+            `eventsday.php?d=${tomorrow}&l=${league.sportsDbId}`
+          ).then(data => ({ league, events: data?.events || [] })),
           sportsDbFetch<{ events: SportsDbEvent[] | null }>(
             `eventspastleague.php?id=${league.sportsDbId}`
-          ).then(data => ({ league, events: data?.events || [] }))
-        )
+          ).then(data => ({ league, events: data?.events || [] })),
+        ])
       );
 
       for (const result of results) {
@@ -353,19 +335,13 @@ export async function fetchTodayMatches(): Promise<ApiFixture[]> {
         const { league, events } = result.value;
 
         for (const event of events) {
+          if (!ESTRELABET_LEAGUES.has(Number(event.idLeague))) continue;
           const eventDate = event.dateEvent?.slice(0, 10);
-          if (eventDate !== today) continue;
-          if (event.idLeague !== String(league.sportsDbId)) continue;
+          if (eventDate !== today && eventDate !== tomorrow) continue;
 
           try {
-            const fixture = eventToFixture(event, league, event.strHomeTeamBadge || '/placeholder.svg', event.strAwayTeamBadge || '/placeholder.svg');
-            // Avoid duplicates
-            if (!allFixtures.some(f => f.fixture.id === fixture.fixture.id)) {
-              allFixtures.push(fixture);
-            }
-          } catch {
-            // skip invalid
-          }
+            addFixture(eventToFixture(event, league, event.strHomeTeamBadge || '/placeholder.svg', event.strAwayTeamBadge || '/placeholder.svg'));
+          } catch { /* skip */ }
         }
       }
     }
