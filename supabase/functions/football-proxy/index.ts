@@ -6,7 +6,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const BASE_URL = "https://www.thesportsdb.com/api/v1/json/3";
+const BASE_URL = "http://api.isportsapi.com";
+const FALLBACK_URL = "http://api2.isportsapi.com";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -14,22 +15,40 @@ serve(async (req) => {
   }
 
   try {
-    const { endpoint } = await req.json();
-
-    if (!endpoint) {
+    const apiKey = Deno.env.get("ISPORTS_API_KEY");
+    if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: "Missing endpoint parameter" }),
+        JSON.stringify({ error: "ISPORTS_API_KEY not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { path, params } = await req.json();
+
+    if (!path) {
+      return new Response(
+        JSON.stringify({ error: "Missing path parameter" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const url = `${BASE_URL}/${endpoint}`;
-    console.log(`[football-proxy] Fetching: ${url}`);
+    // Build query string
+    const queryParams = new URLSearchParams({ api_key: apiKey, ...(params || {}) });
+    const url = `${BASE_URL}${path}?${queryParams.toString()}`;
+    console.log(`[football-proxy] iSports → ${path}`);
 
-    const res = await fetch(url);
+    let res: Response;
+    try {
+      res = await fetch(url);
+    } catch {
+      // Fallback to api2
+      const fallbackUrl = `${FALLBACK_URL}${path}?${queryParams.toString()}`;
+      console.log(`[football-proxy] Fallback → ${fallbackUrl}`);
+      res = await fetch(fallbackUrl);
+    }
+
     const json = await res.json();
-
-    console.log(`[football-proxy] ✅ ${endpoint} → keys: ${Object.keys(json).join(", ")}`);
+    console.log(`[football-proxy] ✅ ${path} → code: ${json.code}, items: ${json.data?.length ?? 0}`);
 
     return new Response(JSON.stringify(json), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

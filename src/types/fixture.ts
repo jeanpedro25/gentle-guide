@@ -41,44 +41,44 @@ export interface LeagueConfig {
   country: string;
   emoji: string;
   season: number;
-  /** TheSportsDB league ID */
-  sportsDbId: number;
+  /** iSports API league ID */
+  iSportsId: string;
 }
 
-/** IDs de ligas cobertas pela EstrelaBet */
+/** IDs de ligas cobertas pela EstrelaBet (iSports leagueId) */
 export const ESTRELABET_LEAGUES = new Set([
-  4351, // Brasileirão A
-  4352, // Brasileirão Série B
-  4353, // Copa do Brasil
-  4328, // Premier League
-  4335, // La Liga
-  4332, // Serie A Italiana
-  4331, // Bundesliga
-  4334, // Ligue 1
-  4480, // Champions League
-  4481, // Europa League
-  4406, // Liga Argentina
-  4346, // MLS
+  '144',   // Brasileirão A
+  '145',   // Brasileirão Série B
+  '146',   // Copa do Brasil
+  '36',    // Premier League
+  '31',    // La Liga
+  '34',    // Serie A Italiana
+  '8',     // Bundesliga
+  '11',    // Ligue 1
+  '244',   // Champions League
+  '245',   // Europa League
+  '406',   // Liga Argentina
+  '117',   // MLS
 ]);
 
 export const LEAGUES: LeagueConfig[] = [
-  // Brazil — season 2026
-  { id: 71, name: 'Brasileirão A', country: 'Brazil', emoji: '🇧🇷', season: 2026, sportsDbId: 4351 },
-  { id: 72, name: 'Série B', country: 'Brazil', emoji: '🇧🇷', season: 2026, sportsDbId: 4352 },
-  { id: 73, name: 'Copa do Brasil', country: 'Brazil', emoji: '🇧🇷🏆', season: 2026, sportsDbId: 4353 },
-  // Argentina — season 2026
-  { id: 128, name: 'Liga Argentina', country: 'Argentina', emoji: '🇦🇷', season: 2026, sportsDbId: 4406 },
-  // USA — season 2026
-  { id: 253, name: 'MLS', country: 'USA', emoji: '🇺🇸', season: 2026, sportsDbId: 4346 },
-  // Europe — season 2025 (Aug 2025 – May 2026)
-  { id: 39, name: 'Premier League', country: 'England', emoji: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', season: 2025, sportsDbId: 4328 },
-  { id: 140, name: 'La Liga', country: 'Spain', emoji: '🇪🇸', season: 2025, sportsDbId: 4335 },
-  { id: 135, name: 'Serie A', country: 'Italy', emoji: '🇮🇹', season: 2025, sportsDbId: 4332 },
-  { id: 78, name: 'Bundesliga', country: 'Germany', emoji: '🇩🇪', season: 2025, sportsDbId: 4331 },
-  { id: 61, name: 'Ligue 1', country: 'France', emoji: '🇫🇷', season: 2025, sportsDbId: 4334 },
-  // European cups — season 2025
-  { id: 2, name: 'Champions League', country: 'Europe', emoji: '⭐', season: 2025, sportsDbId: 4480 },
-  { id: 3, name: 'Europa League', country: 'Europe', emoji: '🟠', season: 2025, sportsDbId: 4481 },
+  // Brazil
+  { id: 71, name: 'Brasileirão A', country: 'Brazil', emoji: '🇧🇷', season: 2026, iSportsId: '144' },
+  { id: 72, name: 'Série B', country: 'Brazil', emoji: '🇧🇷', season: 2026, iSportsId: '145' },
+  { id: 73, name: 'Copa do Brasil', country: 'Brazil', emoji: '🇧🇷🏆', season: 2026, iSportsId: '146' },
+  // Argentina
+  { id: 128, name: 'Liga Argentina', country: 'Argentina', emoji: '🇦🇷', season: 2026, iSportsId: '406' },
+  // USA
+  { id: 253, name: 'MLS', country: 'USA', emoji: '🇺🇸', season: 2026, iSportsId: '117' },
+  // Europe
+  { id: 39, name: 'Premier League', country: 'England', emoji: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', season: 2025, iSportsId: '36' },
+  { id: 140, name: 'La Liga', country: 'Spain', emoji: '🇪🇸', season: 2025, iSportsId: '31' },
+  { id: 135, name: 'Serie A', country: 'Italy', emoji: '🇮🇹', season: 2025, iSportsId: '34' },
+  { id: 78, name: 'Bundesliga', country: 'Germany', emoji: '🇩🇪', season: 2025, iSportsId: '8' },
+  { id: 61, name: 'Ligue 1', country: 'France', emoji: '🇫🇷', season: 2025, iSportsId: '11' },
+  // European cups
+  { id: 2, name: 'Champions League', country: 'Europe', emoji: '⭐', season: 2025, iSportsId: '244' },
+  { id: 3, name: 'Europa League', country: 'Europe', emoji: '🟠', season: 2025, iSportsId: '245' },
 ];
 
 export interface TeamStats {
