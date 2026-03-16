@@ -1,4 +1,4 @@
-import { ApiFixture, LeagueConfig, LEAGUES, TeamStats, H2HFixture } from '@/types/fixture';
+import { ApiFixture, LeagueConfig, LEAGUES, ESTRELABET_LEAGUES, TeamStats, H2HFixture } from '@/types/fixture';
 import { supabase } from '@/integrations/supabase/client';
 
 const CACHE_TTL = 5 * 60 * 1000;
