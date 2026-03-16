@@ -6,6 +6,7 @@ import { LeagueTabs } from '@/components/oracle/LeagueTabs';
 import { MatchCard } from '@/components/oracle/MatchCard';
 import { LobbyHeader } from '@/components/oracle/LobbyHeader';
 import { LiveMatches } from '@/components/oracle/LiveMatches';
+import { LiveAlertBanner } from '@/components/oracle/LiveAlertBanner';
 import { ApiFixture } from '@/types/fixture';
 import { isUsingRealData, clearFootballCache } from '@/services/footballApi';
 import { motion } from 'framer-motion';
@@ -18,7 +19,7 @@ import { useQueryClient } from '@tanstack/react-query';
 export default function MatchLobby() {
   const [selectedLeague, setSelectedLeague] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [todayMode, setTodayMode] = useState(true); // Start with HOJE active
+  const [todayMode, setTodayMode] = useState(true);
   const { data, isLoading, isError, error, refetch } = useFilteredFixtures(selectedLeague, !todayMode);
   const todayQuery = useTodayFixtures();
   const liveQuery = useLiveMatches();
@@ -48,14 +49,12 @@ export default function MatchLobby() {
 
   const realData = isUsingRealData();
 
-  // Preload team logos when fixtures load
   useEffect(() => {
     const allFixtures = todayQuery.data ?? [];
     const names = allFixtures.flatMap(f => [f.teams.home.name, f.teams.away.name]);
     if (names.length > 0) preloadTeamLogos(names);
   }, [todayQuery.data]);
 
-  // Group today's fixtures by league (like EstrelaBet)
   const todayGrouped = useMemo(() => {
     if (!todayMode) return [];
     const todayFixtures = todayQuery.data ?? [];
@@ -63,10 +62,9 @@ export default function MatchLobby() {
 
     const filtered = todayFixtures.filter(f => {
       if (q && !f.teams.home.name.toLowerCase().includes(q) && !f.teams.away.name.toLowerCase().includes(q)) return false;
-      return true; // show all including FT
+      return true;
     });
 
-    // Group by league name
     const groups = new Map<string, { leagueName: string; leagueLogo: string; country: string; fixtures: ApiFixture[] }>();
     for (const f of filtered) {
       const key = f.league.name;
@@ -76,7 +74,6 @@ export default function MatchLobby() {
       groups.get(key)!.fixtures.push(f);
     }
 
-    // Sort: live matches first, then by league name
     return Array.from(groups.values()).sort((a, b) => {
       const aLive = a.fixtures.some(f => ['1H', '2H', 'HT', 'LIVE'].includes(f.fixture.status.short));
       const bLive = b.fixtures.some(f => ['1H', '2H', 'HT', 'LIVE'].includes(f.fixture.status.short));
@@ -86,7 +83,6 @@ export default function MatchLobby() {
     });
   }, [todayMode, todayQuery.data, searchQuery]);
 
-  // Filter grouped fixtures by search query (non-today mode)
   const filteredData = useMemo(() => {
     if (todayMode) return [];
     if (!searchQuery.trim()) return data;
@@ -115,6 +111,9 @@ export default function MatchLobby() {
       <div className="max-w-7xl mx-auto p-3 md:p-6 space-y-4">
         <LobbyHeader onRefresh={handleForceRefresh} />
 
+        {/* Live alerts for monitored matches */}
+        <LiveAlertBanner />
+
         {/* Real data indicator */}
         {!currentLoading && realData && (
           <motion.div
@@ -135,7 +134,6 @@ export default function MatchLobby() {
           </motion.div>
         )}
 
-        {/* Live Matches */}
         <LiveMatches matches={liveQuery.data ?? []} isLoading={liveQuery.isLoading} />
 
         {/* Search bar */}
@@ -170,12 +168,7 @@ export default function MatchLobby() {
             <Loader2 className="w-10 h-10 text-primary animate-spin" />
             <p className="font-body text-muted-foreground text-sm">
               {todayMode ? 'Buscando jogos de hoje' : 'Buscando jogos (30 dias)'}
-              <motion.span
-                animate={{ opacity: [1, 0, 1] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-              >
-                ...
-              </motion.span>
+              <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>...</motion.span>
             </p>
           </div>
         )}
@@ -228,7 +221,6 @@ export default function MatchLobby() {
             </p>
 
             {todayMode ? (
-              /* Today mode: grouped by league like EstrelaBet */
               todayGrouped.map((group) => (
                 <div key={group.leagueName} className="space-y-3">
                   <h2 className="font-display text-lg tracking-wider text-foreground flex items-center gap-2">
@@ -255,7 +247,6 @@ export default function MatchLobby() {
                 </div>
               ))
             ) : (
-              /* League grouped mode */
               filteredData.map(({ league, fixtures }) => (
                 <div key={league.id} className="space-y-3">
                   <h2 className="font-display text-lg tracking-wider text-foreground flex items-center gap-2">
