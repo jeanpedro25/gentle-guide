@@ -527,6 +527,7 @@ export async function fetchFixturesByLeague(
       });
   } catch (err) {
     console.warn(`[Oracle] ${league.name} failed:`, err);
+    if (isApiLimitError(err)) throw err;
     return [];
   }
 }
