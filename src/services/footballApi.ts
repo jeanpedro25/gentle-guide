@@ -230,6 +230,7 @@ export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
 
   try {
     const allEvents = new Map<string, SportsDbEvent>();
+    const trackedLeagueIds = new Set(LEAGUES.map(l => String(l.sportsDbId)));
 
     for (let i = 0; i < LEAGUES.length; i += LEAGUE_BATCH_SIZE) {
       const batch = LEAGUES.slice(i, i + LEAGUE_BATCH_SIZE);
@@ -245,7 +246,10 @@ export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
       for (const result of results) {
         if (result.status !== 'fulfilled') continue;
         for (const event of result.value) {
-          allEvents.set(event.idEvent, event);
+          // Only include events from tracked leagues
+          if (trackedLeagueIds.has(event.idLeague)) {
+            allEvents.set(event.idEvent, event);
+          }
         }
       }
     }
@@ -320,8 +324,9 @@ export async function fetchTodayMatches(): Promise<ApiFixture[]> {
 
         for (const event of events) {
           const eventDate = event.dateEvent?.slice(0, 10);
-          // Include today and tomorrow matches
+          // Include today and tomorrow matches, only from the correct league
           if (eventDate !== today && eventDate !== tomorrow) continue;
+          if (event.idLeague !== String(league.sportsDbId)) continue;
 
           try {
             allFixtures.push(
@@ -352,6 +357,7 @@ export async function fetchTodayMatches(): Promise<ApiFixture[]> {
         for (const event of events) {
           const eventDate = event.dateEvent?.slice(0, 10);
           if (eventDate !== today) continue;
+          if (event.idLeague !== String(league.sportsDbId)) continue;
 
           try {
             const fixture = eventToFixture(event, league, event.strHomeTeamBadge || '/placeholder.svg', event.strAwayTeamBadge || '/placeholder.svg');
@@ -404,7 +410,12 @@ export async function fetchFixturesByLeague(
     const allEvents = new Map<string, SportsDbEvent>();
     const addEvents = (events: SportsDbEvent[] | null | undefined) => {
       if (!events) return;
-      events.forEach(e => allEvents.set(e.idEvent, e));
+      events.forEach(e => {
+        // Only include events that actually belong to this league
+        if (e.idLeague === String(league.sportsDbId)) {
+          allEvents.set(e.idEvent, e);
+        }
+      });
     };
 
     if (nextData.status === 'fulfilled') addEvents(nextData.value?.events);
