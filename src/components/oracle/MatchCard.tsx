@@ -114,7 +114,7 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
             <span className="text-xs font-body text-muted-foreground truncate max-w-[160px]">
               {fixture.league.name}
             </span>
-            {ESTRELABET_LEAGUES.has(LEAGUE_ID_TO_SPORTSDB.get(fixture.league.id) ?? 0) && (
+            {ESTRELABET_LEAGUES.has(LEAGUE_ID_TO_ISPORTS.get(fixture.league.id) ?? '') && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-yellow-500/50 text-yellow-500 gap-0.5">
                 <Star className="w-2.5 h-2.5 fill-yellow-500" />
                 EstrelaBet
