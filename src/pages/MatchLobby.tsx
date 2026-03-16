@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { preloadTeamLogos } from '@/services/teamLogos';
 import { useFilteredFixtures, useTodayFixtures } from '@/hooks/useFixtures';
 import { useLiveMatches } from '@/hooks/useLiveMatches';
 import { LeagueTabs } from '@/components/oracle/LeagueTabs';
