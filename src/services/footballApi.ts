@@ -27,6 +27,7 @@ export function getLastApiError(): string {
 interface ISportsMatch {
   matchId: string;
   leagueType: number;
+  leagueType: number;
   leagueId: string;
   leagueName: string;
   leagueShortName: string;
@@ -34,7 +35,7 @@ interface ISportsMatch {
   subLeagueId: string;
   subLeagueName?: string;
   matchTime: number; // unix timestamp
-  status: number; // -1=not started, 0=first half, 1=half time, 2=second half, 3=finished, 4=postponed, etc.
+  status: number; // -1=not started, 0=first half, 1=half time, 2=second half, 3=finished, 4=postponed
   homeName: string;
   homeId: string;
   awayName: string;
@@ -50,17 +51,18 @@ interface ISportsMatch {
   homeCorner?: number;
   awayCorner?: number;
   explain?: string;
+  round?: string;
+  location?: string;
+  season?: string;
+  weather?: string;
+  temperature?: string;
+  hasLineup?: boolean;
+  injuryTime?: number;
+  halfStartTime?: number;
   extraExplain?: {
-    minute?: string;
+    minute?: number;
     extraTime?: number;
-    homePosition?: number;
-    awayPosition?: number;
-    season?: string;
-    round?: string;
-    group?: string;
-    location?: string;
-    weather?: string;
-    temperature?: string;
+    winner?: number;
   };
 }
 
