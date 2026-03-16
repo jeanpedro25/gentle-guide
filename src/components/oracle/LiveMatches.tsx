@@ -3,7 +3,7 @@ import { Radio, Clock, Zap, Loader2, X } from 'lucide-react';
 import { preloadTeamLogos } from '@/services/teamLogos';
 import { useTeamLogos } from '@/hooks/useTeamLogos';
 import { useLiveAdvisor, LiveAdvice } from '@/hooks/useLiveAdvisor';
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
 export interface LiveMatch {
   id: string;
