@@ -353,6 +353,7 @@ export async function fetchTodayMatches(): Promise<ApiFixture[]> {
         for (const event of events) {
           const eventDate = event.dateEvent?.slice(0, 10);
           if (eventDate !== today) continue;
+          if (event.idLeague !== String(league.sportsDbId)) continue;
 
           try {
             const fixture = eventToFixture(event, league, event.strHomeTeamBadge || '/placeholder.svg', event.strAwayTeamBadge || '/placeholder.svg');
