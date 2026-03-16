@@ -320,8 +320,9 @@ export async function fetchTodayMatches(): Promise<ApiFixture[]> {
 
         for (const event of events) {
           const eventDate = event.dateEvent?.slice(0, 10);
-          // Include today and tomorrow matches
+          // Include today and tomorrow matches, only from the correct league
           if (eventDate !== today && eventDate !== tomorrow) continue;
+          if (event.idLeague !== String(league.sportsDbId)) continue;
 
           try {
             allFixtures.push(
