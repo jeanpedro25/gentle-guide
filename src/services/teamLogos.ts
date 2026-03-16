@@ -5,7 +5,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-const LOGO_CACHE_KEY = 'team-logo-cache';
+const LOGO_CACHE_KEY = 'team-logo-cache-v2';
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 interface LogoCacheEntry {
@@ -15,6 +15,19 @@ interface LogoCacheEntry {
 
 // In-memory cache for current session
 const memoryCache = new Map<string, string>();
+
+// Listeners for logo updates (trigger re-renders)
+type LogoListener = () => void;
+const listeners = new Set<LogoListener>();
+
+export function subscribeToLogoUpdates(listener: LogoListener): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function notifyListeners() {
+  listeners.forEach(fn => fn());
+}
 
 // Load persisted cache
 function loadCache(): Record<string, LogoCacheEntry> {
@@ -74,7 +87,7 @@ async function fetchLogoFromAPI(teamName: string): Promise<string | null> {
 }
 
 /**
- * Resolve and cache a team logo. Returns immediately with best available.
+ * Resolve and cache a team logo async.
  */
 async function resolveLogoAsync(teamName: string): Promise<string> {
   const key = teamName.toLowerCase().trim();
@@ -103,6 +116,10 @@ async function resolveLogoAsync(teamName: string): Promise<string> {
       saveCache(cache);
 
       pending.delete(key);
+      
+      // Notify React components to re-render with new logo
+      if (url) notifyListeners();
+      
       return resolvedUrl;
     });
     pending.set(key, promise);
@@ -111,15 +128,11 @@ async function resolveLogoAsync(teamName: string): Promise<string> {
   return pending.get(key)!;
 }
 
-// Track elements waiting for logos to trigger re-render
-const logoListeners = new Map<string, Set<(url: string) => void>>();
-
 /**
- * Get team logo synchronously (returns fallback immediately, fetches real one in background).
- * Use onLogoReady callback to update when real logo arrives.
+ * Get team logo synchronously. Returns cached logo or fallback.
+ * Triggers background fetch if not cached.
  */
 export function getTeamLogo(teamName: string, currentLogo?: string): string {
-  // If we already have a real logo URL (not placeholder), use it
   if (currentLogo && currentLogo !== '/placeholder.svg' && !currentLogo.includes('placeholder')) {
     return currentLogo;
   }
@@ -146,8 +159,7 @@ export function getTeamLogo(teamName: string, currentLogo?: string): string {
 }
 
 /**
- * Preload logos for a list of team names (call on page load).
- * Returns a promise that resolves when all logos are cached.
+ * Preload logos for a list of team names.
  */
 export async function preloadTeamLogos(teamNames: string[]): Promise<void> {
   const unique = [...new Set(teamNames.map(n => n.toLowerCase().trim()))];
