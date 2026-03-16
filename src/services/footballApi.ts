@@ -227,7 +227,7 @@ function iSportsMatchToFixture(match: ISportsMatch): ApiFixture | null {
       name: league.name,
       country: league.country,
       logo: '',
-      round: match.extraExplain?.round ? `Rodada ${match.extraExplain.round}` : '',
+      round: match.round ? `Rodada ${match.round}` : '',
     },
     teams: {
       home: { id: parseInt(match.homeId), name: match.homeName, logo: '/placeholder.svg', winner: homeWinner },
