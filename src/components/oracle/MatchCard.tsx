@@ -1,11 +1,13 @@
 import { motion } from 'framer-motion';
-import { ApiFixture, ESTRELABET_LEAGUES } from '@/types/fixture';
+import { ApiFixture, ESTRELABET_LEAGUES, LEAGUES } from '@/types/fixture';
 import { Badge } from '@/components/ui/badge';
 import { isValid, parseISO } from 'date-fns';
-import { ChevronRight, Plus, Check } from 'lucide-react';
+import { ChevronRight, Plus, Check, Star } from 'lucide-react';
 import { useMultipla } from '@/contexts/MultiplaContext';
 import { useState } from 'react';
 import { getRelativeDayLabel, getStatusDisplay, formatBrazilTime } from '@/services/footballApi';
+
+const LEAGUE_ID_TO_SPORTSDB = new Map(LEAGUES.map(l => [l.id, l.sportsDbId]));
 
 interface MatchCardProps {
   fixture: ApiFixture;
