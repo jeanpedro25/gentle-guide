@@ -138,7 +138,7 @@ export default function MatchDetail() {
           <div className="flex items-center justify-center gap-4 md:gap-8 mb-4">
             <div className="flex flex-col items-center gap-2 min-w-0">
               <img
-                src={fixture.teams.home.logo}
+                src={getTeamLogo(fixture.teams.home.name, fixture.teams.home.logo)}
                 alt={fixture.teams.home.name}
                 className="w-16 h-16 md:w-20 md:h-20 object-contain"
                 onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
