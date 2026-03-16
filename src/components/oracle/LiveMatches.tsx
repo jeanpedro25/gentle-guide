@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Radio, Clock } from 'lucide-react';
+import { getTeamLogo } from '@/services/teamLogos';
 
 export interface LiveMatch {
   id: string;

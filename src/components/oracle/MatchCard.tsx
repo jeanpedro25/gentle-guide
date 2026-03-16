@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { ApiFixture, ESTRELABET_LEAGUES, LEAGUES } from '@/types/fixture';
+import { getTeamLogo } from '@/services/teamLogos';
 import { Badge } from '@/components/ui/badge';
 import { isValid, parseISO } from 'date-fns';
 import { ChevronRight, Plus, Check, Star } from 'lucide-react';
