@@ -133,7 +133,6 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
                     minute: match.time,
                   })}
                   onClearAdvice={() => clearAdvice(match.id)}
-                  logoVersion={logoVersion}
                 />
               ))}
             </AnimatePresence>
