@@ -129,7 +129,7 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
 
         {/* Teams */}
         <div className="flex items-center justify-between gap-2 mb-3">
-          <TeamBadge name={fixture.teams.home.name} logo={fixture.teams.home.logo} align="left" badge="🏠" />
+          <TeamBadge name={fixture.teams.home.name} logo={getTeamLogo(fixture.teams.home.name, fixture.teams.home.logo)} align="left" badge="🏠" />
           {statusShort === 'FT' || statusShort === '1H' || statusShort === '2H' || statusShort === 'HT' ? (
             <div className="text-center shrink-0">
               <span className="font-display text-xl text-foreground">
