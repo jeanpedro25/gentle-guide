@@ -48,6 +48,13 @@ export default function MatchLobby() {
 
   const realData = isUsingRealData();
 
+  // Preload team logos when fixtures load
+  useEffect(() => {
+    const allFixtures = todayQuery.data ?? [];
+    const names = allFixtures.flatMap(f => [f.teams.home.name, f.teams.away.name]);
+    if (names.length > 0) preloadTeamLogos(names);
+  }, [todayQuery.data]);
+
   // Group today's fixtures by league (like EstrelaBet)
   const todayGrouped = useMemo(() => {
     if (!todayMode) return [];
