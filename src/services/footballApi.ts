@@ -2,14 +2,23 @@ import { ApiFixture, LeagueConfig, LEAGUES, ESTRELABET_LEAGUES, TeamStats, H2HFi
 import { supabase } from '@/integrations/supabase/client';
 
 const CACHE_TTL = 5 * 60 * 1000;
+const PERSISTENT_CACHE_TTL = 6 * 60 * 60 * 1000;
+const PERSISTENT_CACHE_PREFIX = 'oracle_api_cache_v2|';
 const LEAGUE_BATCH_SIZE = 4;
 
-interface CachedValue {
-  data: unknown;
+interface CachedValue<T = unknown> {
+  data: T;
   ts: number;
 }
 
-const cache = new Map<string, CachedValue>();
+const cache = new Map<string, CachedValue<ISportsResponse>>();
+
+class ApiLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ApiLimitError';
+  }
+}
 
 let usingRealData = false;
 let lastApiError = '';
@@ -25,44 +34,7 @@ export function getLastApiError(): string {
 // ── iSports API types ──
 
 interface ISportsMatch {
-  matchId: string;
-  leagueType: number;
-  leagueId: string;
-  leagueName: string;
-  leagueShortName: string;
-  leagueColor: string;
-  subLeagueId: string;
-  subLeagueName?: string;
-  matchTime: number; // unix timestamp
-  status: number; // -1=not started, 0=first half, 1=half time, 2=second half, 3=finished, 4=postponed
-  homeName: string;
-  homeId: string;
-  awayName: string;
-  awayId: string;
-  homeScore: number;
-  awayScore: number;
-  homeHalfScore?: number;
-  awayHalfScore?: number;
-  homeRed?: number;
-  awayRed?: number;
-  homeYellow?: number;
-  awayYellow?: number;
-  homeCorner?: number;
-  awayCorner?: number;
-  explain?: string;
-  round?: string;
-  location?: string;
-  season?: string;
-  weather?: string;
-  temperature?: string;
-  hasLineup?: boolean;
-  injuryTime?: number;
-  halfStartTime?: number;
-  extraExplain?: {
-    minute?: number;
-    extraTime?: number;
-    winner?: number;
-  };
+...
 }
 
 interface ISportsResponse {
@@ -71,12 +43,69 @@ interface ISportsResponse {
   data: ISportsMatch[] | null;
 }
 
+function isBrowserEnv(): boolean {
+  return typeof window !== 'undefined' && !!window.localStorage;
+}
+
+function persistentCacheKey(cacheKey: string): string {
+  return `${PERSISTENT_CACHE_PREFIX}${cacheKey}`;
+}
+
+function readPersistentCache(cacheKey: string, allowStale = false): ISportsResponse | null {
+  if (!isBrowserEnv()) return null;
+  try {
+    const raw = window.localStorage.getItem(persistentCacheKey(cacheKey));
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as CachedValue<ISportsResponse>;
+    if (!parsed?.data || typeof parsed.ts !== 'number') return null;
+
+    if (!allowStale && Date.now() - parsed.ts > PERSISTENT_CACHE_TTL) return null;
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
+function writePersistentCache(cacheKey: string, data: ISportsResponse): void {
+  if (!isBrowserEnv()) return;
+  try {
+    const payload: CachedValue<ISportsResponse> = { data, ts: Date.now() };
+    window.localStorage.setItem(persistentCacheKey(cacheKey), JSON.stringify(payload));
+  } catch {
+    // Ignore quota/storage errors
+  }
+}
+
+function isRateLimitedResponse(response: ISportsResponse): boolean {
+  if (response.code === 2) return true;
+  return /trials|try again tomorrow|rate limit|too many/i.test(response.message || '');
+}
+
+function getRateLimitMessage(rawMessage?: string): string {
+  if (rawMessage?.trim()) {
+    return `Limite diário da API de jogos atingido: ${rawMessage}`;
+  }
+  return 'Limite diário da API de jogos atingido. Tente novamente mais tarde.';
+}
+
+function isApiLimitError(error: unknown): boolean {
+  return error instanceof ApiLimitError;
+}
+
 // ── API fetch via proxy ──
 
 async function iSportsFetch(path: string, params?: Record<string, string>): Promise<ISportsResponse> {
   const cacheKey = `${path}|${JSON.stringify(params || {})}`;
-  const cached = cache.get(cacheKey);
-  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data as ISportsResponse;
+
+  const memoryCached = cache.get(cacheKey);
+  if (memoryCached && Date.now() - memoryCached.ts < CACHE_TTL) return memoryCached.data;
+
+  const persistentCached = readPersistentCache(cacheKey);
+  if (persistentCached) {
+    cache.set(cacheKey, { data: persistentCached, ts: Date.now() });
+    return persistentCached;
+  }
 
   console.log('[Oracle] iSports →', path, params || '');
 
@@ -85,18 +114,58 @@ async function iSportsFetch(path: string, params?: Record<string, string>): Prom
   });
 
   if (error) {
+    const stale = readPersistentCache(cacheKey, true);
+    if (stale) {
+      console.warn('[Oracle] Proxy failed, using stale cache:', path);
+      cache.set(cacheKey, { data: stale, ts: Date.now() });
+      return stale;
+    }
+
     console.error('[Oracle] Proxy error:', error);
     throw new Error(error.message || 'Proxy error');
   }
 
-  cache.set(cacheKey, { data, ts: Date.now() });
-  return data as ISportsResponse;
+  const response = data as ISportsResponse;
+
+  if (response.code === 0) {
+    cache.set(cacheKey, { data: response, ts: Date.now() });
+    writePersistentCache(cacheKey, response);
+    lastApiError = '';
+    return response;
+  }
+
+  if (isRateLimitedResponse(response)) {
+    lastApiError = getRateLimitMessage(response.message);
+    const stale = readPersistentCache(cacheKey, true);
+    if (stale) {
+      console.warn('[Oracle] Rate limited, using stale cache:', path);
+      cache.set(cacheKey, { data: stale, ts: Date.now() });
+      return stale;
+    }
+    throw new ApiLimitError(lastApiError);
+  }
+
+  return response;
 }
 
 export function clearFootballCache(pathIncludes?: string): void {
-  if (!pathIncludes) { cache.clear(); return; }
-  for (const key of cache.keys()) {
-    if (key.includes(pathIncludes)) cache.delete(key);
+  cache.clear();
+
+  if (!isBrowserEnv()) return;
+
+  if (!pathIncludes) {
+    for (const key of Object.keys(window.localStorage)) {
+      if (key.startsWith(PERSISTENT_CACHE_PREFIX)) {
+        window.localStorage.removeItem(key);
+      }
+    }
+    return;
+  }
+
+  for (const key of Object.keys(window.localStorage)) {
+    if (key.startsWith(PERSISTENT_CACHE_PREFIX) && key.includes(pathIncludes)) {
+      window.localStorage.removeItem(key);
+    }
   }
 }
 
