@@ -19,6 +19,7 @@ interface MatchCardProps {
 const DEFAULT_ODDS = { home: 2.05, draw: 3.25, away: 3.50 };
 
 export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
+  const { getTeamLogoLive } = useTeamLogos();
   const parsedDate = parseISO(fixture.fixture.date);
   const fallbackDate = new Date(fixture.fixture.timestamp * 1000);
   const matchDate = isValid(parsedDate) ? parsedDate : fallbackDate;
