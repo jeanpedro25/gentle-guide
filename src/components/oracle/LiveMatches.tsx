@@ -184,7 +184,7 @@ function LiveMatchCard({ match, finished = false }: { match: LiveMatch; finished
         </div>
         <div className="flex items-center gap-2 min-w-0 flex-1 flex-row-reverse">
           <img
-            src={match.awayBadge}
+            src={getTeamLogo(match.awayTeam, match.awayBadge)}
             alt={match.awayTeam}
             className="w-6 h-6 object-contain shrink-0"
             onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
