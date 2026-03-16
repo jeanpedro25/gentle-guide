@@ -279,8 +279,8 @@ export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
           status: statusShort,
           league: match.leagueName,
           leagueBadge: '',
-          time: match.extraExplain?.minute || '',
-          venue: match.extraExplain?.location || '',
+          time: match.extraExplain?.minute ? String(match.extraExplain.minute) : '',
+          venue: match.location || '',
         } satisfies LiveMatchData;
       })
       .sort((a, b) => {
