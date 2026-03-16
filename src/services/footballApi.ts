@@ -34,7 +34,44 @@ export function getLastApiError(): string {
 // ── iSports API types ──
 
 interface ISportsMatch {
-...
+  matchId: string;
+  leagueType: number;
+  leagueId: string;
+  leagueName: string;
+  leagueShortName: string;
+  leagueColor: string;
+  subLeagueId: string;
+  subLeagueName?: string;
+  matchTime: number; // unix timestamp
+  status: number; // -1=not started, 0=first half, 1=half time, 2=second half, 3=finished, 4=postponed
+  homeName: string;
+  homeId: string;
+  awayName: string;
+  awayId: string;
+  homeScore: number;
+  awayScore: number;
+  homeHalfScore?: number;
+  awayHalfScore?: number;
+  homeRed?: number;
+  awayRed?: number;
+  homeYellow?: number;
+  awayYellow?: number;
+  homeCorner?: number;
+  awayCorner?: number;
+  explain?: string;
+  round?: string;
+  location?: string;
+  season?: string;
+  weather?: string;
+  temperature?: string;
+  hasLineup?: boolean;
+  injuryTime?: number;
+  halfStartTime?: number;
+  extraExplain?: {
+    minute?: number;
+    extraTime?: number;
+    winner?: number;
+  };
 }
 
 interface ISportsResponse {
