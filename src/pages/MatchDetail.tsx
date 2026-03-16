@@ -41,6 +41,7 @@ export default function MatchDetail() {
   const [h2h, setH2h] = useState<H2HFixture[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { addPrediction } = usePredictionHistory();
+  const { getTeamLogoLive } = useTeamLogos();
 
   useEffect(() => {
     const stored = sessionStorage.getItem('selected-fixture');
