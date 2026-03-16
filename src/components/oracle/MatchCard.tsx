@@ -1,10 +1,13 @@
 import { motion } from 'framer-motion';
-import { ApiFixture } from '@/types/fixture';
+import { ApiFixture, ESTRELABET_LEAGUES, LEAGUES } from '@/types/fixture';
+import { Badge } from '@/components/ui/badge';
 import { isValid, parseISO } from 'date-fns';
-import { ChevronRight, Plus, Check } from 'lucide-react';
+import { ChevronRight, Plus, Check, Star } from 'lucide-react';
 import { useMultipla } from '@/contexts/MultiplaContext';
 import { useState } from 'react';
 import { getRelativeDayLabel, getStatusDisplay, formatBrazilTime } from '@/services/footballApi';
+
+const LEAGUE_ID_TO_SPORTSDB = new Map(LEAGUES.map(l => [l.id, l.sportsDbId]));
 
 interface MatchCardProps {
   fixture: ApiFixture;
@@ -111,6 +114,12 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
             <span className="text-xs font-body text-muted-foreground truncate max-w-[160px]">
               {fixture.league.name}
             </span>
+            {ESTRELABET_LEAGUES.has(LEAGUE_ID_TO_SPORTSDB.get(fixture.league.id) ?? 0) && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-yellow-500/50 text-yellow-500 gap-0.5">
+                <Star className="w-2.5 h-2.5 fill-yellow-500" />
+                EstrelaBet
+              </Badge>
+            )}
           </div>
           <span className="text-xs font-body text-muted-foreground">
             {fixture.league.round?.replace('Regular Season - ', 'Rod. ')}
