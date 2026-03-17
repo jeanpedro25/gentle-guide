@@ -4,7 +4,7 @@ import { useTeamLogos } from '@/hooks/useTeamLogos';
 import { isValid, parseISO } from 'date-fns';
 import { Plus, Check, Star, Zap, RefreshCw } from 'lucide-react';
 import { useMultipla } from '@/contexts/MultiplaContext';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { getRelativeDayLabel, getStatusDisplay, formatBrazilTime } from '@/services/footballApi';
 import { OracleAnalysis, normalizeProbabilities } from '@/types/prediction';
 import { analyzeMatch } from '@/services/oracleService';
@@ -13,6 +13,10 @@ import { useSavePrediction, usePredictionByFixture, useBankroll, useUpdatePredic
 import { useLiveAdvisor } from '@/hooks/useLiveAdvisor';
 import { AnalyzeModal } from './AnalyzeModal';
 import { LiveReanalysisModal } from './LiveReanalysisModal';
+import { BetInputWidget } from './BetInputWidget';
+import { CashoutAlert } from './CashoutAlert';
+import { MatchHeatBadge } from './MatchHeatBadge';
+import { calculateVerdict, getCashoutAlert } from '@/lib/matchVerdict';
 import { toast } from 'sonner';
 
 const LEAGUE_ID_TO_ISPORTS = new Map(LEAGUES.map(l => [l.id, l.iSportsId]));
@@ -58,6 +62,31 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
   const selected = isSelected(fixture.fixture.id);
   const currentSelection = getSelection(fixture.fixture.id);
   const matchAdvice = advice[String(fixture.fixture.id)];
+  const bankrollAmount = bankroll?.amount ?? 200;
+
+  // Match heat badge for live games
+  const verdict = useMemo(() => {
+    if (!isLive) return null;
+    return calculateVerdict({
+      homePossession: 50, // Would come from live stats API
+      awayPossession: 50,
+      minute: parseInt(fixture.fixture.status.elapsed?.toString() || '0'),
+      homeScore: fixture.goals.home ?? 0,
+      awayScore: fixture.goals.away ?? 0,
+    });
+  }, [isLive, fixture]);
+
+  // Cashout alert
+  const cashoutAlert = useMemo(() => {
+    if (!isLive || !existingPrediction) return { type: null as null, message: '' };
+    const betTeam = existingPrediction.predicted_winner === fixture.teams.home.name ? 'HOME' as const : 'AWAY' as const;
+    return getCashoutAlert({
+      minute: parseInt(fixture.fixture.status.elapsed?.toString() || '0'),
+      userBetTeam: betTeam,
+      homeScore: fixture.goals.home ?? 0,
+      awayScore: fixture.goals.away ?? 0,
+    });
+  }, [isLive, existingPrediction, fixture]);
 
   const handleAddClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -181,9 +210,9 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
 
         {/* Main clickable area */}
         <button onClick={onClick} className="w-full text-left">
-          {/* League + EstrelaBet badge */}
+          {/* League + badges */}
           <div className="flex items-center justify-between mb-4 pr-8">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] text-muted-foreground">{fixture.league.name}</span>
               {ESTRELABET_LEAGUES.has(LEAGUE_ID_TO_ISPORTS.get(fixture.league.id) ?? '') && (
                 <span className="bg-primary/10 text-primary text-[9px] px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5">
@@ -191,10 +220,24 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
                   EstrelaBet
                 </span>
               )}
+              {/* Dynamic heat badge */}
+              {isLive && verdict && (
+                <MatchHeatBadge {...verdict} />
+              )}
             </div>
           </div>
 
-          {/* Teams - centered layout like reference */}
+          {/* Favorite next goal indicator */}
+          {isLive && verdict?.favoriteNextGoal && (
+            <div className="mb-2 text-[10px] font-bold text-primary flex items-center gap-1">
+              <span>⚡</span>
+              <span>
+                {verdict.favoriteNextGoal === 'HOME' ? fixture.teams.home.name : fixture.teams.away.name} favorito ao próximo gol
+              </span>
+            </div>
+          )}
+
+          {/* Teams - centered layout */}
           <div className="flex items-center justify-between">
             <div className="flex flex-col items-center gap-2 w-1/3">
               <img
@@ -248,6 +291,16 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
           </div>
         </button>
 
+        {/* Cashout Alert */}
+        {cashoutAlert.type && (
+          <CashoutAlert type={cashoutAlert.type} message={cashoutAlert.message} />
+        )}
+
+        {/* Bet input for live matches */}
+        {isLive && (
+          <BetInputWidget bankrollAmount={bankrollAmount} odd={DEFAULT_ODDS.home} />
+        )}
+
         {/* Footer: date + analyze button */}
         <div className="mt-4 pt-4 border-t border-border/50 flex justify-between items-center">
           <span className="text-[10px] text-muted-foreground capitalize">{formattedDate}</span>
@@ -264,7 +317,7 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
             <button
               onClick={handleAnalyze}
               disabled={isAnalyzing}
-              className="flex items-center gap-2 bg-oracle-win/10 text-oracle-win text-[10px] font-bold px-3 py-1.5 rounded-full border border-oracle-win/20 hover:bg-oracle-win/20 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 bg-primary/10 text-primary text-[10px] font-bold px-3 py-1.5 rounded-full border border-primary/20 hover:bg-primary/20 transition-colors disabled:opacity-50"
             >
               <Zap className="w-3 h-3" />
               Analisar
@@ -281,7 +334,7 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
         homeTeam={fixture.teams.home.name}
         awayTeam={fixture.teams.away.name}
         isLoading={isAnalyzing}
-        bankrollAmount={bankroll?.amount ?? 1000}
+        bankrollAmount={bankrollAmount}
       />
 
       <LiveReanalysisModal
