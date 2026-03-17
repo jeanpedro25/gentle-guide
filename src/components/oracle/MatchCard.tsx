@@ -31,7 +31,7 @@ interface MatchCardProps {
 const DEFAULT_ODDS = { home: 2.05, draw: 3.25, away: 3.50 };
 const LIVE_STATUSES = new Set(['1H', '2H', 'HT', 'LIVE', 'PEN']);
 
-export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
+export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps) {
   const { getTeamLogoLive } = useTeamLogos();
   const parsedDate = parseISO(fixture.fixture.date);
   const fallbackDate = new Date(fixture.fixture.timestamp * 1000);
