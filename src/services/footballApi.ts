@@ -377,9 +377,8 @@ export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
       return [];
     }
 
-    // Filter only EstrelaBet leagues
+    // Show all leagues
     return response.data
-      .filter(match => ESTRELABET_LEAGUES.has(match.leagueId))
       .map(match => {
         const statusShort = iSportsStatusToShort(match.status);
         return {
