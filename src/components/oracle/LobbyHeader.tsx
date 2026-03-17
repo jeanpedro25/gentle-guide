@@ -6,6 +6,7 @@ import { LogOut } from 'lucide-react';
 export function LobbyHeader() {
   const navigate = useNavigate();
   const { data: bankroll } = useBankroll();
+  const { signOut } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 px-4 py-4 bg-background/80 backdrop-blur-lg border-b border-border flex items-center justify-between">
