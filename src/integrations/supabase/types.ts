@@ -67,6 +67,60 @@ export type Database = {
           },
         ]
       }
+      bets: {
+        Row: {
+          actual_result: string | null
+          actual_score: string | null
+          away_team: string
+          created_at: string
+          fixture_id: number | null
+          home_team: string
+          id: string
+          league: string
+          odd: number
+          potential_profit: number
+          prediction: string
+          profit_loss: number | null
+          resolved_at: string | null
+          stake: number
+          status: string
+        }
+        Insert: {
+          actual_result?: string | null
+          actual_score?: string | null
+          away_team: string
+          created_at?: string
+          fixture_id?: number | null
+          home_team: string
+          id?: string
+          league?: string
+          odd?: number
+          potential_profit?: number
+          prediction: string
+          profit_loss?: number | null
+          resolved_at?: string | null
+          stake?: number
+          status?: string
+        }
+        Update: {
+          actual_result?: string | null
+          actual_score?: string | null
+          away_team?: string
+          created_at?: string
+          fixture_id?: number | null
+          home_team?: string
+          id?: string
+          league?: string
+          odd?: number
+          potential_profit?: number
+          prediction?: string
+          profit_loss?: number | null
+          resolved_at?: string | null
+          stake?: number
+          status?: string
+        }
+        Relationships: []
+      }
       predictions: {
         Row: {
           away_team: string
