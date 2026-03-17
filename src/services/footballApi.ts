@@ -300,9 +300,8 @@ function findLeagueByISportsId(iSportsLeagueId: string): LeagueConfig | null {
   return LEAGUES.find(l => l.iSportsId === iSportsLeagueId) || null;
 }
 
-function iSportsMatchToFixture(match: ISportsMatch): ApiFixture | null {
+function iSportsMatchToFixture(match: ISportsMatch): ApiFixture {
   const league = findLeagueByISportsId(match.leagueId);
-  if (!league) return null;
 
   let statusShort = iSportsStatusToShort(match.status);
   
