@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Zap, BarChart3, Clock } from 'lucide-react';
+import { Home, BarChart3, Clock } from 'lucide-react';
 
 const NAV_ITEMS = [
   { path: '/', icon: Home, label: 'Início' },
