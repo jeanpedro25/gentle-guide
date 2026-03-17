@@ -34,6 +34,9 @@ export default function BankrollPage() {
   const [bankrollInput, setBankrollInput] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [resolving, setResolving] = useState(false);
+  const [riskPct, setRiskPct] = useState(2);
+  const [dailyLimit, setDailyLimit] = useState(3);
+  const [editingRisk, setEditingRisk] = useState(false);
 
   // Form state
   const [formHome, setFormHome] = useState('');
