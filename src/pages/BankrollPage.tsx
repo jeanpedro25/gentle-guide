@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, DollarSign, TrendingUp, Target, BarChart3, Edit2, Check, Trophy, XCircle, Clock, Sparkles, Shield, AlertTriangle, Slider } from 'lucide-react';
+import { ArrowLeft, DollarSign, TrendingUp, Target, BarChart3, Edit2, Check, Trophy, XCircle, Clock, Sparkles, Shield, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePredictions, useBankroll, useUpdateBankroll, useBetResults, PredictionRow, BetResultRow } from '@/hooks/usePredictions';
 import profetaLogo from '@/assets/profeta-bet-logo.png';
