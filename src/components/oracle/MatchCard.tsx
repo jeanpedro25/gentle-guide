@@ -25,6 +25,7 @@ interface MatchCardProps {
   fixture: ApiFixture;
   onClick: () => void;
   index: number;
+  bestValue?: boolean;
 }
 
 const DEFAULT_ODDS = { home: 2.05, draw: 3.25, away: 3.50 };
