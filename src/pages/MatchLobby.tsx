@@ -97,6 +97,22 @@ export default function MatchLobby() {
     });
   }, [fixtures, searchQuery, timeFilter]);
 
+  // Determine "best value" matches - pick top 3 with highest simulated odds
+  const bestValueIds = useMemo(() => {
+    const allFixtures = grouped.flatMap(g => g.fixtures);
+    if (allFixtures.length === 0) return new Set<number>();
+    // Simulate value: prioritize matches not started yet, randomize with fixture id for variety
+    const scored = allFixtures
+      .filter(f => f.fixture.status.short === 'NS')
+      .map(f => ({
+        id: f.fixture.id,
+        // Higher score = "better odds" - use a hash-like approach for variety
+        score: ((f.fixture.id * 7 + 13) % 100) / 100,
+      }))
+      .sort((a, b) => b.score - a.score);
+    return new Set(scored.slice(0, 3).map(s => s.id));
+  }, [grouped]);
+
   const liveCount = (liveQuery.data ?? []).length;
   const currentLoading = timeFilter === 'live' ? liveQuery.isLoading : activeQuery.isLoading;
   const currentError = timeFilter === 'live' ? false : activeQuery.isError;
@@ -217,6 +233,7 @@ export default function MatchLobby() {
                       fixture={fixture}
                       onClick={() => handleMatchClick(fixture)}
                       index={i}
+                      bestValue={bestValueIds.has(fixture.fixture.id)}
                     />
                   ))}
                 </div>

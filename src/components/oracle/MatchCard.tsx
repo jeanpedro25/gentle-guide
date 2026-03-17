@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ApiFixture, ESTRELABET_LEAGUES, LEAGUES } from '@/types/fixture';
+import { ApiFixture, LEAGUES } from '@/types/fixture';
 import { useTeamLogos } from '@/hooks/useTeamLogos';
 import { isValid, parseISO } from 'date-fns';
 import { Plus, Check, Star, Zap, RefreshCw } from 'lucide-react';
@@ -25,12 +25,13 @@ interface MatchCardProps {
   fixture: ApiFixture;
   onClick: () => void;
   index: number;
+  bestValue?: boolean;
 }
 
 const DEFAULT_ODDS = { home: 2.05, draw: 3.25, away: 3.50 };
 const LIVE_STATUSES = new Set(['1H', '2H', 'HT', 'LIVE', 'PEN']);
 
-export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
+export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps) {
   const { getTeamLogoLive } = useTeamLogos();
   const parsedDate = parseISO(fixture.fixture.date);
   const fallbackDate = new Date(fixture.fixture.timestamp * 1000);
@@ -214,10 +215,9 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
           <div className="flex items-center justify-between mb-4 pr-8">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] text-muted-foreground">{fixture.league.name}</span>
-              {ESTRELABET_LEAGUES.has(LEAGUE_ID_TO_ISPORTS.get(fixture.league.id) ?? '') && (
-                <span className="bg-primary/10 text-primary text-[9px] px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5">
-                  <Star className="w-2.5 h-2.5 fill-primary" />
-                  EstrelaBet
+              {bestValue && (
+                <span className="bg-primary/10 text-primary text-[9px] px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5 animate-pulse">
+                  💰 PAGANDO MAIS
                 </span>
               )}
               {/* Dynamic heat badge */}

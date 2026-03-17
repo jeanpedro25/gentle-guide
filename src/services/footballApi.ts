@@ -300,9 +300,8 @@ function findLeagueByISportsId(iSportsLeagueId: string): LeagueConfig | null {
   return LEAGUES.find(l => l.iSportsId === iSportsLeagueId) || null;
 }
 
-function iSportsMatchToFixture(match: ISportsMatch): ApiFixture | null {
+function iSportsMatchToFixture(match: ISportsMatch): ApiFixture {
   const league = findLeagueByISportsId(match.leagueId);
-  if (!league) return null;
 
   let statusShort = iSportsStatusToShort(match.status);
   
@@ -338,9 +337,9 @@ function iSportsMatchToFixture(match: ISportsMatch): ApiFixture | null {
       },
     },
     league: {
-      id: league.id,
-      name: league.name,
-      country: league.country,
+      id: league?.id ?? parseInt(match.leagueId),
+      name: league?.name ?? match.leagueName,
+      country: league?.country ?? '',
       logo: '',
       round: match.round ? `Rodada ${match.round}` : '',
     },
@@ -378,9 +377,8 @@ export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
       return [];
     }
 
-    // Filter only EstrelaBet leagues
+    // Show all leagues
     return response.data
-      .filter(match => ESTRELABET_LEAGUES.has(match.leagueId))
       .map(match => {
         const statusShort = iSportsStatusToShort(match.status);
         return {
@@ -467,9 +465,8 @@ async function fetchMatchesByDate(date: string): Promise<ApiFixture[]> {
 
     if (res?.code === 0 && res.data) {
       for (const match of res.data) {
-        if (!ESTRELABET_LEAGUES.has(match.leagueId)) continue;
         const fixture = iSportsMatchToFixture(match);
-        if (fixture) addFixture(fixture);
+        addFixture(fixture);
       }
     }
 
@@ -480,9 +477,8 @@ async function fetchMatchesByDate(date: string): Promise<ApiFixture[]> {
         const liveRes = await iSportsFetch('/sport/football/livescores');
         if (liveRes.code === 0 && liveRes.data) {
           for (const match of liveRes.data) {
-            if (!ESTRELABET_LEAGUES.has(match.leagueId)) continue;
             const fixture = iSportsMatchToFixture(match);
-            if (fixture) addFixture(fixture);
+            addFixture(fixture);
           }
         }
       } catch (err) {
