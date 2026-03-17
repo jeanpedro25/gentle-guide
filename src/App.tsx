@@ -8,6 +8,7 @@ import { clearFootballCache } from "@/services/footballApi";
 import MatchLobby from "./pages/MatchLobby";
 import MatchDetail from "./pages/MatchDetail";
 import BankrollPage from "./pages/BankrollPage";
+import HistoryPage from "./pages/HistoryPage";
 import NotFound from "./pages/NotFound";
 
 // Clear old API cache and sessionStorage on app load
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/" element={<MatchLobby />} />
             <Route path="/match/:id" element={<MatchDetail />} />
             <Route path="/banca" element={<BankrollPage />} />
+            <Route path="/historico" element={<HistoryPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
