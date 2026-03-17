@@ -1,8 +1,9 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, BarChart3, Clock } from 'lucide-react';
+import { Home, BarChart3, Clock, Crosshair } from 'lucide-react';
 
 const NAV_ITEMS = [
   { path: '/', icon: Home, label: 'Início' },
+  { path: '/jogar', icon: Crosshair, label: 'Jogar' },
   { path: '/banca', icon: BarChart3, label: 'Banca' },
   { path: '/historico', icon: Clock, label: 'Histórico' },
 ] as const;
