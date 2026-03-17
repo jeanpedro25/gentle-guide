@@ -97,12 +97,8 @@ export default function BankrollPage() {
     if (pending.length === 0) return;
     setResolving(true);
     try {
-      // Fetch today's and yesterday's finished matches
-      const [todayMatches, yesterdayMatches] = await Promise.all([
-        fetchMatchesByDate(0).catch(() => [] as ApiFixture[]),
-        fetchMatchesByDate(-1).catch(() => [] as ApiFixture[]),
-      ]);
-      const allMatches = [...(todayMatches || []), ...(yesterdayMatches || [])];
+      // Fetch today's finished matches
+      const allMatches = await fetchTodayMatches().catch(() => [] as ApiFixture[]);
       const finished = allMatches.filter(m => m.fixture.status.short === 'FT' || m.fixture.status.short === 'AET' || m.fixture.status.short === 'PEN');
 
       let bankrollDelta = 0;
