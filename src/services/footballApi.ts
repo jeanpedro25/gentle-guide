@@ -465,9 +465,8 @@ async function fetchMatchesByDate(date: string): Promise<ApiFixture[]> {
 
     if (res?.code === 0 && res.data) {
       for (const match of res.data) {
-        if (!ESTRELABET_LEAGUES.has(match.leagueId)) continue;
         const fixture = iSportsMatchToFixture(match);
-        if (fixture) addFixture(fixture);
+        addFixture(fixture);
       }
     }
 
