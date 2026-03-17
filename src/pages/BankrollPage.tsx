@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useBankroll, useUpdateBankroll } from '@/hooks/usePredictions';
 import { useBets, useCreateBet, useResolveBet, BetRow } from '@/hooks/useBets';
 import { BottomNav } from '@/components/oracle/BottomNav';
-import { fetchMatchesByDate } from '@/services/footballApi';
+import { fetchTodayMatches } from '@/services/footballApi';
 import { ApiFixture } from '@/types/fixture';
 import profetaLogo from '@/assets/profeta-bet-logo.png';
 
