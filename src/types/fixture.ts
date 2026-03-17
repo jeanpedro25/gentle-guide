@@ -65,6 +65,8 @@ export const ESTRELABET_LEAGUES = new Set([
   '1123',   // MLS
   '221',    // Libertadores
   '222',    // Sul-Americana
+  '1090',   // Liga MX
+  '2741',   // Liga MX Femenil
 ]);
 
 export const LEAGUES: LeagueConfig[] = [
@@ -77,6 +79,8 @@ export const LEAGUES: LeagueConfig[] = [
   // Americas
   { id: 128, name: 'Liga Argentina', country: 'Argentina', emoji: '🇦🇷', season: 2026, iSportsId: '122', category: 'americas' },
   { id: 253, name: 'MLS', country: 'USA', emoji: '🇺🇸', season: 2026, iSportsId: '1123', category: 'americas' },
+  { id: 262, name: 'Liga MX', country: 'Mexico', emoji: '🇲🇽', season: 2026, iSportsId: '1090', category: 'americas' },
+  { id: 263, name: 'Liga MX Fem.', country: 'Mexico', emoji: '🇲🇽👩', season: 2026, iSportsId: '2741', category: 'americas' },
   { id: 13, name: 'Libertadores', country: 'South America', emoji: '🏆', season: 2026, iSportsId: '221', category: 'cups' },
   { id: 11, name: 'Sul-Americana', country: 'South America', emoji: '🥈', season: 2026, iSportsId: '222', category: 'cups' },
   // Europe
