@@ -240,7 +240,103 @@ export default function BankrollPage() {
           </AnimatePresence>
         </motion.div>
 
-        {/* Stats Cards */}
+        {/* Risk Management */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="glass-card p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-primary" />
+              <h2 className="font-extrabold text-sm tracking-wider text-foreground uppercase">Gestão de Risco</h2>
+            </div>
+            <button onClick={() => setEditingRisk(!editingRisk)} className="p-1.5 bg-secondary rounded text-muted-foreground hover:text-foreground">
+              <Edit2 className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Risk profile buttons */}
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { label: 'Conservador', pct: 1 },
+              { label: 'Moderado', pct: 2 },
+              { label: 'Agressivo', pct: 3 },
+              { label: 'Ultra', pct: 5 },
+            ].map(p => (
+              <button
+                key={p.pct}
+                onClick={() => setRiskPct(p.pct)}
+                className={`py-2 rounded-lg text-[10px] font-bold border transition-all ${
+                  riskPct === p.pct
+                    ? 'border-primary bg-primary/20 text-primary'
+                    : 'border-border bg-card text-muted-foreground hover:border-primary/50'
+                }`}
+              >
+                {p.label}<br />{p.pct}%
+              </button>
+            ))}
+          </div>
+
+          {/* Slider */}
+          <AnimatePresence>
+            {editingRisk && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-3 overflow-hidden">
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-muted-foreground">Risco por aposta</span>
+                    <span className={`font-bold ${riskPct > 5 ? 'text-destructive' : 'text-primary'}`}>{riskPct.toFixed(1)}%</span>
+                  </div>
+                  <input
+                    type="range" min="0.5" max="10" step="0.5" value={riskPct}
+                    onChange={e => setRiskPct(parseFloat(e.target.value))}
+                    className="w-full accent-primary"
+                  />
+                  <div className="flex justify-between text-[9px] text-muted-foreground">
+                    <span>0.5%</span><span>10%</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-muted-foreground">Limite diário de apostas</span>
+                    <span className="font-bold text-primary">{dailyLimit}</span>
+                  </div>
+                  <input
+                    type="range" min="1" max="10" step="1" value={dailyLimit}
+                    onChange={e => setDailyLimit(parseInt(e.target.value))}
+                    className="w-full accent-primary"
+                  />
+                  <div className="flex justify-between text-[9px] text-muted-foreground">
+                    <span>1</span><span>10</span>
+                  </div>
+                </div>
+
+                {riskPct > 5 && (
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-destructive/10 border border-destructive/20">
+                    <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0" />
+                    <p className="text-[10px] text-destructive font-bold">⚠️ Risco alto! Sua banca pode quebrar em ~{Math.round(100 / riskPct)} apostas erradas consecutivas.</p>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Summary */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-secondary/50 rounded-lg p-2 text-center">
+              <p className="text-[9px] text-muted-foreground">Stake/Aposta</p>
+              <p className="text-sm font-bold text-primary">R$ {(bankrollAmount * riskPct / 100).toFixed(2)}</p>
+            </div>
+            <div className="bg-secondary/50 rounded-lg p-2 text-center">
+              <p className="text-[9px] text-muted-foreground">Exposição/Dia</p>
+              <p className="text-sm font-bold text-foreground">R$ {(bankrollAmount * riskPct / 100 * dailyLimit).toFixed(2)}</p>
+            </div>
+            <div className="bg-secondary/50 rounded-lg p-2 text-center">
+              <p className="text-[9px] text-muted-foreground">ROI atual</p>
+              <p className={`text-sm font-bold ${totalProfitLoss >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                {bankrollAmount > 0 ? ((totalProfitLoss / bankrollAmount) * 100).toFixed(1) : '0'}%
+              </p>
+            </div>
+          </div>
+        </motion.div>
+
         <div className="grid grid-cols-4 gap-2">
           <StatCard label="Apostas" value={bets.length} color="text-foreground" />
           <StatCard label="Pendente" value={pending.length} color="text-primary" icon={<Clock className="w-3 h-3" />} />
