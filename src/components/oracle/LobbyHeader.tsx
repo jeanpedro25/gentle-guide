@@ -29,6 +29,13 @@ export function LobbyHeader() {
             {(bankroll?.amount ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </span>
         </button>
+        <button
+          onClick={signOut}
+          className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+          title="Sair"
+        >
+          <LogOut className="w-5 h-5" />
+        </button>
       </div>
     </header>
   );
