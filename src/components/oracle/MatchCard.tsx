@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ApiFixture, ESTRELABET_LEAGUES, LEAGUES } from '@/types/fixture';
+import { ApiFixture, LEAGUES } from '@/types/fixture';
 import { useTeamLogos } from '@/hooks/useTeamLogos';
 import { isValid, parseISO } from 'date-fns';
 import { Plus, Check, Star, Zap, RefreshCw } from 'lucide-react';
