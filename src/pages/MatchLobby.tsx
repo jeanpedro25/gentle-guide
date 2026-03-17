@@ -1,15 +1,15 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { preloadTeamLogos } from '@/services/teamLogos';
-import { useFilteredFixtures, useTodayFixtures } from '@/hooks/useFixtures';
+import { useTodayFixtures, useTomorrowFixtures, useWeekFixtures } from '@/hooks/useFixtures';
 import { useLiveMatches } from '@/hooks/useLiveMatches';
-import { LeagueTabs } from '@/components/oracle/LeagueTabs';
+import { TimeTabs, TimeFilter } from '@/components/oracle/TimeTabs';
 import { MatchCard } from '@/components/oracle/MatchCard';
 import { LobbyHeader } from '@/components/oracle/LobbyHeader';
 import { LiveMatches } from '@/components/oracle/LiveMatches';
 import { LiveAlertBanner } from '@/components/oracle/LiveAlertBanner';
 import { BottomNav } from '@/components/oracle/BottomNav';
 import { ApiFixture } from '@/types/fixture';
-import { isUsingRealData, clearFootballCache } from '@/services/footballApi';
+import { clearFootballCache } from '@/services/footballApi';
 import { motion } from 'framer-motion';
 import { Loader2, AlertCircle, RefreshCw, Search, X, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -17,15 +17,18 @@ import { MultiplaBar } from '@/components/oracle/MultiplaBar';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 
+const LIVE_STATUSES = new Set(['1H', '2H', 'HT', 'LIVE', 'PEN']);
+
 export default function MatchLobby() {
-  const [selectedLeague, setSelectedLeague] = useState<number | null>(null);
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('today');
   const [searchQuery, setSearchQuery] = useState('');
-  const [todayMode, setTodayMode] = useState(true);
-  const { data, isLoading, isError, error, refetch } = useFilteredFixtures(selectedLeague, !todayMode);
-  const todayQuery = useTodayFixtures();
-  const liveQuery = useLiveMatches();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const todayQuery = useTodayFixtures();
+  const tomorrowQuery = useTomorrowFixtures();
+  const weekQuery = useWeekFixtures();
+  const liveQuery = useLiveMatches();
 
   const handleMatchClick = (fixture: ApiFixture) => {
     sessionStorage.setItem('selected-fixture', JSON.stringify(fixture));
@@ -35,75 +38,71 @@ export default function MatchLobby() {
   const handleForceRefresh = useCallback(async () => {
     clearFootballCache();
     queryClient.removeQueries({ queryKey: ['fixtures'] });
-    const [result] = await Promise.all([
-      refetch(),
+    await Promise.all([
       todayQuery.refetch(),
+      tomorrowQuery.refetch(),
+      weekQuery.refetch(),
       liveQuery.refetch(),
     ]);
-    const total = result.data?.reduce((sum, g) => sum + g.fixtures.length, 0) ?? 0;
-    toast.success(`Atualizado! ${total} jogos encontrados`);
-  }, [refetch, todayQuery, liveQuery, queryClient]);
+    toast.success('Atualizado!');
+  }, [todayQuery, tomorrowQuery, weekQuery, liveQuery, queryClient]);
 
-  const handleTodayToggle = useCallback(() => {
-    setTodayMode(prev => !prev);
-  }, []);
-
+  // Preload logos
   useEffect(() => {
     const allFixtures = todayQuery.data ?? [];
     const names = allFixtures.flatMap(f => [f.teams.home.name, f.teams.away.name]);
     if (names.length > 0) preloadTeamLogos(names);
   }, [todayQuery.data]);
 
-  const todayGrouped = useMemo(() => {
-    if (!todayMode) return [];
-    const todayFixtures = todayQuery.data ?? [];
-    const q = searchQuery.toLowerCase().trim();
+  // Get active data source based on tab
+  const activeQuery = timeFilter === 'today' ? todayQuery
+    : timeFilter === 'tomorrow' ? tomorrowQuery
+    : timeFilter === 'week' ? weekQuery
+    : todayQuery; // 'live' uses liveQuery separately
 
-    const filtered = todayFixtures.filter(f => {
+  const fixtures: ApiFixture[] = (activeQuery.data as ApiFixture[] | undefined) ?? [];
+
+  // Group fixtures by league, apply search filter
+  const grouped = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    const filtered = fixtures.filter(f => {
+      // For 'live' tab, only show live matches
+      if (timeFilter === 'live') {
+        if (!LIVE_STATUSES.has(f.fixture.status.short)) return false;
+      }
+      // Exclude finished in today/tomorrow/week
+      if (timeFilter !== 'live') {
+        const s = f.fixture.status.short;
+        if (s === 'FT' || s === 'AET' || s === 'PEN') return false;
+      }
       if (q && !f.teams.home.name.toLowerCase().includes(q) && !f.teams.away.name.toLowerCase().includes(q)) return false;
       return true;
     });
 
-    const groups = new Map<string, { leagueName: string; leagueLogo: string; country: string; fixtures: ApiFixture[] }>();
+    const groups = new Map<string, { leagueName: string; country: string; fixtures: ApiFixture[] }>();
     for (const f of filtered) {
       const key = f.league.name;
       if (!groups.has(key)) {
-        groups.set(key, { leagueName: f.league.name, leagueLogo: f.league.logo, country: f.league.country, fixtures: [] });
+        groups.set(key, { leagueName: f.league.name, country: f.league.country, fixtures: [] });
       }
       groups.get(key)!.fixtures.push(f);
     }
 
     return Array.from(groups.values()).sort((a, b) => {
-      const aLive = a.fixtures.some(f => ['1H', '2H', 'HT', 'LIVE'].includes(f.fixture.status.short));
-      const bLive = b.fixtures.some(f => ['1H', '2H', 'HT', 'LIVE'].includes(f.fixture.status.short));
+      const aLive = a.fixtures.some(f => LIVE_STATUSES.has(f.fixture.status.short));
+      const bLive = b.fixtures.some(f => LIVE_STATUSES.has(f.fixture.status.short));
       if (aLive && !bLive) return -1;
       if (!aLive && bLive) return 1;
       return a.leagueName.localeCompare(b.leagueName);
     });
-  }, [todayMode, todayQuery.data, searchQuery]);
+  }, [fixtures, searchQuery, timeFilter]);
 
-  const filteredData = useMemo(() => {
-    if (todayMode) return [];
-    if (!searchQuery.trim()) return data;
-    const q = searchQuery.toLowerCase().trim();
-    return data
-      .map(group => ({
-        ...group,
-        fixtures: group.fixtures.filter(f =>
-          f.teams.home.name.toLowerCase().includes(q) ||
-          f.teams.away.name.toLowerCase().includes(q)
-        ),
-      }))
-      .filter(group => group.fixtures.length > 0);
-  }, [data, searchQuery, todayMode]);
-
-  const currentLoading = todayMode ? todayQuery.isLoading : isLoading;
-  const currentError = todayMode ? todayQuery.isError : isError;
-  const currentErrorObj = todayMode ? todayQuery.error : error;
-  const totalMatches = todayMode
-    ? todayGrouped.reduce((sum, g) => sum + g.fixtures.length, 0)
-    : filteredData.reduce((sum, g) => sum + g.fixtures.length, 0);
-  const hasResults = totalMatches > 0;
+  const liveCount = (liveQuery.data ?? []).length;
+  const currentLoading = timeFilter === 'live' ? liveQuery.isLoading : activeQuery.isLoading;
+  const currentError = timeFilter === 'live' ? false : activeQuery.isError;
+  const currentErrorObj = activeQuery.error;
+  const totalMatches = grouped.reduce((sum, g) => sum + g.fixtures.length, 0);
+  const hasResults = timeFilter === 'live' ? liveCount > 0 : totalMatches > 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -119,7 +118,7 @@ export default function MatchLobby() {
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Buscar time ou liga..."
+              placeholder="Buscar time..."
               className="w-full bg-card border border-border focus:ring-primary focus:border-primary rounded-lg pl-12 pr-10 py-3 text-sm font-body text-foreground placeholder:text-muted-foreground focus:outline-none transition-colors"
             />
             {searchQuery && (
@@ -133,34 +132,31 @@ export default function MatchLobby() {
           </div>
         </section>
 
-        {/* Live matches */}
-        <section className="mt-8">
-          <LiveMatches matches={liveQuery.data ?? []} isLoading={liveQuery.isLoading} />
+        {/* Time tabs */}
+        <section className="px-4 mt-4">
+          <TimeTabs selected={timeFilter} onSelect={setTimeFilter} liveBadge={liveCount} />
         </section>
 
-        {/* League tabs */}
-        <section className="px-4 mt-8">
-          <LeagueTabs
-            selectedLeagueId={selectedLeague}
-            onSelect={setSelectedLeague}
-            todayMode={todayMode}
-            onTodayToggle={handleTodayToggle}
-          />
-        </section>
+        {/* Live tab → use LiveMatches horizontal cards */}
+        {timeFilter === 'live' && (
+          <section className="mt-6">
+            <LiveMatches matches={liveQuery.data ?? []} isLoading={liveQuery.isLoading} />
+          </section>
+        )}
 
         {/* Loading */}
-        {currentLoading && (
+        {timeFilter !== 'live' && currentLoading && (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <Loader2 className="w-10 h-10 text-primary animate-spin" />
             <p className="text-sm text-muted-foreground">
-              {todayMode ? 'Buscando jogos de hoje' : 'Buscando jogos (30 dias)'}
+              Buscando jogos
               <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>...</motion.span>
             </p>
           </div>
         )}
 
         {/* Error */}
-        {currentError && (
+        {timeFilter !== 'live' && currentError && (
           <div className="flex flex-col items-center justify-center py-20 space-y-4 px-4">
             <AlertCircle className="w-12 h-12 text-destructive" />
             <p className="text-foreground text-center">Erro ao buscar jogos.</p>
@@ -177,17 +173,17 @@ export default function MatchLobby() {
         )}
 
         {/* Empty state */}
-        {!currentLoading && !currentError && !hasResults && (
+        {timeFilter !== 'live' && !currentLoading && !currentError && !hasResults && (
           <div className="flex flex-col items-center justify-center py-20 space-y-4 px-4">
             <p className="text-2xl font-extrabold text-muted-foreground tracking-wider">
-              {searchQuery ? 'NENHUM RESULTADO' : todayMode ? 'NENHUM JOGO HOJE' : 'NENHUM JOGO ENCONTRADO'}
+              {searchQuery ? 'NENHUM RESULTADO' : 'NENHUM JOGO'}
             </p>
             <p className="text-muted-foreground text-sm">
               {searchQuery
                 ? `Nenhum jogo encontrado para "${searchQuery}".`
-                : todayMode
-                  ? 'Não há jogos programados para hoje.'
-                  : 'Não há jogos programados para esta liga.'}
+                : timeFilter === 'today' ? 'Não há jogos programados para hoje.'
+                : timeFilter === 'tomorrow' ? 'Não há jogos programados para amanhã.'
+                : 'Não há jogos programados para esta semana.'}
             </p>
             {searchQuery && (
               <button
@@ -200,55 +196,32 @@ export default function MatchLobby() {
           </div>
         )}
 
-        {/* Match list */}
-        {!currentLoading && !currentError && hasResults && (
-          <section className="mt-8 px-4 space-y-6">
-            {todayMode ? (
-              todayGrouped.map((group) => (
-                <div key={group.leagueName} className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Star className="w-5 h-5 text-primary" />
-                    <h2 className="font-bold text-base text-foreground">
-                      {group.leagueName.toUpperCase()}
-                      {group.country && (
-                        <span className="text-muted-foreground font-normal text-sm ml-2">• {group.country}</span>
-                      )}
-                    </h2>
-                  </div>
-                  <div className="space-y-4">
-                    {group.fixtures.map((fixture, i) => (
-                      <MatchCard
-                        key={fixture.fixture.id}
-                        fixture={fixture}
-                        onClick={() => handleMatchClick(fixture)}
-                        index={i}
-                      />
-                    ))}
-                  </div>
+        {/* Match list (non-live tabs) */}
+        {timeFilter !== 'live' && !currentLoading && !currentError && hasResults && (
+          <section className="mt-6 px-4 space-y-6">
+            {grouped.map((group) => (
+              <div key={group.leagueName} className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <Star className="w-5 h-5 text-primary" />
+                  <h2 className="font-bold text-base text-foreground">
+                    {group.leagueName.toUpperCase()}
+                    {group.country && (
+                      <span className="text-muted-foreground font-normal text-sm ml-2">• {group.country}</span>
+                    )}
+                  </h2>
                 </div>
-              ))
-            ) : (
-              filteredData.map(({ league, fixtures }) => (
-                <div key={league.id} className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Star className="w-5 h-5 text-primary" />
-                    <h2 className="font-bold text-base text-foreground">
-                      {league.name.toUpperCase()}
-                    </h2>
-                  </div>
-                  <div className="space-y-4">
-                    {fixtures.map((fixture, i) => (
-                      <MatchCard
-                        key={fixture.fixture.id}
-                        fixture={fixture}
-                        onClick={() => handleMatchClick(fixture)}
-                        index={i}
-                      />
-                    ))}
-                  </div>
+                <div className="space-y-4">
+                  {group.fixtures.map((fixture, i) => (
+                    <MatchCard
+                      key={fixture.fixture.id}
+                      fixture={fixture}
+                      onClick={() => handleMatchClick(fixture)}
+                      index={i}
+                    />
+                  ))}
                 </div>
-              ))
-            )}
+              </div>
+            ))}
           </section>
         )}
       </main>

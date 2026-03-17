@@ -414,9 +414,40 @@ export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
 // ── Today's matches ──
 
 export async function fetchTodayMatches(): Promise<ApiFixture[]> {
-  const today = getBrazilDateString(0);
-  const tomorrow = getBrazilDateString(1);
+  return fetchMatchesByDate(getBrazilDateString(0));
+}
 
+export async function fetchTomorrowMatches(): Promise<ApiFixture[]> {
+  return fetchMatchesByDate(getBrazilDateString(1));
+}
+
+export async function fetchWeekMatches(): Promise<ApiFixture[]> {
+  const dates: string[] = [];
+  for (let i = 2; i <= 7; i++) {
+    dates.push(getBrazilDateString(i));
+  }
+
+  const allFixtures: ApiFixture[] = [];
+  const seenIds = new Set<number>();
+
+  for (const date of dates) {
+    try {
+      const fixtures = await fetchMatchesByDate(date);
+      for (const f of fixtures) {
+        if (!seenIds.has(f.fixture.id)) {
+          seenIds.add(f.fixture.id);
+          allFixtures.push(f);
+        }
+      }
+    } catch (err) {
+      if (isApiLimitError(err)) throw err;
+    }
+  }
+
+  return allFixtures.sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
+}
+
+async function fetchMatchesByDate(date: string): Promise<ApiFixture[]> {
   try {
     const allFixtures: ApiFixture[] = [];
     const seenIds = new Set<number>();
@@ -429,44 +460,36 @@ export async function fetchTodayMatches(): Promise<ApiFixture[]> {
       }
     };
 
-    // Fetch schedule for today and tomorrow
-    const [todayRes, tomorrowRes] = await Promise.allSettled([
-      iSportsFetch('/sport/football/schedule/basic', { date: today }),
-      iSportsFetch('/sport/football/schedule/basic', { date: tomorrow }),
-    ]);
+    const res = await iSportsFetch('/sport/football/schedule/basic', { date }).catch(err => {
+      if (isApiLimitError(err)) { rateLimited = true; throw err; }
+      return null;
+    });
 
-    const processResponse = (result: PromiseSettledResult<ISportsResponse>) => {
-      if (result.status === 'rejected') {
-        if (isApiLimitError(result.reason)) rateLimited = true;
-        return;
-      }
-
-      const matches = result.value?.data || [];
-      for (const match of matches) {
+    if (res?.code === 0 && res.data) {
+      for (const match of res.data) {
         if (!ESTRELABET_LEAGUES.has(match.leagueId)) continue;
         const fixture = iSportsMatchToFixture(match);
         if (fixture) addFixture(fixture);
       }
-    };
-
-    processResponse(todayRes);
-    processResponse(tomorrowRes);
-
-    // Also try livescores for real-time data
-    try {
-      const liveRes = await iSportsFetch('/sport/football/livescores');
-      if (liveRes.code === 0 && liveRes.data) {
-        for (const match of liveRes.data) {
-          if (!ESTRELABET_LEAGUES.has(match.leagueId)) continue;
-          const fixture = iSportsMatchToFixture(match);
-          if (fixture) addFixture(fixture);
-        }
-      }
-    } catch (err) {
-      if (isApiLimitError(err)) rateLimited = true;
     }
 
-    // Sort: live first, then by time
+    // Also try livescores for today's date
+    const today = getBrazilDateString(0);
+    if (date === today) {
+      try {
+        const liveRes = await iSportsFetch('/sport/football/livescores');
+        if (liveRes.code === 0 && liveRes.data) {
+          for (const match of liveRes.data) {
+            if (!ESTRELABET_LEAGUES.has(match.leagueId)) continue;
+            const fixture = iSportsMatchToFixture(match);
+            if (fixture) addFixture(fixture);
+          }
+        }
+      } catch (err) {
+        if (isApiLimitError(err)) rateLimited = true;
+      }
+    }
+
     allFixtures.sort((a, b) => {
       const liveStatuses = ['1H', '2H', 'HT', 'LIVE', 'PEN'];
       const aLive = liveStatuses.includes(a.fixture.status.short) ? 0 : 1;
@@ -479,10 +502,10 @@ export async function fetchTodayMatches(): Promise<ApiFixture[]> {
       throw new ApiLimitError(lastApiError || 'Limite diário da API de jogos atingido.');
     }
 
-    console.log(`[Oracle] fetchTodayMatches: found ${allFixtures.length} matches for ${today}/${tomorrow}`);
+    console.log(`[Oracle] fetchMatchesByDate(${date}): found ${allFixtures.length} matches`);
     return allFixtures;
   } catch (err) {
-    console.error('[Oracle] fetchTodayMatches error:', err);
+    console.error(`[Oracle] fetchMatchesByDate(${date}) error:`, err);
     if (isApiLimitError(err)) throw err;
     return [];
   }
