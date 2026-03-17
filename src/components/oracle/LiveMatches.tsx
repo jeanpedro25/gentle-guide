@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Radio, Clock, Zap, Loader2, X } from 'lucide-react';
+import { Clock, Zap, Loader2, X } from 'lucide-react';
 import { preloadTeamLogos } from '@/services/teamLogos';
 import { useTeamLogos } from '@/hooks/useTeamLogos';
 import { useLiveAdvisor, LiveAdvice } from '@/hooks/useLiveAdvisor';
@@ -33,8 +33,7 @@ function statusLabel(status: string): string {
     case 'ET': return 'PRORROGAÇÃO';
     case 'P': return 'PÊNALTIS';
     case 'LIVE': return 'AO VIVO';
-    case 'Match Finished': return 'ENCERRADO';
-    case 'FT': return 'ENCERRADO';
+    case 'Match Finished': case 'FT': return 'ENCERRADO';
     case 'PST': return 'ADIADO';
     default: return status.toUpperCase();
   }
@@ -45,10 +44,10 @@ function isLive(status: string): boolean {
 }
 
 const ACTION_CONFIG: Record<string, { bg: string; text: string; label: string }> = {
-  CASHOUT: { bg: 'bg-red-500/20 border-red-500/40', text: 'text-red-400', label: '💰 ENCERRAR' },
-  HOLD: { bg: 'bg-blue-500/20 border-blue-500/40', text: 'text-blue-400', label: '✊ MANTER' },
-  BET_MORE: { bg: 'bg-green-500/20 border-green-500/40', text: 'text-green-400', label: '🚀 AUMENTAR' },
-  HEDGE: { bg: 'bg-yellow-500/20 border-yellow-500/40', text: 'text-yellow-400', label: '🛡️ PROTEGER' },
+  CASHOUT: { bg: 'bg-destructive/20 border-destructive/40', text: 'text-destructive', label: '💰 ENCERRAR' },
+  HOLD: { bg: 'bg-oracle-blue/20 border-oracle-blue/40', text: 'text-oracle-blue', label: '✊ MANTER' },
+  BET_MORE: { bg: 'bg-oracle-win/20 border-oracle-win/40', text: 'text-oracle-win', label: '🚀 AUMENTAR' },
+  HEDGE: { bg: 'bg-primary/20 border-primary/40', text: 'text-primary', label: '🛡️ PROTEGER' },
 };
 
 export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
@@ -56,28 +55,25 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
   const finishedMatches = matches.filter(m => !isLive(m.status) && (m.homeScore !== null));
   const { advice, loading, getAdvice, clearAdvice } = useLiveAdvisor();
 
-  // Preload logos for all teams
   const teamNames = useMemo(() =>
     matches.flatMap(m => [m.homeTeam, m.awayTeam]),
     [matches]
   );
 
   useEffect(() => {
-    if (teamNames.length > 0) {
-      preloadTeamLogos(teamNames);
-    }
+    if (teamNames.length > 0) preloadTeamLogos(teamNames);
   }, [teamNames.join(',')]);
 
   if (isLoading) {
     return (
-      <div className="glass-card p-4">
+      <div className="px-4">
         <div className="flex items-center gap-2 mb-3">
-          <Radio className="w-4 h-4 text-destructive animate-pulse" />
-          <span className="font-display text-sm tracking-wider text-foreground">AO VIVO</span>
+          <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+          <span className="font-bold text-sm tracking-widest uppercase text-muted-foreground">Ao Vivo</span>
         </div>
-        <div className="flex gap-3 overflow-x-auto pb-2">
+        <div className="flex gap-4 overflow-x-auto scrollbar-hide">
           {[1, 2, 3].map(i => (
-            <div key={i} className="min-w-[220px] h-[100px] rounded-xl bg-muted animate-pulse" />
+            <div key={i} className="min-w-[280px] h-[140px] rounded-lg bg-card animate-pulse" />
           ))}
         </div>
       </div>
@@ -86,12 +82,12 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
 
   if (liveMatches.length === 0 && finishedMatches.length === 0) {
     return (
-      <div className="glass-card p-4">
+      <div className="px-4">
         <div className="flex items-center gap-2 mb-2">
           <Clock className="w-4 h-4 text-muted-foreground" />
-          <span className="font-display text-sm tracking-wider text-muted-foreground">NENHUM JOGO AO VIVO AGORA</span>
+          <span className="font-bold text-sm tracking-widest uppercase text-muted-foreground">Nenhum jogo ao vivo</span>
         </div>
-        <p className="text-xs font-body text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Jogos de hoje aparecerão aqui quando começarem.
         </p>
       </div>
@@ -99,23 +95,19 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
   }
 
   return (
-    <div className="space-y-3">
-      {/* Live matches */}
+    <div className="space-y-6">
       {liveMatches.length > 0 && (
-        <div className="glass-card p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive" />
-            </span>
-            <span className="font-display text-sm tracking-wider text-foreground">
-              AO VIVO
-            </span>
-            <span className="text-xs font-body text-muted-foreground ml-auto">
+        <section>
+          <div className="px-4 flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+              <h2 className="font-bold text-sm tracking-widest uppercase text-muted-foreground">Ao Vivo</h2>
+            </div>
+            <span className="text-xs text-muted-foreground">
               {liveMatches.length} {liveMatches.length === 1 ? 'jogo' : 'jogos'}
             </span>
           </div>
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+          <div className="flex gap-4 overflow-x-auto px-4 scrollbar-hide">
             <AnimatePresence>
               {liveMatches.map((match) => (
                 <LiveMatchCard
@@ -137,26 +129,23 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
               ))}
             </AnimatePresence>
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Recently finished */}
       {finishedMatches.length > 0 && (
-        <div className="glass-card p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="font-display text-sm tracking-wider text-muted-foreground">
-              ENCERRADOS HOJE
-            </span>
-            <span className="text-xs font-body text-muted-foreground ml-auto">
+        <section className="opacity-75">
+          <div className="px-4 flex items-center justify-between mb-4">
+            <h2 className="font-bold text-sm tracking-widest uppercase text-muted-foreground">Encerrados Hoje</h2>
+            <span className="text-xs text-muted-foreground">
               {finishedMatches.length} {finishedMatches.length === 1 ? 'jogo' : 'jogos'}
             </span>
           </div>
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+          <div className="space-y-3 px-4">
             {finishedMatches.map((match) => (
-              <LiveMatchCard key={match.id} match={match} finished />
+              <FinishedMatchRow key={match.id} match={match} />
             ))}
           </div>
-        </div>
+        </section>
       )}
     </div>
   );
@@ -164,23 +153,14 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
 
 interface LiveMatchCardProps {
   match: LiveMatch;
-  finished?: boolean;
   advice?: LiveAdvice;
   isLoadingAdvice?: boolean;
   onRequestAdvice?: () => void;
   onClearAdvice?: () => void;
 }
 
-function LiveMatchCard({
-  match,
-  finished = false,
-  advice,
-  isLoadingAdvice,
-  onRequestAdvice,
-  onClearAdvice,
-}: LiveMatchCardProps) {
+function LiveMatchCard({ match, advice, isLoadingAdvice, onRequestAdvice, onClearAdvice }: LiveMatchCardProps) {
   const { getTeamLogoLive } = useTeamLogos();
-  const live = isLive(match.status);
   const actionCfg = advice ? ACTION_CONFIG[advice.action] || ACTION_CONFIG.HOLD : null;
 
   return (
@@ -188,122 +168,117 @@ function LiveMatchCard({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className={`min-w-[260px] rounded-xl p-3 border transition-all ${
-        advice
-          ? `${actionCfg!.bg} border`
-          : live
-            ? 'bg-destructive/5 border-destructive/30'
-            : 'bg-secondary/50 border-border'
-      }`}
+      className="min-w-[280px] glass-card rounded-lg p-4 relative overflow-hidden"
     >
-      {/* League + Status */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-1.5">
-          {match.leagueBadge && (
-            <img
-              src={match.leagueBadge}
-              alt=""
-              className="w-4 h-4 object-contain"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-            />
-          )}
-          <span className="text-[10px] font-body text-muted-foreground truncate max-w-[100px]">
-            {match.league}
-          </span>
-        </div>
-        <span className={`text-[10px] font-display tracking-wider px-1.5 py-0.5 rounded ${
-          live
-            ? 'bg-destructive/20 text-destructive'
-            : 'bg-muted text-muted-foreground'
-        }`}>
+      <div className="flex justify-between items-start mb-4">
+        <span className="text-[10px] font-bold text-primary uppercase tracking-tighter">{match.league}</span>
+        <span className="px-2 py-0.5 bg-destructive/20 text-destructive text-[10px] font-bold rounded">
           {statusLabel(match.status)}
-          {match.time && live && ` ${match.time}'`}
+          {match.time && ` ${match.time}'`}
         </span>
       </div>
 
-      {/* Score */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          <img
-            src={getTeamLogoLive(match.homeTeam, match.homeBadge)}
-            alt={match.homeTeam}
-            className="w-6 h-6 object-contain shrink-0 rounded"
-            onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
-          />
-          <span className="text-xs font-body text-foreground truncate">{match.homeTeam}</span>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img
+              src={getTeamLogoLive(match.homeTeam, match.homeBadge)}
+              alt={match.homeTeam}
+              className="w-6 h-6 rounded-full object-contain"
+              onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
+            />
+            <span className="text-sm font-medium text-foreground">{match.homeTeam}</span>
+          </div>
+          <span className="text-lg font-bold text-foreground">{match.homeScore ?? 0}</span>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <span className={`text-lg font-display ${live ? 'text-foreground' : 'text-muted-foreground'}`}>
-            {match.homeScore ?? '-'}
-          </span>
-          <span className="text-xs text-muted-foreground">:</span>
-          <span className={`text-lg font-display ${live ? 'text-foreground' : 'text-muted-foreground'}`}>
-            {match.awayScore ?? '-'}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 min-w-0 flex-1 flex-row-reverse">
-          <img
-            src={getTeamLogoLive(match.awayTeam, match.awayBadge)}
-            alt={match.awayTeam}
-            className="w-6 h-6 object-contain shrink-0 rounded"
-            onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
-          />
-          <span className="text-xs font-body text-foreground truncate text-right">{match.awayTeam}</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img
+              src={getTeamLogoLive(match.awayTeam, match.awayBadge)}
+              alt={match.awayTeam}
+              className="w-6 h-6 rounded-full object-contain"
+              onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
+            />
+            <span className="text-sm font-medium text-foreground">{match.awayTeam}</span>
+          </div>
+          <span className="text-lg font-bold text-foreground">{match.awayScore ?? 0}</span>
         </div>
       </div>
 
-      {/* Live Advisor */}
-      {live && !finished && (
-        <div className="mt-2 pt-2 border-t border-border/50">
-          {!advice && !isLoadingAdvice && (
-            <button
-              onClick={onRequestAdvice}
-              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-[11px] font-display tracking-wider transition-colors"
-            >
-              <Zap className="w-3 h-3" />
-              CONSULTAR PROFETA
-            </button>
-          )}
+      {/* Consult button / Advice */}
+      <div className="mt-4">
+        {!advice && !isLoadingAdvice && (
+          <button
+            onClick={onRequestAdvice}
+            className="w-full bg-muted/30 hover:bg-primary hover:text-primary-foreground transition-colors py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2 uppercase"
+          >
+            <Zap className="w-3 h-3" />
+            Consultar Profeta
+          </button>
+        )}
 
-          {isLoadingAdvice && (
-            <div className="flex items-center justify-center gap-1.5 py-1.5 text-[11px] text-muted-foreground">
-              <Loader2 className="w-3 h-3 animate-spin" />
-              Analisando...
-            </div>
-          )}
+        {isLoadingAdvice && (
+          <div className="flex items-center justify-center gap-1.5 py-2 text-[11px] text-muted-foreground">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            Analisando...
+          </div>
+        )}
 
-          {advice && actionCfg && (
-            <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-1"
-            >
-              <div className="flex items-center justify-between">
-                <span className={`text-xs font-display tracking-wider ${actionCfg.text}`}>
-                  {actionCfg.label}
+        {advice && actionCfg && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-1"
+          >
+            <div className="flex items-center justify-between">
+              <span className={`text-xs font-bold tracking-wider ${actionCfg.text}`}>
+                {actionCfg.label}
+              </span>
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] text-muted-foreground">
+                  {advice.confidence}%
                 </span>
-                <div className="flex items-center gap-1">
-                  <span className="text-[10px] text-muted-foreground">
-                    {advice.confidence}% confiança
-                  </span>
-                  <button
-                    onClick={onClearAdvice}
-                    className="p-0.5 rounded hover:bg-secondary/50 text-muted-foreground"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
+                <button onClick={onClearAdvice} className="p-0.5 rounded hover:bg-secondary/50 text-muted-foreground">
+                  <X className="w-3 h-3" />
+                </button>
               </div>
-              <p className="text-[10px] font-body text-muted-foreground leading-relaxed">
-                {advice.suggestion}
-              </p>
-              <p className="text-[10px] font-body text-oracle-draw">
-                💡 {advice.profitTip}
-              </p>
-            </motion.div>
-          )}
-        </div>
-      )}
+            </div>
+            <p className="text-[10px] text-muted-foreground leading-relaxed">{advice.suggestion}</p>
+            <p className="text-[10px] text-primary">💡 {advice.profitTip}</p>
+          </motion.div>
+        )}
+      </div>
     </motion.div>
+  );
+}
+
+function FinishedMatchRow({ match }: { match: LiveMatch }) {
+  const { getTeamLogoLive } = useTeamLogos();
+
+  return (
+    <div className="bg-card/40 border border-border rounded-lg p-3 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <img
+          src={getTeamLogoLive(match.homeTeam, match.homeBadge)}
+          alt={match.homeTeam}
+          className="w-5 h-5 object-contain"
+          onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
+        />
+        <span className="text-xs font-medium text-foreground">{match.homeTeam}</span>
+      </div>
+      <div className="flex items-center gap-4">
+        <span className="text-sm font-bold text-foreground">{match.homeScore ?? 0} - {match.awayScore ?? 0}</span>
+        <span className="text-[9px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded">FINAL</span>
+      </div>
+      <div className="flex items-center gap-3 justify-end">
+        <span className="text-xs font-medium text-foreground">{match.awayTeam}</span>
+        <img
+          src={getTeamLogoLive(match.awayTeam, match.awayBadge)}
+          alt={match.awayTeam}
+          className="w-5 h-5 object-contain"
+          onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
+        />
+      </div>
+    </div>
   );
 }

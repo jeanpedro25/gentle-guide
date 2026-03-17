@@ -1,13 +1,12 @@
 import { motion } from 'framer-motion';
 import { ApiFixture, ESTRELABET_LEAGUES, LEAGUES } from '@/types/fixture';
 import { useTeamLogos } from '@/hooks/useTeamLogos';
-import { Badge } from '@/components/ui/badge';
 import { isValid, parseISO } from 'date-fns';
-import { ChevronRight, Plus, Check, Star, Zap, RefreshCw } from 'lucide-react';
+import { Plus, Check, Star, Zap, RefreshCw } from 'lucide-react';
 import { useMultipla } from '@/contexts/MultiplaContext';
 import { useState } from 'react';
 import { getRelativeDayLabel, getStatusDisplay, formatBrazilTime } from '@/services/footballApi';
-import { OracleAnalysis, normalizeProbabilities, oracleToLegacy } from '@/types/prediction';
+import { OracleAnalysis, normalizeProbabilities } from '@/types/prediction';
 import { analyzeMatch } from '@/services/oracleService';
 import { fetchMatchContext } from '@/services/footballApi';
 import { useSavePrediction, usePredictionByFixture, useBankroll, useUpdatePredictionStatus } from '@/hooks/usePredictions';
@@ -84,7 +83,6 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
       result.probabilities = normalizeProbabilities(result.probabilities);
       setOracleResult(result);
 
-      // Save to DB
       const kellyPct = Math.min(result.primaryBet.kellyFraction * 100, 10);
       await savePrediction.mutateAsync({
         fixture_id: fixture.fixture.id,
@@ -127,7 +125,6 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
       context: existingPrediction ? `Previsão inicial: ${existingPrediction.predicted_score} com ${existingPrediction.confidence}% confiança` : undefined,
     });
 
-    // Update prediction status
     if (existingPrediction) {
       await updateStatus.mutateAsync({ id: existingPrediction.id, status: 'live_reviewed' });
     }
@@ -139,22 +136,21 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.05, duration: 0.3 }}
-        className={`w-full text-left glass-card p-4 transition-all group relative ${
+        className={`w-full bg-card border border-border rounded-lg p-4 transition-all group relative ${
           selected ? 'border-primary/50 ring-1 ring-primary/20' : 'hover:border-primary/30'
         }`}
       >
         {/* Add to Múltipla button */}
         <button
           onClick={handleAddClick}
-          className={`absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center transition-all z-10 ${
+          className={`absolute top-3 right-3 w-6 h-6 rounded-full flex items-center justify-center transition-all z-10 ${
             selected
               ? 'bg-primary text-primary-foreground'
-              : 'bg-secondary/80 text-muted-foreground hover:bg-primary hover:text-primary-foreground'
+              : 'bg-muted/50 text-muted-foreground hover:bg-primary hover:text-primary-foreground'
           } ${!selected && maxReached ? 'opacity-30 cursor-not-allowed' : ''}`}
           disabled={!selected && maxReached}
-          title={selected ? 'Remover da múltipla' : 'Adicionar à múltipla'}
         >
-          {selected ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+          {selected ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
         </button>
 
         {/* Pick selector dropdown */}
@@ -162,7 +158,7 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="absolute top-12 right-3 bg-card border border-border rounded-xl shadow-xl z-20 overflow-hidden"
+            className="absolute top-11 right-3 bg-card border border-border rounded-lg shadow-xl z-20 overflow-hidden"
           >
             {[
               { pick: 'home' as const, label: fixture.teams.home.name, odd: DEFAULT_ODDS.home },
@@ -172,7 +168,7 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
               <button
                 key={pick}
                 onClick={(e) => handlePick(e, pick)}
-                className={`w-full px-4 py-2 text-left text-sm font-body flex justify-between items-center gap-4 hover:bg-secondary/50 transition-colors ${
+                className={`w-full px-4 py-2 text-left text-xs font-body flex justify-between items-center gap-4 hover:bg-secondary/50 transition-colors ${
                   currentSelection?.pick === pick ? 'bg-primary/10 text-primary' : 'text-foreground'
                 }`}
               >
@@ -185,87 +181,93 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
 
         {/* Main clickable area */}
         <button onClick={onClick} className="w-full text-left">
-          {/* League + round */}
-          <div className="flex items-center justify-between mb-3 pr-8">
+          {/* League + EstrelaBet badge */}
+          <div className="flex items-center justify-between mb-4 pr-8">
             <div className="flex items-center gap-2">
-              <img
-                src={fixture.league.logo}
-                alt={fixture.league.name}
-                className="w-5 h-5 object-contain"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-              />
-              <span className="text-xs font-body text-muted-foreground truncate max-w-[160px]">
-                {fixture.league.name}
-              </span>
+              <span className="text-[10px] text-muted-foreground">{fixture.league.name}</span>
               {ESTRELABET_LEAGUES.has(LEAGUE_ID_TO_ISPORTS.get(fixture.league.id) ?? '') && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-yellow-500/50 text-yellow-500 gap-0.5">
-                  <Star className="w-2.5 h-2.5 fill-yellow-500" />
+                <span className="bg-primary/10 text-primary text-[9px] px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5">
+                  <Star className="w-2.5 h-2.5 fill-primary" />
                   EstrelaBet
-                </Badge>
+                </span>
               )}
             </div>
-            <span className="text-xs font-body text-muted-foreground">
-              {fixture.league.round?.replace('Regular Season - ', 'Rod. ')}
-            </span>
           </div>
 
-          {/* Teams */}
-          <div className="flex items-center justify-between gap-2 mb-3">
-            <TeamBadge name={fixture.teams.home.name} logo={getTeamLogoLive(fixture.teams.home.name, fixture.teams.home.logo)} align="left" badge="🏠" />
-            {statusShort === 'FT' || isLive ? (
-              <div className="text-center shrink-0">
-                <span className="font-display text-xl text-foreground">
-                  {fixture.goals.home ?? 0} - {fixture.goals.away ?? 0}
-                </span>
-              </div>
-            ) : (
-              <span className="font-display text-lg text-muted-foreground shrink-0">VS</span>
-            )}
-            <TeamBadge name={fixture.teams.away.name} logo={getTeamLogoLive(fixture.teams.away.name, fixture.teams.away.logo)} align="right" badge="✈️" />
-          </div>
-
-          {/* Date + status */}
+          {/* Teams - centered layout like reference */}
           <div className="flex items-center justify-between">
-            <span className="text-xs font-body text-muted-foreground capitalize">{formattedDate}</span>
-            <div className="flex items-center gap-2">
-              {dayLabel ? (
-                <span className={`flex items-center gap-1 text-xs font-display ${
-                  dayLabel === 'HOJE' ? 'text-oracle-draw' : dayLabel === 'AMANHÃ' ? 'text-oracle-win' : 'text-muted-foreground'
-                }`}>
-                  {dayLabel === 'HOJE' && <span className="w-2 h-2 rounded-full bg-oracle-draw animate-pulse" />}
-                  {dayLabel}
-                </span>
+            <div className="flex flex-col items-center gap-2 w-1/3">
+              <img
+                src={getTeamLogoLive(fixture.teams.home.name, fixture.teams.home.logo)}
+                alt={fixture.teams.home.name}
+                className="w-10 h-10 object-contain"
+                onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
+              />
+              <span className="text-xs font-semibold text-foreground text-center leading-tight">{fixture.teams.home.name}</span>
+            </div>
+
+            <div className="flex flex-col items-center">
+              {statusShort === 'FT' || isLive ? (
+                <>
+                  <span className="text-2xl font-black text-foreground">
+                    {fixture.goals.home ?? 0} - {fixture.goals.away ?? 0}
+                  </span>
+                  {isLive && (
+                    <span className="text-[10px] font-bold text-destructive mt-1 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
+                      {statusDisplay.label}
+                    </span>
+                  )}
+                  {statusShort === 'FT' && (
+                    <span className="text-[9px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded mt-1">FINAL</span>
+                  )}
+                </>
               ) : (
-                <span className={`flex items-center gap-1 text-xs font-display ${statusDisplay.color}`}>
-                  {statusDisplay.pulse && <span className={`w-2 h-2 rounded-full ${
-                    statusDisplay.color.includes('red') ? 'bg-red-500' : 'bg-oracle-win'
-                  } animate-pulse`} />}
-                  {statusDisplay.label}
-                </span>
+                <>
+                  <span className="text-2xl font-black text-foreground">0 - 0</span>
+                  {dayLabel && (
+                    <span className={`text-[10px] font-bold mt-1 ${
+                      dayLabel === 'HOJE' ? 'text-primary' : dayLabel === 'AMANHÃ' ? 'text-primary' : 'text-muted-foreground'
+                    }`}>
+                      {dayLabel}
+                    </span>
+                  )}
+                </>
               )}
-              <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+
+            <div className="flex flex-col items-center gap-2 w-1/3">
+              <img
+                src={getTeamLogoLive(fixture.teams.away.name, fixture.teams.away.logo)}
+                alt={fixture.teams.away.name}
+                className="w-10 h-10 object-contain"
+                onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
+              />
+              <span className="text-xs font-semibold text-foreground text-center leading-tight">{fixture.teams.away.name}</span>
             </div>
           </div>
         </button>
 
-        {/* Analyze button */}
-        <div className="mt-3 pt-3 border-t border-border/50">
+        {/* Footer: date + analyze button */}
+        <div className="mt-4 pt-4 border-t border-border/50 flex justify-between items-center">
+          <span className="text-[10px] text-muted-foreground capitalize">{formattedDate}</span>
+
           {isLive && existingPrediction ? (
             <button
               onClick={handleLiveReanalyze}
-              className="w-full py-2 rounded-lg bg-oracle-draw/10 border border-oracle-draw/30 text-oracle-draw font-body text-xs font-semibold flex items-center justify-center gap-2 hover:bg-oracle-draw/20 transition-colors"
+              className="flex items-center gap-2 bg-destructive/10 text-destructive text-[10px] font-bold px-3 py-1.5 rounded-full border border-destructive/20 hover:bg-destructive/20 transition-colors"
             >
-              <RefreshCw className="w-3.5 h-3.5" />
-              🔄 Re-analisar ao vivo
+              <RefreshCw className="w-3 h-3" />
+              Re-analisar
             </button>
           ) : (
             <button
               onClick={handleAnalyze}
               disabled={isAnalyzing}
-              className="w-full py-2 rounded-lg bg-primary/10 border border-primary/30 text-primary font-body text-xs font-semibold flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 bg-oracle-win/10 text-oracle-win text-[10px] font-bold px-3 py-1.5 rounded-full border border-oracle-win/20 hover:bg-oracle-win/20 transition-colors disabled:opacity-50"
             >
-              <Zap className="w-3.5 h-3.5" />
-              ⚡ Analisar
+              <Zap className="w-3 h-3" />
+              Analisar
             </button>
           )}
         </div>
@@ -292,24 +294,5 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
         score={isLive ? `${fixture.goals.home ?? 0} x ${fixture.goals.away ?? 0}` : undefined}
       />
     </>
-  );
-}
-
-function TeamBadge({ name, logo, align, badge }: { name: string; logo: string; align: 'left' | 'right'; badge?: string }) {
-  return (
-    <div className={`flex items-center gap-2 min-w-0 ${align === 'right' ? 'flex-row-reverse text-right' : ''}`}>
-      <img
-        src={logo}
-        alt={name}
-        className="w-8 h-8 object-contain shrink-0"
-        onError={(e) => {
-          (e.target as HTMLImageElement).src = '/placeholder.svg';
-        }}
-      />
-      <div className="flex items-center gap-1 min-w-0">
-        {badge && <span className="text-xs shrink-0">{badge}</span>}
-        <span className="text-sm font-body text-foreground truncate">{name}</span>
-      </div>
-    </div>
   );
 }
