@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useBankroll } from '@/hooks/usePredictions';
+import { useAuth } from '@/contexts/AuthContext';
+import { LogOut } from 'lucide-react';
 
 export function LobbyHeader() {
   const navigate = useNavigate();
