@@ -9,6 +9,7 @@ import MatchLobby from "./pages/MatchLobby";
 import MatchDetail from "./pages/MatchDetail";
 import BankrollPage from "./pages/BankrollPage";
 import HistoryPage from "./pages/HistoryPage";
+import JogueAgoraPage from "./pages/JogueAgoraPage";
 import NotFound from "./pages/NotFound";
 
 // Clear old API cache and sessionStorage on app load
@@ -27,6 +28,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<MatchLobby />} />
             <Route path="/match/:id" element={<MatchDetail />} />
+            <Route path="/jogar" element={<JogueAgoraPage />} />
             <Route path="/banca" element={<BankrollPage />} />
             <Route path="/historico" element={<HistoryPage />} />
             <Route path="*" element={<NotFound />} />
