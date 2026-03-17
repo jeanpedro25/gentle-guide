@@ -70,7 +70,7 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
     return calculateVerdict({
       homePossession: 50, // Would come from live stats API
       awayPossession: 50,
-      minute: parseInt(fixture.fixture.status.elapsed?.toString() || '0'),
+      minute: 0,
       homeScore: fixture.goals.home ?? 0,
       awayScore: fixture.goals.away ?? 0,
     });
@@ -81,7 +81,7 @@ export function MatchCard({ fixture, onClick, index }: MatchCardProps) {
     if (!isLive || !existingPrediction) return { type: null as null, message: '' };
     const betTeam = existingPrediction.predicted_winner === fixture.teams.home.name ? 'HOME' as const : 'AWAY' as const;
     return getCashoutAlert({
-      minute: parseInt(fixture.fixture.status.elapsed?.toString() || '0'),
+      minute: 0,
       userBetTeam: betTeam,
       homeScore: fixture.goals.home ?? 0,
       awayScore: fixture.goals.away ?? 0,
