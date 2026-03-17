@@ -1,9 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { useBankroll } from '@/hooks/usePredictions';
+import { useAuth } from '@/contexts/AuthContext';
+import { LogOut } from 'lucide-react';
 
 export function LobbyHeader() {
   const navigate = useNavigate();
   const { data: bankroll } = useBankroll();
+  const { signOut } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 px-4 py-4 bg-background/80 backdrop-blur-lg border-b border-border flex items-center justify-between">
@@ -25,6 +28,13 @@ export function LobbyHeader() {
           <span className="text-sm font-semibold text-foreground">
             {(bankroll?.amount ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </span>
+        </button>
+        <button
+          onClick={signOut}
+          className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+          title="Sair"
+        >
+          <LogOut className="w-5 h-5" />
         </button>
       </div>
     </header>
