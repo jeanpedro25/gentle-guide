@@ -1,68 +1,69 @@
-import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { ArrowLeft, DollarSign, TrendingUp, Target, BarChart3, Edit2, Check, Trophy, XCircle, Clock, Sparkles, Shield, AlertTriangle } from 'lucide-react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  ArrowLeft, DollarSign, TrendingUp, TrendingDown, Target, BarChart3,
+  Edit2, Check, Trophy, XCircle, Clock, Shield, AlertTriangle, Plus, Loader2
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { usePredictions, useBankroll, useUpdateBankroll, useBetResults, PredictionRow, BetResultRow } from '@/hooks/usePredictions';
+import { useBankroll, useUpdateBankroll } from '@/hooks/usePredictions';
+import { useBets, useCreateBet, useResolveBet, BetRow } from '@/hooks/useBets';
+import { BottomNav } from '@/components/oracle/BottomNav';
+import { fetchTodayMatches } from '@/services/footballApi';
+import { ApiFixture } from '@/types/fixture';
 import profetaLogo from '@/assets/profeta-bet-logo.png';
 
-const RISK_PROFILES = [
-  { label: 'Conservador', pct: 1, color: 'text-primary', desc: 'Crescimento lento e seguro' },
-  { label: 'Moderado', pct: 2, color: 'text-yellow-500', desc: 'Equilíbrio risco/retorno' },
-  { label: 'Agressivo', pct: 3, color: 'text-orange-500', desc: 'Crescimento acelerado' },
-  { label: 'Ultra', pct: 5, color: 'text-destructive', desc: '⚠️ Alto risco de quebra' },
-];
+// Determine 1X2 result from a score string "H x A"
+function scoreToResult(score: string): '1' | 'X' | '2' | null {
+  const m = score.match(/(\d+)\s*[x×\-:]\s*(\d+)/i);
+  if (!m) return null;
+  const h = parseInt(m[1]), a = parseInt(m[2]);
+  if (h > a) return '1';
+  if (h < a) return '2';
+  return 'X';
+}
 
 export default function BankrollPage() {
   const navigate = useNavigate();
-  const { data: predictions = [] } = usePredictions();
   const { data: bankroll } = useBankroll();
   const updateBankroll = useUpdateBankroll();
-  const { data: betResults = [] } = useBetResults();
+  const { data: bets = [], refetch: refetchBets } = useBets();
+  const createBet = useCreateBet();
+  const resolveBet = useResolveBet();
 
   const [editingBankroll, setEditingBankroll] = useState(false);
   const [bankrollInput, setBankrollInput] = useState('');
-  const [riskPct, setRiskPct] = useState(2); // editable risk %
-  const [dailyLimit, setDailyLimit] = useState(3); // max bets per day
-  const [editingDaily, setEditingDaily] = useState(false);
-  const [dailyInput, setDailyInput] = useState('3');
+  const [showForm, setShowForm] = useState(false);
+  const [resolving, setResolving] = useState(false);
 
-  const bankrollAmount = bankroll?.amount ?? 200;
+  // Form state
+  const [formHome, setFormHome] = useState('');
+  const [formAway, setFormAway] = useState('');
+  const [formPrediction, setFormPrediction] = useState<'1' | 'X' | '2'>('1');
+  const [formStake, setFormStake] = useState('');
+  const [formOdd, setFormOdd] = useState('1.50');
 
-  // Metrics
-  const totalPredictions = predictions.length;
-  const resolved = betResults.filter(r => r.won !== null);
-  const wins = resolved.filter(r => r.won);
+  const bankrollAmount = bankroll?.amount ?? 100;
+  const initialBankroll = 100; // reference for health
+
+  // Computed metrics
+  const resolved = bets.filter(b => b.status !== 'pending');
+  const wins = resolved.filter(b => b.status === 'won');
+  const losses = resolved.filter(b => b.status === 'lost');
+  const pending = bets.filter(b => b.status === 'pending');
+  const totalProfitLoss = resolved.reduce((s, b) => s + (b.profit_loss ?? 0), 0);
   const hitRate = resolved.length > 0 ? (wins.length / resolved.length) * 100 : 0;
-  const totalProfitLoss = resolved.reduce((sum, r) => sum + (r.profit_loss ?? 0), 0);
-  const roi = bankrollAmount > 0 ? (totalProfitLoss / bankrollAmount) * 100 : 0;
 
-  const resultMap = new Map(betResults.map(r => [r.prediction_id, r]));
-  const scoreHits = predictions.filter(p => {
-    const result = resultMap.get(p.id);
-    if (!result?.actual_score || !p.predicted_score) return false;
-    return p.predicted_score.replace(/\s/g, '').toLowerCase() === result.actual_score.replace(/\s/g, '').toLowerCase();
-  }).length;
+  // Health bar based on bankroll vs initial
+  const healthPct = Math.min(100, Math.max(0, (bankrollAmount / Math.max(initialBankroll, 1)) * 100));
+  const healthLabel = healthPct >= 70 ? 'SAUDÁVEL' : healthPct >= 40 ? 'ATENÇÃO' : 'CRÍTICO';
+  const healthBarColor = healthPct >= 70 ? 'bg-primary' : healthPct >= 40 ? 'bg-yellow-500' : 'bg-destructive';
+  const healthTextColor = healthPct >= 70 ? 'text-primary' : healthPct >= 40 ? 'text-yellow-500' : 'text-destructive';
 
-  // Smart management calculations
-  const stakeAmount = bankrollAmount * (riskPct / 100);
-  const maxDailyExposure = stakeAmount * dailyLimit;
-  const maxDailyPct = (maxDailyExposure / bankrollAmount) * 100;
-  const daysToDouble = riskPct > 0 ? Math.ceil(100 / riskPct) : 999;
-  const sessionsToBreak = riskPct > 0 ? Math.floor(100 / riskPct) : 999;
+  const potentialProfit = parseFloat(formStake || '0') * (parseFloat(formOdd || '1') - 1);
+  const stakeNum = parseFloat(formStake || '0');
+  const stakeExceedsBankroll = stakeNum > bankrollAmount;
 
-  // Health score (0-100)
-  const healthScore = useMemo(() => {
-    let score = 50;
-    if (hitRate >= 60) score += 20; else if (hitRate >= 45) score += 10; else if (hitRate < 30 && resolved.length > 3) score -= 15;
-    if (roi > 0) score += 15; else if (roi < -10) score -= 15;
-    if (riskPct <= 2) score += 10; else if (riskPct >= 5) score -= 10;
-    if (bankrollAmount > 500) score += 5;
-    return Math.max(0, Math.min(100, score));
-  }, [hitRate, roi, riskPct, bankrollAmount, resolved.length]);
-
-  const healthLabel = healthScore >= 70 ? 'SAUDÁVEL' : healthScore >= 40 ? 'ATENÇÃO' : 'PERIGO';
-  const healthColor = healthScore >= 70 ? 'text-primary' : healthScore >= 40 ? 'text-yellow-500' : 'text-destructive';
-
+  // Save bankroll
   const handleSaveBankroll = async () => {
     const amount = parseFloat(bankrollInput);
     if (isNaN(amount) || amount < 0) return;
@@ -70,54 +71,122 @@ export default function BankrollPage() {
     setEditingBankroll(false);
   };
 
-  const handleSaveDaily = () => {
-    const val = parseInt(dailyInput);
-    if (!isNaN(val) && val >= 1 && val <= 20) setDailyLimit(val);
-    setEditingDaily(false);
+  // Register bet
+  const handleCreateBet = async () => {
+    if (!formHome.trim() || !formAway.trim() || stakeNum <= 0) return;
+    if (stakeExceedsBankroll) return;
+    await createBet.mutateAsync({
+      home_team: formHome.trim(),
+      away_team: formAway.trim(),
+      league: '',
+      fixture_id: null as any,
+      prediction: formPrediction,
+      stake: stakeNum,
+      potential_profit: potentialProfit,
+      odd: parseFloat(formOdd || '1.5'),
+    });
+    setFormHome('');
+    setFormAway('');
+    setFormStake('');
+    setFormOdd('1.50');
+    setShowForm(false);
   };
 
+  // Auto-resolve pending bets by checking finished matches
+  const autoResolve = useCallback(async () => {
+    if (pending.length === 0) return;
+    setResolving(true);
+    try {
+      // Fetch today's finished matches
+      const allMatches = await fetchTodayMatches().catch(() => [] as ApiFixture[]);
+      const finished = allMatches.filter(m => m.fixture.status.short === 'FT' || m.fixture.status.short === 'AET' || m.fixture.status.short === 'PEN');
+
+      let bankrollDelta = 0;
+
+      for (const bet of pending) {
+        // Try to find a matching finished game
+        const match = finished.find(m => {
+          const hNorm = m.teams.home.name.toLowerCase();
+          const aNorm = m.teams.away.name.toLowerCase();
+          const bH = bet.home_team.toLowerCase();
+          const bA = bet.away_team.toLowerCase();
+          return (hNorm.includes(bH) || bH.includes(hNorm)) && (aNorm.includes(bA) || bA.includes(aNorm));
+        });
+
+        if (!match || match.goals.home === null || match.goals.away === null) continue;
+
+        const actualScore = `${match.goals.home} x ${match.goals.away}`;
+        const actualResult = scoreToResult(actualScore);
+        if (!actualResult) continue;
+
+        const won = bet.prediction === actualResult;
+        const pl = won ? bet.potential_profit : -bet.stake;
+        bankrollDelta += pl;
+
+        await resolveBet.mutateAsync({
+          id: bet.id,
+          status: won ? 'won' : 'lost',
+          actual_result: actualResult,
+          actual_score: actualScore,
+          profit_loss: pl,
+        });
+      }
+
+      if (bankrollDelta !== 0) {
+        await updateBankroll.mutateAsync(bankrollAmount + bankrollDelta);
+      }
+      refetchBets();
+    } catch (err) {
+      console.error('Auto-resolve error:', err);
+    } finally {
+      setResolving(false);
+    }
+  }, [pending, bankrollAmount]);
+
+  // Auto-resolve on mount
+  useEffect(() => {
+    if (pending.length > 0) {
+      autoResolve();
+    }
+  }, [bets.length]); // only when bets load
+
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto p-3 md:p-6 space-y-4 pb-24">
-        <motion.button
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          onClick={() => navigate('/')}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors font-body text-sm"
-        >
-          <ArrowLeft className="w-4 h-4" /> Voltar
-        </motion.button>
+    <div className="min-h-screen bg-background pb-24">
+      {/* Header */}
+      <header className="sticky top-0 z-40 px-4 py-4 bg-background/80 backdrop-blur-lg border-b border-border flex items-center gap-3">
+        <button onClick={() => navigate('/')} className="text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <img src={profetaLogo} alt="Profeta" className="w-7 h-7" />
+        <h1 className="text-lg font-extrabold tracking-tight gold-gradient-text">💰 GESTÃO DE BANCA</h1>
+      </header>
 
-        {/* Header + Bankroll */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <img src={profetaLogo} alt="Profeta" className="w-8 h-8" />
-            <h1 className="font-display text-2xl tracking-wider text-foreground">💰 GESTÃO DE BANCA</h1>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="font-body text-muted-foreground text-sm">Minha banca:</span>
+      <main className="max-w-4xl mx-auto px-4 py-5 space-y-5">
+        {/* Bankroll Card */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground font-semibold uppercase">Minha Banca</span>
             {editingBankroll ? (
               <div className="flex items-center gap-2">
-                <span className="text-primary font-display text-xl">R$</span>
+                <span className="text-primary font-bold">R$</span>
                 <input
                   type="number"
                   value={bankrollInput}
                   onChange={e => setBankrollInput(e.target.value)}
-                  className="bg-secondary border border-border rounded-lg px-3 py-1.5 text-foreground font-body text-sm w-32 focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="bg-secondary border border-border rounded-lg px-2 py-1 text-foreground text-sm w-28 focus:outline-none focus:ring-1 focus:ring-primary"
                   autoFocus
                   onKeyDown={e => e.key === 'Enter' && handleSaveBankroll()}
                 />
-                <button onClick={handleSaveBankroll} className="p-1.5 bg-primary rounded-lg text-primary-foreground">
+                <button onClick={handleSaveBankroll} className="p-1 bg-primary rounded text-primary-foreground">
                   <Check className="w-4 h-4" />
                 </button>
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <span className="font-display text-3xl text-primary">R$ {bankrollAmount.toFixed(2)}</span>
+                <span className="font-extrabold text-2xl text-primary">R$ {bankrollAmount.toFixed(2)}</span>
                 <button
                   onClick={() => { setEditingBankroll(true); setBankrollInput(String(bankrollAmount)); }}
-                  className="p-1.5 bg-secondary rounded-lg text-muted-foreground hover:text-foreground"
+                  className="p-1 bg-secondary rounded text-muted-foreground hover:text-foreground"
                 >
                   <Edit2 className="w-4 h-4" />
                 </button>
@@ -125,287 +194,251 @@ export default function BankrollPage() {
             )}
           </div>
 
-          {/* Health Score */}
-          <div className="mt-4 flex items-center gap-3">
-            <div className="flex-1">
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-xs text-muted-foreground">Saúde da Banca</span>
-                <span className={`text-xs font-bold ${healthColor}`}>{healthLabel} ({healthScore}%)</span>
-              </div>
-              <div className="w-full bg-secondary rounded-full h-2.5 overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${healthScore}%` }}
-                  transition={{ duration: 1 }}
-                  className={`h-full rounded-full ${healthScore >= 70 ? 'bg-primary' : healthScore >= 40 ? 'bg-yellow-500' : 'bg-destructive'}`}
-                />
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Risk Config */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card p-5 space-y-4">
-          <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-primary" />
-            <h2 className="font-display text-lg tracking-wider text-foreground">CONFIGURAR RISCO</h2>
-          </div>
-
-          {/* Risk % selector */}
+          {/* Health Bar */}
           <div>
-            <p className="text-xs text-muted-foreground mb-3">Porcentagem por aposta:</p>
-            <div className="grid grid-cols-4 gap-2">
-              {RISK_PROFILES.map(profile => (
-                <button
-                  key={profile.pct}
-                  onClick={() => setRiskPct(profile.pct)}
-                  className={`p-3 rounded-lg border text-center transition-all ${
-                    riskPct === profile.pct
-                      ? 'border-primary bg-primary/10'
-                      : 'border-border bg-card hover:border-primary/50'
-                  }`}
-                >
-                  <p className={`text-lg font-bold ${profile.color}`}>{profile.pct}%</p>
-                  <p className="text-[10px] text-foreground font-semibold">{profile.label}</p>
-                  <p className="text-[9px] text-muted-foreground mt-0.5">{profile.desc}</p>
-                </button>
-              ))}
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-[10px] text-muted-foreground">Saúde da Banca</span>
+              <span className={`text-[10px] font-bold ${healthTextColor}`}>{healthLabel} ({healthPct.toFixed(0)}%)</span>
+            </div>
+            <div className="w-full bg-secondary rounded-full h-2.5 overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.min(healthPct, 100)}%` }}
+                transition={{ duration: 1 }}
+                className={`h-full rounded-full ${healthBarColor}`}
+              />
             </div>
           </div>
 
-          {/* Custom slider */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-xs text-muted-foreground">Ajuste fino:</span>
-              <span className="text-sm font-bold text-primary">{riskPct}%</span>
-            </div>
-            <input
-              type="range"
-              min="0.5"
-              max="10"
-              step="0.5"
-              value={riskPct}
-              onChange={e => setRiskPct(parseFloat(e.target.value))}
-              className="w-full h-2 bg-secondary rounded-full appearance-none cursor-pointer accent-primary"
-            />
-            <div className="flex justify-between text-[9px] text-muted-foreground mt-1">
-              <span>0.5% (Seguro)</span>
-              <span>10% (Perigoso)</span>
-            </div>
-          </div>
-
-          {/* Daily limit */}
-          <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-card">
-            <div>
-              <p className="text-xs font-semibold text-foreground">Limite diário de apostas</p>
-              <p className="text-[10px] text-muted-foreground">Quantas entradas por dia</p>
-            </div>
-            {editingDaily ? (
-              <div className="flex items-center gap-1">
-                <input
-                  type="number"
-                  value={dailyInput}
-                  onChange={e => setDailyInput(e.target.value)}
-                  className="w-12 text-center bg-secondary border border-border rounded px-1 py-1 text-sm text-foreground focus:outline-none"
-                  autoFocus
-                  onKeyDown={e => e.key === 'Enter' && handleSaveDaily()}
-                />
-                <button onClick={handleSaveDaily} className="p-1 bg-primary rounded text-primary-foreground">
-                  <Check className="w-3 h-3" />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => { setEditingDaily(true); setDailyInput(String(dailyLimit)); }}
-                className="flex items-center gap-1 text-primary font-bold text-lg"
+          {/* Alerts */}
+          <AnimatePresence>
+            {healthPct < 40 && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="flex items-start gap-2 p-3 rounded-lg border border-destructive/30 bg-destructive/10"
               >
-                {dailyLimit} <Edit2 className="w-3 h-3 text-muted-foreground" />
-              </button>
+                <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold text-destructive">🚨 BANCA CRÍTICA!</p>
+                  <p className="text-[10px] text-muted-foreground">Pause as apostas e reavalie sua estratégia. Risco de quebra iminente.</p>
+                </div>
+              </motion.div>
             )}
-          </div>
-
-          {/* Excessive risk warning */}
-          {riskPct >= 5 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="p-3 rounded-lg border border-destructive/30 bg-destructive/5 flex items-start gap-2"
-            >
-              <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-bold text-destructive">⚠️ Risco elevado!</p>
-                <p className="text-[10px] text-muted-foreground">
-                  Com {riskPct}%, você pode perder toda a banca em apenas {sessionsToBreak} derrotas seguidas. 
-                  Considere reduzir para 2%.
-                </p>
-              </div>
-            </motion.div>
-          )}
+            {healthPct >= 40 && healthPct < 70 && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="flex items-start gap-2 p-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10"
+              >
+                <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold text-yellow-500">⚠️ ATENÇÃO</p>
+                  <p className="text-[10px] text-muted-foreground">Banca em zona de atenção. Reduza os stakes e seja conservador.</p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
 
-        {/* Smart Analysis Panel */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="glass-card p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" />
-            <h2 className="font-display text-lg tracking-wider text-foreground">ANÁLISE INTELIGENTE</h2>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-lg border border-border bg-card">
-              <p className="text-[10px] text-muted-foreground">Valor por aposta</p>
-              <p className="text-lg font-bold text-primary">R$ {stakeAmount.toFixed(2)}</p>
-              <p className="text-[9px] text-muted-foreground">{riskPct}% da banca</p>
-            </div>
-            <div className="p-3 rounded-lg border border-border bg-card">
-              <p className="text-[10px] text-muted-foreground">Exposição diária máx</p>
-              <p className="text-lg font-bold text-foreground">R$ {maxDailyExposure.toFixed(2)}</p>
-              <p className="text-[9px] text-muted-foreground">{maxDailyPct.toFixed(1)}% da banca ({dailyLimit} apostas)</p>
-            </div>
-            <div className="p-3 rounded-lg border border-border bg-card">
-              <p className="text-[10px] text-muted-foreground">Dias p/ dobrar (60% win)</p>
-              <p className="text-lg font-bold text-primary">~{Math.ceil(daysToDouble / 0.6)} dias</p>
-              <p className="text-[9px] text-muted-foreground">Com odd média de 2.00</p>
-            </div>
-            <div className="p-3 rounded-lg border border-border bg-card">
-              <p className="text-[10px] text-muted-foreground">Derrotas p/ quebrar</p>
-              <p className={`text-lg font-bold ${sessionsToBreak < 20 ? 'text-destructive' : 'text-primary'}`}>{sessionsToBreak} seguidas</p>
-              <p className="text-[9px] text-muted-foreground">{sessionsToBreak < 20 ? '⚠️ Cuidado' : '✅ Seguro'}</p>
-            </div>
-          </div>
-
-          {/* Growth projection */}
-          <div className="p-3 rounded-lg border border-primary/20 bg-primary/5">
-            <p className="text-xs font-bold text-primary mb-2">📈 Projeção de Crescimento</p>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              {[7, 30, 90].map(days => {
-                const dailyGain = stakeAmount * 0.6 * dailyLimit; // 60% win rate avg profit
-                const projected = bankrollAmount + (dailyGain * days);
-                return (
-                  <div key={days}>
-                    <p className="text-[10px] text-muted-foreground">{days} dias</p>
-                    <p className="text-sm font-bold text-primary">R$ {projected.toFixed(0)}</p>
-                  </div>
-                );
-              })}
-            </div>
-            <p className="text-[9px] text-muted-foreground mt-2 text-center">
-              *Estimativa com 60% de acerto e odd média 2.00
-            </p>
-          </div>
-        </motion.div>
-
-        {/* Metrics Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <MetricCard icon={<Target className="w-5 h-5" />} label="Previsões" value={String(totalPredictions)} color="text-primary" />
-          <MetricCard icon={<BarChart3 className="w-5 h-5" />} label="Taxa Acerto" value={`${hitRate.toFixed(1)}%`} color={hitRate >= 50 ? 'text-primary' : 'text-destructive'} />
-          <MetricCard icon={<TrendingUp className="w-5 h-5" />} label="ROI" value={`${roi >= 0 ? '+' : ''}${roi.toFixed(1)}%`} color={roi >= 0 ? 'text-primary' : 'text-destructive'} />
-          <MetricCard icon={<DollarSign className="w-5 h-5" />} label="Lucro/Prejuízo" value={`R$ ${totalProfitLoss >= 0 ? '+' : ''}${totalProfitLoss.toFixed(2)}`} color={totalProfitLoss >= 0 ? 'text-primary' : 'text-destructive'} />
-          <MetricCard icon={<Sparkles className="w-5 h-5" />} label="Placar Exato" value={String(scoreHits)} color="text-primary" />
+        {/* Stats Cards */}
+        <div className="grid grid-cols-4 gap-2">
+          <StatCard label="Apostas" value={bets.length} color="text-foreground" />
+          <StatCard label="Pendente" value={pending.length} color="text-primary" icon={<Clock className="w-3 h-3" />} />
+          <StatCard label="Green ✅" value={wins.length} color="text-primary" />
+          <StatCard label="Red ❌" value={losses.length} color="text-destructive" />
         </div>
 
-        {/* Predictions History */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card p-5">
-          <h2 className="font-display text-lg tracking-wider text-foreground mb-4">HISTÓRICO DE PREVISÕES</h2>
-          {predictions.length === 0 ? (
-            <p className="text-center font-body text-muted-foreground text-sm py-8">
-              Nenhuma previsão ainda. Analise jogos para ver o histórico aqui.
+        <div className="grid grid-cols-3 gap-2">
+          <StatCard label="Taxa Acerto" value={`${hitRate.toFixed(0)}%`} color={hitRate >= 50 ? 'text-primary' : 'text-destructive'} />
+          <StatCard label="Lucro/Prejuízo" value={`${totalProfitLoss >= 0 ? '+' : ''}R$ ${totalProfitLoss.toFixed(2)}`} color={totalProfitLoss >= 0 ? 'text-primary' : 'text-destructive'} />
+          <StatCard label="ROI" value={`${bankrollAmount > 0 ? ((totalProfitLoss / bankrollAmount) * 100).toFixed(1) : '0'}%`} color={totalProfitLoss >= 0 ? 'text-primary' : 'text-destructive'} />
+        </div>
+
+        {/* Register Bet */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-primary" />
+              <h2 className="font-extrabold text-sm tracking-wider text-foreground uppercase">Registrar Aposta</h2>
+            </div>
+            <button onClick={() => setShowForm(!showForm)} className="p-2 bg-primary rounded-lg text-primary-foreground">
+              <Plus className={`w-4 h-4 transition-transform ${showForm ? 'rotate-45' : ''}`} />
+            </button>
+          </div>
+
+          <AnimatePresence>
+            {showForm && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-3 overflow-hidden"
+              >
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase font-semibold">Time Casa</label>
+                    <input value={formHome} onChange={e => setFormHome(e.target.value)}
+                      className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Ex: Flamengo" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase font-semibold">Time Fora</label>
+                    <input value={formAway} onChange={e => setFormAway(e.target.value)}
+                      className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Ex: Palmeiras" />
+                  </div>
+                </div>
+
+                {/* Prediction 1X2 */}
+                <div>
+                  <label className="text-[10px] text-muted-foreground uppercase font-semibold">Sua Previsão (1X2)</label>
+                  <div className="grid grid-cols-3 gap-2 mt-1">
+                    {(['1', 'X', '2'] as const).map(p => (
+                      <button
+                        key={p}
+                        onClick={() => setFormPrediction(p)}
+                        className={`py-2.5 rounded-lg border text-sm font-bold transition-all ${
+                          formPrediction === p
+                            ? 'border-primary bg-primary/20 text-primary'
+                            : 'border-border bg-card text-muted-foreground hover:border-primary/50'
+                        }`}
+                      >
+                        {p === '1' ? '1 Casa' : p === 'X' ? 'X Empate' : '2 Fora'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase font-semibold">Valor Apostado (R$)</label>
+                    <input type="number" value={formStake} onChange={e => setFormStake(e.target.value)}
+                      className={`w-full bg-secondary border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 ${
+                        stakeExceedsBankroll ? 'border-destructive focus:ring-destructive' : 'border-border focus:ring-primary'
+                      }`} placeholder="0.00" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase font-semibold">Odd</label>
+                    <input type="number" step="0.01" value={formOdd} onChange={e => setFormOdd(e.target.value)}
+                      className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+                  </div>
+                </div>
+
+                {stakeNum > 0 && (
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-primary/20 bg-primary/5">
+                    <span className="text-xs text-muted-foreground">Lucro possível:</span>
+                    <span className="text-sm font-bold text-primary">+R$ {potentialProfit.toFixed(2)}</span>
+                  </div>
+                )}
+
+                {stakeExceedsBankroll && (
+                  <div className="flex items-start gap-2 p-2 rounded-lg bg-destructive/10 border border-destructive/20">
+                    <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
+                    <p className="text-[10px] text-destructive font-semibold">
+                      🚫 Valor maior que sua banca! Não é possível registrar.
+                    </p>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleCreateBet}
+                  disabled={!formHome.trim() || !formAway.trim() || stakeNum <= 0 || stakeExceedsBankroll || createBet.isPending}
+                  className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-bold text-sm disabled:opacity-40 transition-all hover:brightness-110"
+                >
+                  {createBet.isPending ? 'Registrando...' : '✅ REGISTRAR APOSTA'}
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
+        {/* Auto-resolve button */}
+        {pending.length > 0 && (
+          <button
+            onClick={autoResolve}
+            disabled={resolving}
+            className="w-full py-3 rounded-lg border border-primary/30 bg-primary/5 text-primary font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary/10 transition-all disabled:opacity-50"
+          >
+            {resolving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4" />}
+            {resolving ? 'Verificando resultados...' : `🔄 Verificar Resultados (${pending.length} pendentes)`}
+          </button>
+        )}
+
+        {/* History */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="glass-card p-5">
+          <h2 className="font-extrabold text-sm tracking-wider text-foreground uppercase mb-4 flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-primary" />
+            HISTÓRICO DE APOSTAS
+          </h2>
+
+          {bets.length === 0 ? (
+            <p className="text-center text-muted-foreground text-sm py-8">
+              Nenhuma aposta registrada. Use o botão + acima para começar.
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm font-body">
-                <thead>
-                  <tr className="border-b border-border text-muted-foreground text-xs">
-                    <th className="text-left py-2 px-2">Jogo</th>
-                    <th className="text-center py-2 px-2">Previsão</th>
-                    <th className="text-center py-2 px-2">Resultado</th>
-                    <th className="text-center py-2 px-2">Confiança</th>
-                    <th className="text-center py-2 px-2">Status</th>
-                    <th className="text-left py-2 px-2">Mercado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {predictions.slice(0, 30).map(p => (
-                    <PredictionHistoryRow key={p.id} prediction={p} betResult={resultMap.get(p.id)} />
-                  ))}
-                </tbody>
-              </table>
+            <div className="space-y-2">
+              {bets.map((bet, i) => (
+                <BetHistoryRow key={bet.id} bet={bet} index={i} />
+              ))}
             </div>
           )}
         </motion.div>
-      </div>
+      </main>
+
+      <BottomNav />
     </div>
   );
 }
 
-function MetricCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color: string }) {
+function StatCard({ label, value, color, icon }: { label: string; value: string | number; color: string; icon?: React.ReactNode }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-4 space-y-2">
-      <div className="flex items-center gap-2 text-muted-foreground">{icon}<span className="text-xs font-body">{label}</span></div>
-      <p className={`font-display text-xl ${color}`}>{value}</p>
-    </motion.div>
+    <div className="glass-card p-3 text-center">
+      <p className={`font-extrabold text-lg ${color} flex items-center justify-center gap-1`}>{icon}{value}</p>
+      <p className="text-[9px] text-muted-foreground font-semibold uppercase">{label}</p>
+    </div>
   );
 }
 
-function PredictionHistoryRow({ prediction: p, betResult }: { prediction: PredictionRow; betResult?: BetResultRow }) {
-  const scoreMatch = (() => {
-    if (!betResult?.actual_score || !p.predicted_score) return false;
-    return p.predicted_score.replace(/\s/g, '').toLowerCase() === betResult.actual_score.replace(/\s/g, '').toLowerCase();
-  })();
-
-  const getStatusDisplay = () => {
-    if (scoreMatch) {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-bold border border-primary/30">
-          <Trophy className="w-3 h-3" />
-          ACERTOU PLACAR!
-        </span>
-      );
-    }
-    if (betResult?.won === true) {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-bold">
-          <Check className="w-3 h-3" />
-          GREEN
-        </span>
-      );
-    }
-    if (betResult?.won === false) {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-destructive/20 text-destructive text-[10px] font-bold">
-          <XCircle className="w-3 h-3" />
-          RED
-        </span>
-      );
-    }
-    if (p.status === 'live_reviewed') {
-      return <span className="text-xs font-display uppercase text-accent">REVISADO</span>;
-    }
-    return (
-      <span className="inline-flex items-center gap-1 text-xs font-display uppercase text-muted-foreground">
-        <Clock className="w-3 h-3" />
-        PENDENTE
-      </span>
-    );
-  };
+function BetHistoryRow({ bet, index }: { bet: BetRow; index: number }) {
+  const predLabel = bet.prediction === '1' ? 'Casa' : bet.prediction === 'X' ? 'Empate' : 'Fora';
+  const statusConfig = {
+    pending: { icon: <Clock className="w-3.5 h-3.5" />, text: 'PENDENTE', color: 'text-muted-foreground', bg: 'bg-secondary', border: 'border-border' },
+    won: { icon: <Trophy className="w-3.5 h-3.5" />, text: 'GREEN ✅', color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/30' },
+    lost: { icon: <XCircle className="w-3.5 h-3.5" />, text: 'RED ❌', color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/30' },
+  }[bet.status];
 
   return (
-    <tr className={`border-b border-border/30 transition-colors ${scoreMatch ? 'bg-primary/5' : 'hover:bg-secondary/30'}`}>
-      <td className="py-2.5 px-2 text-foreground text-xs">{p.home_team} vs {p.away_team}</td>
-      <td className="py-2.5 px-2 text-center">
-        <span className="text-primary font-bold">{p.predicted_score ?? '-'}</span>
-      </td>
-      <td className="py-2.5 px-2 text-center">
-        <span className={`font-bold ${scoreMatch ? 'text-primary' : 'text-foreground'}`}>
-          {betResult?.actual_score ?? '-'}
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.02 }}
+      className={`p-3 rounded-lg border ${statusConfig.border} ${statusConfig.bg} space-y-2`}
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-bold text-foreground">{bet.home_team} vs {bet.away_team}</p>
+          <p className="text-[10px] text-muted-foreground">{new Date(bet.created_at).toLocaleDateString('pt-BR')} • Odd {bet.odd}</p>
+        </div>
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${statusConfig.color} ${statusConfig.bg} border ${statusConfig.border}`}>
+          {statusConfig.icon} {statusConfig.text}
         </span>
-      </td>
-      <td className="py-2.5 px-2 text-center">
-        <span className={`font-display ${(p.confidence ?? 0) >= 70 ? 'text-primary' : (p.confidence ?? 0) >= 40 ? 'text-yellow-500' : 'text-destructive'}`}>
-          {p.confidence ?? 0}%
-        </span>
-      </td>
-      <td className="py-2.5 px-2 text-center">{getStatusDisplay()}</td>
-      <td className="py-2.5 px-2 text-muted-foreground text-xs">{p.recommended_market ?? '-'}</td>
-    </tr>
+      </div>
+
+      <div className="grid grid-cols-4 gap-2 text-center">
+        <div>
+          <p className="text-[9px] text-muted-foreground">Previsão</p>
+          <p className="text-xs font-bold text-primary">{bet.prediction} ({predLabel})</p>
+        </div>
+        <div>
+          <p className="text-[9px] text-muted-foreground">Stake</p>
+          <p className="text-xs font-bold text-foreground">R$ {bet.stake.toFixed(2)}</p>
+        </div>
+        <div>
+          <p className="text-[9px] text-muted-foreground">Resultado</p>
+          <p className="text-xs font-bold text-foreground">{bet.actual_score ?? '—'}</p>
+        </div>
+        <div>
+          <p className="text-[9px] text-muted-foreground">Lucro/Perda</p>
+          <p className={`text-xs font-bold ${bet.profit_loss >= 0 ? 'text-primary' : 'text-destructive'}`}>
+            {bet.status === 'pending' ? '—' : `${bet.profit_loss >= 0 ? '+' : ''}R$ ${bet.profit_loss.toFixed(2)}`}
+          </p>
+        </div>
+      </div>
+    </motion.div>
   );
 }
