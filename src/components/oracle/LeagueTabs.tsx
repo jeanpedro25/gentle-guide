@@ -8,13 +8,6 @@ interface LeagueTabsProps {
   onTodayToggle?: () => void;
 }
 
-const CATEGORIES = [
-  { key: 'brazil', label: '🇧🇷 Brasil' },
-  { key: 'europe', label: '🌍 Europa' },
-  { key: 'americas', label: '🌎 Américas' },
-  { key: 'cups', label: '🏆 Copas' },
-] as const;
-
 export function LeagueTabs({ selectedLeagueId, onSelect, todayMode, onTodayToggle }: LeagueTabsProps) {
   return (
     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -24,7 +17,7 @@ export function LeagueTabs({ selectedLeagueId, onSelect, todayMode, onTodayToggl
         onClick={() => onTodayToggle?.()}
       />
       <TabButton
-        label="📋 Todos"
+        label="Todos"
         isActive={selectedLeagueId === null && !todayMode}
         onClick={() => {
           if (todayMode) onTodayToggle?.();
@@ -51,10 +44,10 @@ function TabButton({ label, isActive, onClick }: { label: string; isActive: bool
     <motion.button
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
-      className={`shrink-0 px-4 py-2 rounded-xl text-sm font-body whitespace-nowrap transition-all ${
+      className={`shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
         isActive
-          ? 'bg-primary text-primary-foreground neon-glow-green'
-          : 'bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground'
+          ? 'bg-primary text-primary-foreground border-primary'
+          : 'bg-card border-border text-foreground hover:border-primary/50'
       }`}
     >
       {label}

@@ -14,8 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ['"Bebas Neue"', 'sans-serif'],
-        body: ['"DM Sans"', 'sans-serif'],
+        display: ['"Manrope"', 'sans-serif'],
+        body: ['"Manrope"', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",

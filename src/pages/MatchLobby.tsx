@@ -7,10 +7,11 @@ import { MatchCard } from '@/components/oracle/MatchCard';
 import { LobbyHeader } from '@/components/oracle/LobbyHeader';
 import { LiveMatches } from '@/components/oracle/LiveMatches';
 import { LiveAlertBanner } from '@/components/oracle/LiveAlertBanner';
+import { BottomNav } from '@/components/oracle/BottomNav';
 import { ApiFixture } from '@/types/fixture';
 import { isUsingRealData, clearFootballCache } from '@/services/footballApi';
 import { motion } from 'framer-motion';
-import { Loader2, AlertCircle, RefreshCw, Search, X } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, Search, X, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { MultiplaBar } from '@/components/oracle/MultiplaBar';
 import { toast } from 'sonner';
@@ -46,8 +47,6 @@ export default function MatchLobby() {
   const handleTodayToggle = useCallback(() => {
     setTodayMode(prev => !prev);
   }, []);
-
-  const realData = isUsingRealData();
 
   useEffect(() => {
     const allFixtures = todayQuery.data ?? [];
@@ -107,104 +106,93 @@ export default function MatchLobby() {
   const hasResults = totalMatches > 0;
 
   return (
-    <div className="min-h-screen bg-oracle-bg">
-      <div className="max-w-7xl mx-auto p-3 md:p-6 space-y-4">
-        <LobbyHeader onRefresh={handleForceRefresh} />
+    <div className="min-h-screen bg-background">
+      <LobbyHeader />
+      <LiveAlertBanner />
 
-        {/* Live alerts for monitored matches */}
-        <LiveAlertBanner />
+      <main className="pb-24">
+        {/* Search */}
+        <section className="px-4 mt-6">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Buscar time ou liga..."
+              className="w-full bg-card border border-border focus:ring-primary focus:border-primary rounded-lg pl-12 pr-10 py-3 text-sm font-body text-foreground placeholder:text-muted-foreground focus:outline-none transition-colors"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </section>
 
-        {/* Real data indicator */}
-        {!currentLoading && realData && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-3 px-4 py-2 rounded-xl bg-oracle-win/5 border border-oracle-win/20"
-          >
-            <span className="w-2 h-2 rounded-full bg-oracle-win animate-pulse" />
-            <p className="text-xs font-body text-muted-foreground">
-              <span className="text-oracle-win font-semibold">Dados ao vivo</span> — Jogos reais da API
-            </p>
-            <button
-              onClick={handleForceRefresh}
-              className="ml-auto flex items-center gap-1 px-3 py-1 rounded-lg bg-primary/10 text-primary text-xs font-body hover:bg-primary/20 transition-colors"
-            >
-              <RefreshCw className="w-3 h-3" /> Atualizar
-            </button>
-          </motion.div>
-        )}
+        {/* Live matches */}
+        <section className="mt-8">
+          <LiveMatches matches={liveQuery.data ?? []} isLoading={liveQuery.isLoading} />
+        </section>
 
-        <LiveMatches matches={liveQuery.data ?? []} isLoading={liveQuery.isLoading} />
-
-        {/* Search bar */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Buscar por time... (ex: Flamengo, Barcelona)"
-            className="w-full bg-secondary/50 border border-border rounded-xl pl-10 pr-10 py-3 text-sm font-body text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+        {/* League tabs */}
+        <section className="px-4 mt-8">
+          <LeagueTabs
+            selectedLeagueId={selectedLeague}
+            onSelect={setSelectedLeague}
+            todayMode={todayMode}
+            onTodayToggle={handleTodayToggle}
           />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+        </section>
 
-        <LeagueTabs
-          selectedLeagueId={selectedLeague}
-          onSelect={setSelectedLeague}
-          todayMode={todayMode}
-          onTodayToggle={handleTodayToggle}
-        />
-
+        {/* Loading */}
         {currentLoading && (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <Loader2 className="w-10 h-10 text-primary animate-spin" />
-            <p className="font-body text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               {todayMode ? 'Buscando jogos de hoje' : 'Buscando jogos (30 dias)'}
               <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>...</motion.span>
             </p>
           </div>
         )}
 
+        {/* Error */}
         {currentError && (
-          <div className="flex flex-col items-center justify-center py-20 space-y-4">
+          <div className="flex flex-col items-center justify-center py-20 space-y-4 px-4">
             <AlertCircle className="w-12 h-12 text-destructive" />
-            <p className="font-body text-foreground text-center">Erro ao buscar jogos.</p>
-            <p className="font-body text-muted-foreground text-sm text-center max-w-md">
+            <p className="text-foreground text-center">Erro ao buscar jogos.</p>
+            <p className="text-muted-foreground text-sm text-center max-w-md">
               {currentErrorObj instanceof Error ? currentErrorObj.message : 'Verifique sua conexão.'}
             </p>
             <button
               onClick={handleForceRefresh}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-body text-sm hover:bg-primary/90 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors"
             >
               <RefreshCw className="w-4 h-4" /> Tentar novamente
             </button>
           </div>
         )}
 
+        {/* Empty state */}
         {!currentLoading && !currentError && !hasResults && (
-          <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <p className="font-display text-2xl text-muted-foreground tracking-wider">
+          <div className="flex flex-col items-center justify-center py-20 space-y-4 px-4">
+            <p className="text-2xl font-extrabold text-muted-foreground tracking-wider">
               {searchQuery ? 'NENHUM RESULTADO' : todayMode ? 'NENHUM JOGO HOJE' : 'NENHUM JOGO ENCONTRADO'}
             </p>
-            <p className="font-body text-muted-foreground text-sm">
+            <p className="text-muted-foreground text-sm">
               {searchQuery
                 ? `Nenhum jogo encontrado para "${searchQuery}".`
                 : todayMode
-                  ? 'Não há jogos programados para hoje nas ligas monitoradas.'
-                  : 'Não há jogos programados para esta liga no momento.'}
+                  ? 'Não há jogos programados para hoje.'
+                  : 'Não há jogos programados para esta liga.'}
             </p>
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary text-foreground font-body text-sm hover:bg-secondary/80 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border text-foreground text-sm hover:border-primary/50 transition-colors"
               >
                 Limpar busca
               </button>
@@ -212,29 +200,22 @@ export default function MatchLobby() {
           </div>
         )}
 
+        {/* Match list */}
         {!currentLoading && !currentError && hasResults && (
-          <div className="space-y-6">
-            <p className="text-xs font-body text-muted-foreground">
-              {totalMatches} {totalMatches === 1 ? 'jogo encontrado' : 'jogos encontrados'}
-              {todayMode && ' hoje'}
-              {searchQuery && ` para "${searchQuery}"`}
-            </p>
-
+          <section className="mt-8 px-4 space-y-6">
             {todayMode ? (
               todayGrouped.map((group) => (
-                <div key={group.leagueName} className="space-y-3">
-                  <h2 className="font-display text-lg tracking-wider text-foreground flex items-center gap-2">
-                    {group.leagueLogo && (
-                      <img src={group.leagueLogo} alt="" className="w-5 h-5 object-contain" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                    )}
-                    <span>⚽</span>
-                    {group.leagueName}
-                    {group.country && <span className="text-xs font-body text-muted-foreground">• {group.country}</span>}
-                    <span className="text-xs font-body text-muted-foreground ml-auto">
-                      {group.fixtures.length} {group.fixtures.length === 1 ? 'jogo' : 'jogos'}
-                    </span>
-                  </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                <div key={group.leagueName} className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Star className="w-5 h-5 text-primary" />
+                    <h2 className="font-bold text-base text-foreground">
+                      {group.leagueName.toUpperCase()}
+                      {group.country && (
+                        <span className="text-muted-foreground font-normal text-sm ml-2">• {group.country}</span>
+                      )}
+                    </h2>
+                  </div>
+                  <div className="space-y-4">
                     {group.fixtures.map((fixture, i) => (
                       <MatchCard
                         key={fixture.fixture.id}
@@ -248,15 +229,14 @@ export default function MatchLobby() {
               ))
             ) : (
               filteredData.map(({ league, fixtures }) => (
-                <div key={league.id} className="space-y-3">
-                  <h2 className="font-display text-lg tracking-wider text-foreground flex items-center gap-2">
-                    <span>{league.emoji}</span>
-                    {league.name}
-                    <span className="text-xs font-body text-muted-foreground ml-auto">
-                      {fixtures.length} {fixtures.length === 1 ? 'jogo' : 'jogos'}
-                    </span>
-                  </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                <div key={league.id} className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Star className="w-5 h-5 text-primary" />
+                    <h2 className="font-bold text-base text-foreground">
+                      {league.name.toUpperCase()}
+                    </h2>
+                  </div>
+                  <div className="space-y-4">
                     {fixtures.map((fixture, i) => (
                       <MatchCard
                         key={fixture.fixture.id}
@@ -269,12 +249,12 @@ export default function MatchLobby() {
                 </div>
               ))
             )}
-          </div>
+          </section>
         )}
+      </main>
 
-        <div className="h-20" />
-        <MultiplaBar />
-      </div>
+      <MultiplaBar />
+      <BottomNav />
     </div>
   );
 }
