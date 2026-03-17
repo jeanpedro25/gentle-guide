@@ -215,10 +215,9 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
           <div className="flex items-center justify-between mb-4 pr-8">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] text-muted-foreground">{fixture.league.name}</span>
-              {ESTRELABET_LEAGUES.has(LEAGUE_ID_TO_ISPORTS.get(fixture.league.id) ?? '') && (
-                <span className="bg-primary/10 text-primary text-[9px] px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5">
-                  <Star className="w-2.5 h-2.5 fill-primary" />
-                  EstrelaBet
+              {bestValue && (
+                <span className="bg-primary/10 text-primary text-[9px] px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5 animate-pulse">
+                  💰 PAGANDO MAIS
                 </span>
               )}
               {/* Dynamic heat badge */}
