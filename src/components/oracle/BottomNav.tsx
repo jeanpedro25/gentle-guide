@@ -3,8 +3,7 @@ import { Home, Zap, BarChart3, Clock } from 'lucide-react';
 
 const NAV_ITEMS = [
   { path: '/', icon: Home, label: 'Início' },
-  { path: '/ao-vivo', icon: Zap, label: 'Ao Vivo' },
-  { path: '/banca', icon: BarChart3, label: 'Bilhetes' },
+  { path: '/banca', icon: BarChart3, label: 'Banca' },
   { path: '/historico', icon: Clock, label: 'Histórico' },
 ] as const;
 
