@@ -60,7 +60,7 @@ export default function MatchLobby() {
     : timeFilter === 'week' ? weekQuery
     : todayQuery; // 'live' uses liveQuery separately
 
-  const fixtures = activeQuery.data ?? [];
+  const fixtures: ApiFixture[] = (activeQuery.data as ApiFixture[] | undefined) ?? [];
 
   // Group fixtures by league, apply search filter
   const grouped = useMemo(() => {
