@@ -9,6 +9,7 @@ import MatchLobby from "./pages/MatchLobby";
 import MatchDetail from "./pages/MatchDetail";
 import BankrollPage from "./pages/BankrollPage";
 import HistoryPage from "./pages/HistoryPage";
+import JogueAgoraPage from "./pages/JogueAgoraPage";
 import NotFound from "./pages/NotFound";
 
 // Clear old API cache and sessionStorage on app load
