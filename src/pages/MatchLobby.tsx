@@ -233,6 +233,7 @@ export default function MatchLobby() {
                       fixture={fixture}
                       onClick={() => handleMatchClick(fixture)}
                       index={i}
+                      bestValue={bestValueIds.has(fixture.fixture.id)}
                     />
                   ))}
                 </div>
