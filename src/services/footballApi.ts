@@ -291,7 +291,7 @@ export interface LiveMatchData {
 
 export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
   try {
-    const response = await iSportsFetch('/sport/football/livescores');
+    const response = await iSportsFetch('/sport/football/livescores', undefined, 'livescores', 'medium');
 
     if (response.code !== 0 || !response.data) {
       console.warn('[Oracle] livescores failed:', response.message);
