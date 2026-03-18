@@ -395,7 +395,7 @@ async function fetchMatchesByDate(date: string): Promise<ApiFixture[]> {
     const today = getBrazilDateString(0);
     if (date === today) {
       try {
-        const liveRes = await iSportsFetch('/sport/football/livescores');
+        const liveRes = await iSportsFetch('/sport/football/livescores', undefined, 'livescores', 'low');
         if (liveRes.code === 0 && liveRes.data) {
           for (const match of liveRes.data) {
             const fixture = iSportsMatchToFixture(match);
