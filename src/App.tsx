@@ -42,6 +42,7 @@ const AppRoutes = () => {
 
   return (
     <Routes>
+      <Route path="/welcome" element={user ? <Navigate to="/" replace /> : <LandingPage />} />
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <AuthPage />} />
       <Route path="/" element={<ProtectedRoute><MatchLobby /></ProtectedRoute>} />
       <Route path="/match/:id" element={<ProtectedRoute><MatchDetail /></ProtectedRoute>} />
