@@ -57,7 +57,7 @@ export function AnalysisPanel({ fixture, analysis, analyzing, onBet, onClose }: 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-50 bg-black/50"
+            className="fixed inset-0 z-[60] bg-black/50"
           />
 
           {/* Panel */}
