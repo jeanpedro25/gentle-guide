@@ -18,8 +18,12 @@ export function MatchListItem({ fixture, onAnalyze }: Props) {
     <motion.button
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      onClick={() => onAnalyze(fixture)}
+      onClick={(e) => {
+        e.stopPropagation();
+        onAnalyze(fixture);
+      }}
       className="w-full flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-primary/5 transition-all active:scale-[0.98] text-left"
+      data-fixture-id={fixture.fixture.id}
     >
       <div className="text-center shrink-0 w-12">
         <p className="text-xs font-bold text-foreground">{time}</p>
@@ -28,6 +32,7 @@ export function MatchListItem({ fixture, onAnalyze }: Props) {
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-foreground truncate">{fixture.teams.home.name}</p>
         <p className="text-xs text-muted-foreground truncate">vs {fixture.teams.away.name}</p>
+        <p className="text-[10px] text-muted-foreground/60 truncate">{fixture.league.name}</p>
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
