@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { EVBadge } from './EVBadge';
 import { ApiFixture, LEAGUES } from '@/types/fixture';
 import { useTeamLogos } from '@/hooks/useTeamLogos';
 import { isValid, parseISO } from 'date-fns';
