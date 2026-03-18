@@ -129,6 +129,8 @@ export function clearFootballCache(pathIncludes?: string): void {
 
 export function hasApiKey(): boolean { return true; }
 
+const LEAGUE_BATCH_SIZE = 4;
+
 // ── Date helpers ──
 
 /** Get today's date string in Brazil timezone (YYYY-MM-DD) */
