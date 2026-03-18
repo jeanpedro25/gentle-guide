@@ -8,6 +8,10 @@ import { LobbyHeader } from '@/components/oracle/LobbyHeader';
 import { LiveMatches } from '@/components/oracle/LiveMatches';
 import { LiveAlertBanner } from '@/components/oracle/LiveAlertBanner';
 import { BottomNav } from '@/components/oracle/BottomNav';
+import { StopLossBanner } from '@/components/oracle/StopLossBanner';
+import { useStopLoss } from '@/hooks/useStopLoss';
+import { useBets } from '@/hooks/useBets';
+import { useBankroll } from '@/hooks/usePredictions';
 import { ApiFixture } from '@/types/fixture';
 import { clearFootballCache } from '@/services/footballApi';
 import { motion } from 'framer-motion';
@@ -29,6 +33,9 @@ export default function MatchLobby() {
   const tomorrowQuery = useTomorrowFixtures();
   const weekQuery = useWeekFixtures();
   const liveQuery = useLiveMatches();
+  const { data: bets = [] } = useBets();
+  const { data: bankroll } = useBankroll();
+  const stopLoss = useStopLoss(bets, bankroll?.amount ?? 100, 100);
 
   const handleMatchClick = (fixture: ApiFixture) => {
     sessionStorage.setItem('selected-fixture', JSON.stringify(fixture));
@@ -124,6 +131,7 @@ export default function MatchLobby() {
     <div className="min-h-screen bg-background">
       <LobbyHeader />
       <LiveAlertBanner />
+      <StopLossBanner status={stopLoss} />
 
       <main className="pb-24">
         {/* Search */}

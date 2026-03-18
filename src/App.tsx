@@ -12,6 +12,7 @@ import BankrollPage from "./pages/BankrollPage";
 import HistoryPage from "./pages/HistoryPage";
 import JogueAgoraPage from "./pages/JogueAgoraPage";
 import AuthPage from "./pages/AuthPage";
+import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
 
 clearFootballCache();
@@ -26,7 +27,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       <div className="animate-pulse text-primary font-bold text-lg">Carregando...</div>
     </div>
   );
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/welcome" replace />;
   return <>{children}</>;
 }
 
@@ -41,6 +42,7 @@ const AppRoutes = () => {
 
   return (
     <Routes>
+      <Route path="/welcome" element={user ? <Navigate to="/" replace /> : <LandingPage />} />
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <AuthPage />} />
       <Route path="/" element={<ProtectedRoute><MatchLobby /></ProtectedRoute>} />
       <Route path="/match/:id" element={<ProtectedRoute><MatchDetail /></ProtectedRoute>} />

@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { EVBadge } from './EVBadge';
 import { ApiFixture, LEAGUES } from '@/types/fixture';
 import { useTeamLogos } from '@/hooks/useTeamLogos';
 import { isValid, parseISO } from 'date-fns';
@@ -220,6 +221,7 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
                   💰 PAGANDO MAIS
                 </span>
               )}
+              {!isLive && <EVBadge fixtureId={fixture.fixture.id} />}
               {/* Dynamic heat badge */}
               {isLive && verdict && (
                 <MatchHeatBadge {...verdict} />
