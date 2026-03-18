@@ -33,6 +33,9 @@ export default function MatchLobby() {
   const tomorrowQuery = useTomorrowFixtures();
   const weekQuery = useWeekFixtures();
   const liveQuery = useLiveMatches();
+  const { data: bets = [] } = useBets();
+  const { data: bankroll } = useBankroll();
+  const stopLoss = useStopLoss(bets, bankroll?.amount ?? 100, 100);
 
   const handleMatchClick = (fixture: ApiFixture) => {
     sessionStorage.setItem('selected-fixture', JSON.stringify(fixture));
