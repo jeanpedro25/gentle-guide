@@ -1,34 +1,16 @@
 import { ApiFixture, LeagueConfig, LEAGUES, ESTRELABET_LEAGUES, TeamStats, H2HFixture } from '@/types/fixture';
 import { supabase } from '@/integrations/supabase/client';
+import { cachedFetch, clearApiCache, type CacheDataType } from '@/services/apiService';
 
-const CACHE_TTL = 5 * 60 * 1000;
-const PERSISTENT_CACHE_TTL = 6 * 60 * 60 * 1000;
-const PERSISTENT_CACHE_PREFIX = 'oracle_api_cache_v2|';
-const LEAGUE_BATCH_SIZE = 4;
-
-interface CachedValue<T = unknown> {
-  data: T;
-  ts: number;
-}
-
-const cache = new Map<string, CachedValue<ISportsResponse>>();
-
-class ApiLimitError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'ApiLimitError';
-  }
-}
-
+// ── Legacy exports for compat ──
 let usingRealData = false;
 let lastApiError = '';
 
-export function isUsingRealData(): boolean {
-  return usingRealData;
-}
+export function isUsingRealData(): boolean { return usingRealData; }
+export function getLastApiError(): string { return lastApiError; }
 
-export function getLastApiError(): string {
-  return lastApiError;
+class ApiLimitError extends Error {
+  constructor(message: string) { super(message); this.name = 'ApiLimitError'; }
 }
 
 // ── iSports API types ──
@@ -42,8 +24,8 @@ interface ISportsMatch {
   leagueColor: string;
   subLeagueId: string;
   subLeagueName?: string;
-  matchTime: number; // unix timestamp
-  status: number; // -1=not started, 0=first half, 1=half time, 2=second half, 3=finished, 4=postponed
+  matchTime: number;
+  status: number;
   homeName: string;
   homeId: string;
   awayName: string;
@@ -80,135 +62,72 @@ interface ISportsResponse {
   data: ISportsMatch[] | null;
 }
 
-function isBrowserEnv(): boolean {
-  return typeof window !== 'undefined' && !!window.localStorage;
-}
-
-function persistentCacheKey(cacheKey: string): string {
-  return `${PERSISTENT_CACHE_PREFIX}${cacheKey}`;
-}
-
-function readPersistentCache(cacheKey: string, allowStale = false): ISportsResponse | null {
-  if (!isBrowserEnv()) return null;
-  try {
-    const raw = window.localStorage.getItem(persistentCacheKey(cacheKey));
-    if (!raw) return null;
-
-    const parsed = JSON.parse(raw) as CachedValue<ISportsResponse>;
-    if (!parsed?.data || typeof parsed.ts !== 'number') return null;
-
-    if (!allowStale && Date.now() - parsed.ts > PERSISTENT_CACHE_TTL) return null;
-    return parsed.data;
-  } catch {
-    return null;
-  }
-}
-
-function writePersistentCache(cacheKey: string, data: ISportsResponse): void {
-  if (!isBrowserEnv()) return;
-  try {
-    const payload: CachedValue<ISportsResponse> = { data, ts: Date.now() };
-    window.localStorage.setItem(persistentCacheKey(cacheKey), JSON.stringify(payload));
-  } catch {
-    // Ignore quota/storage errors
-  }
-}
-
 function isRateLimitedResponse(response: ISportsResponse): boolean {
   if (response.code === 2) return true;
   return /trials|try again tomorrow|rate limit|too many/i.test(response.message || '');
 }
 
 function getRateLimitMessage(rawMessage?: string): string {
-  if (rawMessage?.trim()) {
-    return `Limite diário da API de jogos atingido: ${rawMessage}`;
-  }
-  return 'Limite diário da API de jogos atingido. Tente novamente mais tarde.';
+  return rawMessage?.trim()
+    ? `Limite diário da API de jogos atingido: ${rawMessage}`
+    : 'Limite diário da API de jogos atingido. Tente novamente mais tarde.';
 }
 
 function isApiLimitError(error: unknown): boolean {
   return error instanceof ApiLimitError;
 }
 
-// ── API fetch via proxy ──
+// ── Core API fetch — ALL calls go through cachedFetch ──
 
-async function iSportsFetch(path: string, params?: Record<string, string>): Promise<ISportsResponse> {
-  const cacheKey = `${path}|${JSON.stringify(params || {})}`;
-
-  const memoryCached = cache.get(cacheKey);
-  if (memoryCached && Date.now() - memoryCached.ts < CACHE_TTL) return memoryCached.data;
-
-  const persistentCached = readPersistentCache(cacheKey);
-  if (persistentCached) {
-    cache.set(cacheKey, { data: persistentCached, ts: Date.now() });
-    return persistentCached;
-  }
-
+async function rawISportsFetch(path: string, params?: Record<string, string>): Promise<ISportsResponse> {
   console.log('[Oracle] iSports →', path, params || '');
 
   const { data, error } = await supabase.functions.invoke('football-proxy', {
     body: { path, params },
   });
 
-  if (error) {
-    const stale = readPersistentCache(cacheKey, true);
-    if (stale) {
-      console.warn('[Oracle] Proxy failed, using stale cache:', path);
-      cache.set(cacheKey, { data: stale, ts: Date.now() });
-      return stale;
-    }
-
-    console.error('[Oracle] Proxy error:', error);
-    throw new Error(error.message || 'Proxy error');
-  }
+  if (error) throw new Error(error.message || 'Proxy error');
 
   const response = data as ISportsResponse;
 
   if (response.code === 0) {
-    cache.set(cacheKey, { data: response, ts: Date.now() });
-    writePersistentCache(cacheKey, response);
     lastApiError = '';
     return response;
   }
 
   if (isRateLimitedResponse(response)) {
     lastApiError = getRateLimitMessage(response.message);
-    const stale = readPersistentCache(cacheKey, true);
-    if (stale) {
-      console.warn('[Oracle] Rate limited, using stale cache:', path);
-      cache.set(cacheKey, { data: stale, ts: Date.now() });
-      return stale;
-    }
     throw new ApiLimitError(lastApiError);
   }
 
   return response;
 }
 
+/**
+ * Fetch from iSports API with full caching pipeline:
+ * Memory → Supabase DB → API call → save everywhere
+ */
+async function iSportsFetch(
+  path: string,
+  params?: Record<string, string>,
+  tipo: CacheDataType = 'jogos',
+  priority: 'high' | 'medium' | 'low' | 'minimum' = 'medium',
+): Promise<ISportsResponse> {
+  const cacheKey = `isports|${path}|${JSON.stringify(params || {})}`;
+
+  return cachedFetch<ISportsResponse>({
+    cacheKey,
+    tipo,
+    priority,
+    fetchFn: () => rawISportsFetch(path, params),
+  });
+}
+
 export function clearFootballCache(pathIncludes?: string): void {
-  cache.clear();
-
-  if (!isBrowserEnv()) return;
-
-  if (!pathIncludes) {
-    for (const key of Object.keys(window.localStorage)) {
-      if (key.startsWith(PERSISTENT_CACHE_PREFIX)) {
-        window.localStorage.removeItem(key);
-      }
-    }
-    return;
-  }
-
-  for (const key of Object.keys(window.localStorage)) {
-    if (key.startsWith(PERSISTENT_CACHE_PREFIX) && key.includes(pathIncludes)) {
-      window.localStorage.removeItem(key);
-    }
-  }
+  clearApiCache(pathIncludes ? `isports|${pathIncludes}` : undefined);
 }
 
-export function hasApiKey(): boolean {
-  return true;
-}
+export function hasApiKey(): boolean { return true; }
 
 // ── Date helpers ──
 
