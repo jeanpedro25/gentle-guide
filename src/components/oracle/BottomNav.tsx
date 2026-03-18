@@ -13,7 +13,7 @@ export function BottomNav() {
   const navigate = useNavigate();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 border-t border-border backdrop-blur-md px-6 py-3 flex justify-between items-center md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 border-t border-border backdrop-blur-md px-6 py-3 flex justify-between items-center max-w-4xl mx-auto">
       {NAV_ITEMS.map(({ path, icon: Icon, label }) => {
         const isActive = location.pathname === path;
         return (
