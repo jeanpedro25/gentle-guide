@@ -221,6 +221,7 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
                   💰 PAGANDO MAIS
                 </span>
               )}
+              {!isLive && <EVBadge fixtureId={fixture.fixture.id} />}
               {/* Dynamic heat badge */}
               {isLive && verdict && (
                 <MatchHeatBadge {...verdict} />

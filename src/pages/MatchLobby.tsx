@@ -131,6 +131,7 @@ export default function MatchLobby() {
     <div className="min-h-screen bg-background">
       <LobbyHeader />
       <LiveAlertBanner />
+      <StopLossBanner status={stopLoss} />
 
       <main className="pb-24">
         {/* Search */}
