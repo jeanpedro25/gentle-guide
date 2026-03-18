@@ -12,6 +12,7 @@ import BankrollPage from "./pages/BankrollPage";
 import HistoryPage from "./pages/HistoryPage";
 import JogueAgoraPage from "./pages/JogueAgoraPage";
 import AuthPage from "./pages/AuthPage";
+import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
 
 clearFootballCache();
