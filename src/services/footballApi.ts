@@ -379,7 +379,7 @@ async function fetchMatchesByDate(date: string): Promise<ApiFixture[]> {
       }
     };
 
-    const res = await iSportsFetch('/sport/football/schedule/basic', { date }).catch(err => {
+    const res = await iSportsFetch('/sport/football/schedule/basic', { date }, 'jogos', 'medium').catch(err => {
       if (isApiLimitError(err)) { rateLimited = true; throw err; }
       return null;
     });
