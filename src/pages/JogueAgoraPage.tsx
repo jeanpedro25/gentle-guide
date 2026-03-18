@@ -7,7 +7,6 @@ import { useTodayFixtures, useTomorrowFixtures } from '@/hooks/useFixtures';
 import { BottomNav } from '@/components/oracle/BottomNav';
 import { MatchListItem } from '@/components/jogueAgora/MatchListItem';
 import { AnalysisPanel } from '@/components/jogueAgora/AnalysisPanel';
-import { BetPanel } from '@/components/jogueAgora/BetPanel';
 import { analyzeMatch, type AnaliseJogo } from '@/lib/jogueAgora';
 import { ApiFixture } from '@/types/fixture';
 import profetaLogo from '@/assets/profeta-bet-logo.png';
