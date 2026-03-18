@@ -7,7 +7,6 @@ import { useTodayFixtures, useTomorrowFixtures } from '@/hooks/useFixtures';
 import { BottomNav } from '@/components/oracle/BottomNav';
 import { MatchListItem } from '@/components/jogueAgora/MatchListItem';
 import { AnalysisPanel } from '@/components/jogueAgora/AnalysisPanel';
-import { BetPanel } from '@/components/jogueAgora/BetPanel';
 import { analyzeMatch, type AnaliseJogo } from '@/lib/jogueAgora';
 import { ApiFixture } from '@/types/fixture';
 import profetaLogo from '@/assets/profeta-bet-logo.png';
@@ -26,7 +25,7 @@ export default function JogueAgoraPage() {
   const [selectedFixture, setSelectedFixture] = useState<ApiFixture | null>(null);
   const [analysis, setAnalysis] = useState<AnaliseJogo | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
-  const [betAnalise, setBetAnalise] = useState<AnaliseJogo | null>(null);
+  
 
   const allMatches = tab === 'hoje' ? todayMatches : tomorrowMatches;
   const isLoading = tab === 'hoje' ? loadingToday : loadingTomorrow;
@@ -81,9 +80,6 @@ export default function JogueAgoraPage() {
     }, 800);
   }, []);
 
-  const handleBet = useCallback((analise: AnaliseJogo) => {
-    setBetAnalise(analise);
-  }, []);
 
   const handleCloseAnalysis = useCallback(() => {
     setSelectedFixture(null);
@@ -212,15 +208,8 @@ export default function JogueAgoraPage() {
         fixture={selectedFixture}
         analysis={analysis}
         analyzing={analyzing}
-        onBet={handleBet}
+        onBet={() => {}}
         onClose={handleCloseAnalysis}
-      />
-
-      {/* Bet Panel */}
-      <BetPanel
-        analise={betAnalise}
-        bankrollAmount={bankrollAmount}
-        onClose={() => setBetAnalise(null)}
       />
 
       <BottomNav />
