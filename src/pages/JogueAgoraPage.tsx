@@ -25,7 +25,7 @@ export default function JogueAgoraPage() {
   const [selectedFixture, setSelectedFixture] = useState<ApiFixture | null>(null);
   const [analysis, setAnalysis] = useState<AnaliseJogo | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
-  const [betAnalise, setBetAnalise] = useState<AnaliseJogo | null>(null);
+  
 
   const allMatches = tab === 'hoje' ? todayMatches : tomorrowMatches;
   const isLoading = tab === 'hoje' ? loadingToday : loadingTomorrow;
