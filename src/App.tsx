@@ -27,7 +27,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       <div className="animate-pulse text-primary font-bold text-lg">Carregando...</div>
     </div>
   );
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/welcome" replace />;
   return <>{children}</>;
 }
 
