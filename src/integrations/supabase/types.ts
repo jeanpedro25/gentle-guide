@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_cache: {
+        Row: {
+          chave: string
+          criado_em: string
+          dados: Json
+          expira_em: string
+          id: string
+          tipo: Database["public"]["Enums"]["cache_data_type"]
+          total_hits: number
+        }
+        Insert: {
+          chave: string
+          criado_em?: string
+          dados: Json
+          expira_em: string
+          id?: string
+          tipo?: Database["public"]["Enums"]["cache_data_type"]
+          total_hits?: number
+        }
+        Update: {
+          chave?: string
+          criado_em?: string
+          dados?: Json
+          expira_em?: string
+          id?: string
+          tipo?: Database["public"]["Enums"]["cache_data_type"]
+          total_hits?: number
+        }
+        Relationships: []
+      }
       bankroll: {
         Row: {
           amount: number
@@ -204,7 +234,14 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      cache_data_type:
+        | "jogos"
+        | "odds"
+        | "resultado"
+        | "liga"
+        | "time"
+        | "estatistica"
+        | "livescores"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -331,6 +368,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      cache_data_type: [
+        "jogos",
+        "odds",
+        "resultado",
+        "liga",
+        "time",
+        "estatistica",
+        "livescores",
+      ],
+    },
   },
 } as const
