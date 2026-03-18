@@ -80,9 +80,6 @@ export default function JogueAgoraPage() {
     }, 800);
   }, []);
 
-  const handleBet = useCallback((analise: AnaliseJogo) => {
-    setBetAnalise(analise);
-  }, []);
 
   const handleCloseAnalysis = useCallback(() => {
     setSelectedFixture(null);
