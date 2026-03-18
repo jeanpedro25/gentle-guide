@@ -208,15 +208,8 @@ export default function JogueAgoraPage() {
         fixture={selectedFixture}
         analysis={analysis}
         analyzing={analyzing}
-        onBet={handleBet}
+        onBet={() => {}}
         onClose={handleCloseAnalysis}
-      />
-
-      {/* Bet Panel */}
-      <BetPanel
-        analise={betAnalise}
-        bankrollAmount={bankrollAmount}
-        onClose={() => setBetAnalise(null)}
       />
 
       <BottomNav />
