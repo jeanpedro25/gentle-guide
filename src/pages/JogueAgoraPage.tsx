@@ -31,8 +31,11 @@ export default function JogueAgoraPage() {
   const isLoading = tab === 'hoje' ? loadingToday : loadingTomorrow;
   const updatedAt = tab === 'hoje' ? updatedToday : updatedTomorrow;
 
-  // Filter only upcoming (NS) matches
-  const upcoming = allMatches.filter(m => m.fixture.status.short === 'NS');
+  // Filter only upcoming (NS) matches whose kick-off is still in the future
+  const now = Math.floor(Date.now() / 1000);
+  const upcoming = allMatches.filter(m =>
+    m.fixture.status.short === 'NS' && m.fixture.timestamp > now
+  );
 
   // Search filter
   const filtered = search.trim()
