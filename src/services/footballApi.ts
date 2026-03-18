@@ -441,7 +441,7 @@ export async function fetchFixturesByLeague(
   try {
     const response = await iSportsFetch('/sport/football/schedule/basic', {
       leagueId: league.iSportsId,
-    });
+    }, 'jogos', 'low');
 
     if (response.code !== 0 || !response.data) {
       console.warn(`[Oracle] ${league.name} schedule failed:`, response.message);
