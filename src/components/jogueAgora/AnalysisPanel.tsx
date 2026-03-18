@@ -66,9 +66,9 @@ export function AnalysisPanel({ fixture, analysis, analyzing, onBet, onClose }: 
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t-2 border-primary/30 rounded-t-2xl max-h-[85vh] overflow-y-auto shadow-2xl"
+            className="fixed bottom-0 left-0 right-0 z-[60] bg-background border-t-2 border-primary/30 rounded-t-2xl max-h-[85vh] overflow-y-auto shadow-2xl"
           >
-            <div className="p-5 pb-8 space-y-4">
+            <div className="p-5 pb-24 space-y-4">
               {/* Header */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
