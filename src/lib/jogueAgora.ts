@@ -159,14 +159,14 @@ export function classificarJogos(jogos: AnaliseJogo[]): RankingFinal {
   const topIds = new Set(top.map(j => j.fixture.fixture.id));
   const remaining = ordenados.filter(j => !topIds.has(j.fixture.fixture.id));
 
-  // MEDIO: EV > 5% from remaining
-  const medioCandidates = remaining.filter(j => j.melhor_ev > 5);
+  // MEDIO: EV > 3% from remaining (lowered threshold for more results)
+  const medioCandidates = remaining.filter(j => j.melhor_ev > 3);
   const medio = medioCandidates.slice(0, 2).map(j => ({ ...j, categoria: 'medio' as const }));
 
   const medioIds = new Set(medio.map(j => j.fixture.fixture.id));
   const rest = remaining.filter(j => !medioIds.has(j.fixture.fixture.id));
 
-  // EXPLORAR: EV > 2% from remaining
+  // EXPLORAR: any remaining EV-positive
   const explorar = rest.slice(0, 5).map(j => ({ ...j, categoria: 'explorar' as const }));
 
   return {
