@@ -199,7 +199,7 @@ export default function JogueAgoraPage() {
             </p>
 
             {ranking.avisoTop && (
-              <div className="text-center text-xs text-yellow-500 bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-2">
+              <div className="text-center text-xs text-oracle-draw bg-oracle-draw/10 border border-oracle-draw/20 rounded-lg px-3 py-2">
                 ⚠️ {ranking.avisoTop}
               </div>
             )}

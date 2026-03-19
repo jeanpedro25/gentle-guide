@@ -98,7 +98,7 @@ export function RankedMatchCard({ analise, rank, onAnalyze, onBet }: Props) {
       </div>
 
       {isLive && (
-        <p className="text-[10px] text-yellow-500 bg-yellow-500/10 rounded px-2 py-1">
+        <p className="text-[10px] text-oracle-draw bg-oracle-draw/10 rounded px-2 py-1">
           ⚠️ Jogo já começou — odd pode ter mudado
         </p>
       )}
