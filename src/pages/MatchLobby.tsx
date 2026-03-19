@@ -122,6 +122,16 @@ export default function MatchLobby() {
     return new Set(scored.slice(0, 3).map(s => s.id));
   }, [grouped]);
 
+  // Available leagues for filter dropdown
+  const availableLeagues = useMemo(() => {
+    return grouped.map(g => g.leagueName).sort();
+  }, [grouped]);
+
+  // Apply filters
+  const filteredGrouped = useMemo(() => {
+    return applyMatchFilters(grouped, matchFilters) as typeof grouped;
+  }, [grouped, matchFilters]);
+
   const liveCount = (liveQuery.data ?? []).length;
   const currentLoading = timeFilter === 'live' ? liveQuery.isLoading : activeQuery.isLoading;
   const currentError = timeFilter === 'live' ? false : activeQuery.isError;
