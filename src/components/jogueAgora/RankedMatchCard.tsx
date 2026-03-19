@@ -53,7 +53,7 @@ export function RankedMatchCard({ analise, rank, onAnalyze, onBet }: Props) {
         </div>
         <div className="flex items-center gap-1.5">
           {isLive ? (
-            <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded animate-pulse">
+            <span className="text-[10px] font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded animate-pulse">
               🔴 AO VIVO
             </span>
           ) : (
