@@ -3,19 +3,20 @@ import { preloadTeamLogos } from '@/services/teamLogos';
 import { useTodayFixtures, useTomorrowFixtures, useWeekFixtures } from '@/hooks/useFixtures';
 import { useLiveMatches } from '@/hooks/useLiveMatches';
 import { TimeTabs, TimeFilter } from '@/components/oracle/TimeTabs';
-import { MatchCard } from '@/components/oracle/MatchCard';
 import { LobbyHeader } from '@/components/oracle/LobbyHeader';
 import { LiveMatches } from '@/components/oracle/LiveMatches';
 import { LiveAlertBanner } from '@/components/oracle/LiveAlertBanner';
 import { BottomNav } from '@/components/oracle/BottomNav';
 import { StopLossBanner } from '@/components/oracle/StopLossBanner';
+import { MatchFilters, MatchFiltersState, applyMatchFilters } from '@/components/oracle/MatchFilters';
+import { MatchListPaginated } from '@/components/oracle/MatchListPaginated';
 import { useStopLoss } from '@/hooks/useStopLoss';
 import { useBets } from '@/hooks/useBets';
 import { useBankroll } from '@/hooks/usePredictions';
 import { ApiFixture } from '@/types/fixture';
 import { clearFootballCache } from '@/services/footballApi';
 import { motion } from 'framer-motion';
-import { Loader2, AlertCircle, RefreshCw, Search, X, Star } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { MultiplaBar } from '@/components/oracle/MultiplaBar';
 import { toast } from 'sonner';
@@ -26,6 +27,7 @@ const LIVE_STATUSES = new Set(['1H', '2H', 'HT', 'LIVE', 'PEN']);
 export default function MatchLobby() {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('today');
   const [searchQuery, setSearchQuery] = useState('');
+  const [matchFilters, setMatchFilters] = useState<MatchFiltersState>({ league: '', timeOfDay: 'all', sortBy: 'time' });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -119,6 +121,16 @@ export default function MatchLobby() {
       .sort((a, b) => b.score - a.score);
     return new Set(scored.slice(0, 3).map(s => s.id));
   }, [grouped]);
+
+  // Available leagues for filter dropdown
+  const availableLeagues = useMemo(() => {
+    return grouped.map(g => g.leagueName).sort();
+  }, [grouped]);
+
+  // Apply filters
+  const filteredGrouped = useMemo(() => {
+    return applyMatchFilters(grouped, matchFilters) as typeof grouped;
+  }, [grouped, matchFilters]);
 
   const liveCount = (liveQuery.data ?? []).length;
   const currentLoading = timeFilter === 'live' ? liveQuery.isLoading : activeQuery.isLoading;
@@ -222,31 +234,17 @@ export default function MatchLobby() {
 
         {/* Match list (non-live tabs) */}
         {timeFilter !== 'live' && !currentLoading && !currentError && hasResults && (
-          <section className="mt-6 px-4 space-y-6">
-            {grouped.map((group) => (
-              <div key={group.leagueName} className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <Star className="w-5 h-5 text-primary" />
-                  <h2 className="font-bold text-base text-foreground">
-                    {group.leagueName.toUpperCase()}
-                    {group.country && (
-                      <span className="text-muted-foreground font-normal text-sm ml-2">• {group.country}</span>
-                    )}
-                  </h2>
-                </div>
-                <div className="space-y-4">
-                  {group.fixtures.map((fixture, i) => (
-                    <MatchCard
-                      key={fixture.fixture.id}
-                      fixture={fixture}
-                      onClick={() => handleMatchClick(fixture)}
-                      index={i}
-                      bestValue={bestValueIds.has(fixture.fixture.id)}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
+          <section className="mt-6 px-4 space-y-4">
+            <MatchFilters
+              filters={matchFilters}
+              onChange={setMatchFilters}
+              availableLeagues={availableLeagues}
+            />
+            <MatchListPaginated
+              grouped={filteredGrouped}
+              bestValueIds={bestValueIds}
+              onMatchClick={handleMatchClick}
+            />
           </section>
         )}
       </main>
