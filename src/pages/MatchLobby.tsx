@@ -224,31 +224,17 @@ export default function MatchLobby() {
 
         {/* Match list (non-live tabs) */}
         {timeFilter !== 'live' && !currentLoading && !currentError && hasResults && (
-          <section className="mt-6 px-4 space-y-6">
-            {grouped.map((group) => (
-              <div key={group.leagueName} className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <Star className="w-5 h-5 text-primary" />
-                  <h2 className="font-bold text-base text-foreground">
-                    {group.leagueName.toUpperCase()}
-                    {group.country && (
-                      <span className="text-muted-foreground font-normal text-sm ml-2">• {group.country}</span>
-                    )}
-                  </h2>
-                </div>
-                <div className="space-y-4">
-                  {group.fixtures.map((fixture, i) => (
-                    <MatchCard
-                      key={fixture.fixture.id}
-                      fixture={fixture}
-                      onClick={() => handleMatchClick(fixture)}
-                      index={i}
-                      bestValue={bestValueIds.has(fixture.fixture.id)}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
+          <section className="mt-6 px-4 space-y-4">
+            <MatchFilters
+              filters={matchFilters}
+              onChange={setMatchFilters}
+              availableLeagues={availableLeagues}
+            />
+            <MatchListPaginated
+              grouped={filteredGrouped}
+              bestValueIds={bestValueIds}
+              onMatchClick={handleMatchClick}
+            />
           </section>
         )}
       </main>
