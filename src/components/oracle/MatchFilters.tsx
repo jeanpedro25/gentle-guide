@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Filter, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { mergeLeagueCatalog, matchesSelectedLeagues, readLeagueCatalog, readSelectedLeagueIds } from '@/lib/leagueFilter';
 
 export interface MatchFiltersState {
   league: string;
@@ -29,6 +30,10 @@ const SORT_OPTIONS = [
 
 export function MatchFilters({ filters, onChange, availableLeagues }: Props) {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    mergeLeagueCatalog(availableLeagues);
+  }, [availableLeagues]);
 
   const hasActiveFilters = filters.league !== '' || filters.timeOfDay !== 'all' || filters.sortBy !== 'time';
 
@@ -125,6 +130,20 @@ export function applyMatchFilters(
   filters: MatchFiltersState,
 ): typeof fixtures {
   let result = fixtures;
+
+  const selectedLeagueIds = readSelectedLeagueIds();
+  const leagueCatalog = readLeagueCatalog();
+
+  if (selectedLeagueIds.length > 0) {
+    result = result
+      .map((group) => ({
+        ...group,
+        fixtures: group.fixtures.filter((fixture) =>
+          matchesSelectedLeagues(fixture.league.name, selectedLeagueIds, leagueCatalog),
+        ),
+      }))
+      .filter((group) => group.fixtures.length > 0);
+  }
 
   // Filter by league
   if (filters.league) {

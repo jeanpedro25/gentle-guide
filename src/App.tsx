@@ -14,6 +14,7 @@ import JogueAgoraPage from "./pages/JogueAgoraPage";
 import AuthPage from "./pages/AuthPage";
 import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
+import { LeagueFilterLayout } from "@/components/oracle/LeagueFilterLayout";
 
 clearFootballCache();
 sessionStorage.removeItem('selected-fixture');
@@ -42,13 +43,18 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      <Route path="/welcome" element={user ? <Navigate to="/" replace /> : <LandingPage />} />
-      <Route path="/login" element={user ? <Navigate to="/" replace /> : <AuthPage />} />
-      <Route path="/" element={<ProtectedRoute><MatchLobby /></ProtectedRoute>} />
-      <Route path="/match/:id" element={<ProtectedRoute><MatchDetail /></ProtectedRoute>} />
-      <Route path="/jogar" element={<ProtectedRoute><JogueAgoraPage /></ProtectedRoute>} />
-      <Route path="/banca" element={<ProtectedRoute><BankrollPage /></ProtectedRoute>} />
-      <Route path="/historico" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
+      <Route path="/welcome" element={user ? <Navigate to="/aovivo" replace /> : <LandingPage />} />
+      <Route path="/login" element={user ? <Navigate to="/aovivo" replace /> : <AuthPage />} />
+      <Route element={<ProtectedRoute><LeagueFilterLayout /></ProtectedRoute>}>
+        <Route index element={<Navigate to="/aovivo" replace />} />
+        <Route path="/aovivo" element={<MatchLobby />} />
+        <Route path="/proximos" element={<MatchLobby />} />
+        <Route path="/match/:id" element={<MatchDetail />} />
+        <Route path="/jogar" element={<JogueAgoraPage />} />
+        <Route path="/banca" element={<BankrollPage />} />
+        <Route path="/perfil" element={<HistoryPage />} />
+        <Route path="/historico" element={<HistoryPage />} />
+      </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
