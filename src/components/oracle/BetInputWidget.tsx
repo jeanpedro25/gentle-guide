@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, TrendingUp } from 'lucide-react';
 
@@ -16,6 +16,7 @@ export function BetInputWidget({ bankrollAmount, odd, maxPct = 5 }: BetInputWidg
   const numAmount = parseFloat(betAmount) || 0;
   const isExcessive = numAmount > maxBet;
   const potentialProfit = numAmount * (odd - 1);
+  const totalReturn = numAmount + potentialProfit;
 
   return (
     <div className="space-y-2 mt-3">
@@ -34,15 +35,23 @@ export function BetInputWidget({ bankrollAmount, odd, maxPct = 5 }: BetInputWidg
             } focus:ring-1`}
           />
         </div>
+
         {numAmount > 0 && (
-          <div className="flex items-center gap-1 text-xs shrink-0">
-            <TrendingUp className="w-3 h-3 text-primary" />
-            <span className="text-primary font-bold">
-              +R$ {potentialProfit.toFixed(2)}
-            </span>
+          <div className="text-right shrink-0">
+            <p className="text-[10px] text-muted-foreground">Lucro se ganhar</p>
+            <div className="flex items-center gap-1 text-xs justify-end">
+              <TrendingUp className="w-3 h-3 text-primary" />
+              <span className="text-primary font-bold">+R$ {potentialProfit.toFixed(2)}</span>
+            </div>
           </div>
         )}
       </div>
+
+      {numAmount > 0 && !isExcessive && (
+        <p className="text-[10px] text-muted-foreground">
+          Retorno total estimado: <span className="font-bold text-foreground">R$ {totalReturn.toFixed(2)}</span>
+        </p>
+      )}
 
       <AnimatePresence>
         {isExcessive && (
