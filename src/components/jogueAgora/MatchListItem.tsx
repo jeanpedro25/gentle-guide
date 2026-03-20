@@ -31,7 +31,7 @@ export function MatchListItem({ fixture, onAnalyze }: Props) {
     });
   }, [fixture.league.id, fixture.league.name, registerDynamicLeague]);
 
-  if (!isLeagueAllowed(fixture.league.name, String(fixture.league.id)) && !hasOnlyFixedSelections) {
+  if (!isLeagueAllowed(fixture.league.name, fixture.league.id) && !hasOnlyFixedSelections) {
     return null;
   }
 
