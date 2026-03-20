@@ -10,6 +10,7 @@ import MatchLobby from "./pages/MatchLobby";
 import MatchDetail from "./pages/MatchDetail";
 import BankrollPage from "./pages/BankrollPage";
 import HistoryPage from "./pages/HistoryPage";
+import ProfilePage from "./pages/ProfilePage";
 import JogueAgoraPage from "./pages/JogueAgoraPage";
 import AuthPage from "./pages/AuthPage";
 import LandingPage from "./pages/LandingPage";
@@ -54,7 +55,7 @@ const AppRoutes = () => {
         <Route path="/jogueagora" element={<Navigate to="/jogar" replace />} />
         <Route path="/jogar" element={<JogueAgoraPage />} />
         <Route path="/banca" element={<BankrollPage />} />
-        <Route path="/perfil" element={<HistoryPage />} />
+        <Route path="/perfil" element={<ProfilePage />} />
         <Route path="/historico" element={<HistoryPage />} />
       </Route>
       <Route path="*" element={<NotFound />} />
