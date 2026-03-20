@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
 import { Filter, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { mergeLeagueCatalog, matchesSelectedLeagues, readLeagueCatalog, readSelectedLeagueIds } from '@/lib/leagueFilter';
+import { useLeagueFilter } from '@/contexts/LeagueFilterContext';
+import { createLeagueMatcher, readSelectedLeagueIdsFromStorage, resolveLeagueOptions } from '@/lib/leagueFilter';
 
 export interface MatchFiltersState {
   league: string;
@@ -30,12 +31,14 @@ const SORT_OPTIONS = [
 
 export function MatchFilters({ filters, onChange, availableLeagues }: Props) {
   const [open, setOpen] = useState(false);
+  const { selectedLeagueIds, registerLeagueNames } = useLeagueFilter();
 
   useEffect(() => {
-    mergeLeagueCatalog(availableLeagues);
-  }, [availableLeagues]);
+    registerLeagueNames(availableLeagues);
+  }, [availableLeagues, registerLeagueNames]);
 
   const hasActiveFilters = filters.league !== '' || filters.timeOfDay !== 'all' || filters.sortBy !== 'time';
+  const hasGlobalLeagueFilter = selectedLeagueIds.length > 0;
 
   const reset = () => onChange({ league: '', timeOfDay: 'all', sortBy: 'time' });
 
@@ -65,6 +68,11 @@ export function MatchFilters({ filters, onChange, availableLeagues }: Props) {
           exit={{ opacity: 0, height: 0 }}
           className="bg-card border border-border rounded-lg p-3 space-y-3"
         >
+          {hasGlobalLeagueFilter && (
+            <div className="text-[10px] px-2 py-1 rounded bg-primary/10 border border-primary/30 text-primary font-semibold">
+              Filtro global ativo no menu lateral: {selectedLeagueIds.length} liga(s).
+            </div>
+          )}
           {/* League filter */}
           <div>
             <label className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Liga</label>
@@ -131,18 +139,19 @@ export function applyMatchFilters(
 ): typeof fixtures {
   let result = fixtures;
 
-  const selectedLeagueIds = readSelectedLeagueIds();
-  const leagueCatalog = readLeagueCatalog();
+  const globalSelectedLeagues = readSelectedLeagueIdsFromStorage();
+  const globalMatcher = createLeagueMatcher(
+    globalSelectedLeagues,
+    resolveLeagueOptions(fixtures.map((g) => g.leagueName)),
+  );
 
-  if (selectedLeagueIds.length > 0) {
+  if (globalSelectedLeagues.length > 0) {
     result = result
-      .map((group) => ({
-        ...group,
-        fixtures: group.fixtures.filter((fixture) =>
-          matchesSelectedLeagues(fixture.league.name, selectedLeagueIds, leagueCatalog),
-        ),
+      .map((g) => ({
+        ...g,
+        fixtures: g.fixtures.filter((f) => globalMatcher(f.league.name || g.leagueName)),
       }))
-      .filter((group) => group.fixtures.length > 0);
+      .filter((g) => g.fixtures.length > 0);
   }
 
   // Filter by league
