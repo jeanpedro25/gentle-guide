@@ -33,9 +33,7 @@ export function MatchFilters({ filters, onChange, availableLeagues }: Props) {
   const [open, setOpen] = useState(false);
   const { selectedLeague, setSelectedLeague } = useLeagueFilter();
 
-  useEffect(() => {
-    registerLeagueNames(availableLeagues);
-  }, [availableLeagues, registerLeagueNames]);
+  // Leagues are registered dynamically via MatchCard
 
   const hasActiveFilters = filters.league !== '' || filters.timeOfDay !== 'all' || filters.sortBy !== 'time';
   const hasGlobalLeagueFilter = selectedLeagueIds.length > 0;
