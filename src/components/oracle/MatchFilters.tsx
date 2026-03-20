@@ -138,10 +138,7 @@ export function applyMatchFilters(
   let result = fixtures;
 
   const globalSelectedLeagues = readSelectedLeagueIdsFromStorage();
-  const globalMatcher = createLeagueMatcher(
-    globalSelectedLeagues,
-    resolveLeagueOptions(fixtures.map((g) => g.leagueName)),
-  );
+  const globalMatcher = createLeagueMatcher();
 
   if (globalSelectedLeagues.length > 0) {
     result = result
