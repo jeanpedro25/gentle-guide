@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Target, TrendingUp, Clock, Zap } from 'lucide-react';
 import { AnaliseJogo, PICK_LABELS_FULL } from '@/lib/jogueAgora';
-import { useLeagueFilter } from '@/contexts/LeagueFilterContext';
+import { FIXED_LEAGUES, useLeagueFilter } from '@/contexts/LeagueFilterContext';
 
 interface Props {
   analise: AnaliseJogo;
@@ -10,6 +10,8 @@ interface Props {
   onAnalyze: () => void;
   onBet: () => void;
 }
+
+const FIXED_LEAGUE_IDS = new Set(FIXED_LEAGUES.map((league) => league.id));
 
 function ConfidenceBar({ value }: { value: number }) {
   const filled = Math.round(value / 10);
@@ -30,8 +32,9 @@ function ConfidenceBar({ value }: { value: number }) {
 
 export function RankedMatchCard({ analise, rank, onAnalyze, onBet }: Props) {
   const { fixture } = analise;
-  const { isLeagueAllowed, registerDynamicLeague } = useLeagueFilter();
+  const { isLeagueAllowed, registerDynamicLeague, selectedLeagueIds } = useLeagueFilter();
   const leagueId = String(fixture.league.id);
+  const hasOnlyFixedSelections = selectedLeagueIds.length > 0 && selectedLeagueIds.every((id) => FIXED_LEAGUE_IDS.has(id));
   const isLive = ['1H', '2H', 'HT', 'LIVE', 'PEN'].includes(fixture.fixture.status.short);
 
   const time = new Date(fixture.fixture.date).toLocaleTimeString('pt-BR', {
@@ -45,11 +48,11 @@ export function RankedMatchCard({ analise, rank, onAnalyze, onBet }: Props) {
       id: leagueId,
       apiId: fixture.league.id,
       nome: fixture.league.name,
-      bandeira: '🏟️',
+      bandeira: 'üèüÔ∏è',
     });
   }, [fixture.league.id, fixture.league.name, registerDynamicLeague]);
 
-  if (!isLeagueAllowed(fixture.league.name, leagueId)) {
+  if (!isLeagueAllowed(fixture.league.name, leagueId) && !hasOnlyFixedSelections) {
     return null;
   }
 
@@ -71,7 +74,7 @@ export function RankedMatchCard({ analise, rank, onAnalyze, onBet }: Props) {
         <div className="flex items-center gap-1.5">
           {isLive ? (
             <span className="text-[10px] font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded animate-pulse">
-              🔴 AO VIVO
+              üî¥ AO VIVO
             </span>
           ) : (
             <span className="text-[10px] text-muted-foreground flex items-center gap-1">
@@ -110,13 +113,13 @@ export function RankedMatchCard({ analise, rank, onAnalyze, onBet }: Props) {
 
       {/* Confidence */}
       <div>
-        <p className="text-[9px] text-muted-foreground mb-1">Confiança</p>
+        <p className="text-[9px] text-muted-foreground mb-1">Confian√ßa</p>
         <ConfidenceBar value={analise.confianca} />
       </div>
 
       {isLive && (
         <p className="text-[10px] text-oracle-draw bg-oracle-draw/10 rounded px-2 py-1">
-          ⚠️ Jogo já começou — odd pode ter mudado
+          ‚ö†Ô∏è Jogo j√° come√ßou ‚Äî odd pode ter mudado
         </p>
       )}
 
@@ -126,7 +129,7 @@ export function RankedMatchCard({ analise, rank, onAnalyze, onBet }: Props) {
           onClick={onAnalyze}
           className="flex-1 py-2.5 rounded-lg bg-secondary text-foreground text-xs font-bold hover:bg-secondary/80 transition-colors flex items-center justify-center gap-1"
         >
-          📊 ANALISAR
+          üìä ANALISAR
         </button>
         <button
           onClick={onBet}

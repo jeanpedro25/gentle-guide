@@ -2,16 +2,19 @@ import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import { ApiFixture } from '@/types/fixture';
-import { useLeagueFilter } from '@/contexts/LeagueFilterContext';
+import { FIXED_LEAGUES, useLeagueFilter } from '@/contexts/LeagueFilterContext';
 
 interface Props {
   fixture: ApiFixture;
   onAnalyze: (fixture: ApiFixture) => void;
 }
 
+const FIXED_LEAGUE_IDS = new Set(FIXED_LEAGUES.map((league) => league.id));
+
 export function MatchListItem({ fixture, onAnalyze }: Props) {
-  const { isLeagueAllowed, registerDynamicLeague } = useLeagueFilter();
+  const { isLeagueAllowed, registerDynamicLeague, selectedLeagueIds } = useLeagueFilter();
   const leagueId = String(fixture.league.id);
+  const hasOnlyFixedSelections = selectedLeagueIds.length > 0 && selectedLeagueIds.every((id) => FIXED_LEAGUE_IDS.has(id));
 
   const time = new Date(fixture.fixture.date).toLocaleTimeString('pt-BR', {
     hour: '2-digit',
@@ -24,11 +27,11 @@ export function MatchListItem({ fixture, onAnalyze }: Props) {
       id: leagueId,
       apiId: fixture.league.id,
       nome: fixture.league.name,
-      bandeira: '🏟️',
+      bandeira: 'üèüÔ∏è',
     });
   }, [fixture.league.id, fixture.league.name, registerDynamicLeague]);
 
-  if (!isLeagueAllowed(fixture.league.name, leagueId)) {
+  if (!isLeagueAllowed(fixture.league.name, leagueId) && !hasOnlyFixedSelections) {
     return null;
   }
 
