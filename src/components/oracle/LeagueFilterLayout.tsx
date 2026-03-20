@@ -19,6 +19,17 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const [showAllLeagues, setShowAllLeagues] = useState(false);
 
   const fixedIds = useMemo(() => new Set(FIXED_LEAGUES.map((league) => league.id)), []);
+  const optionIds = useMemo(() => new Set(leagueOptions.map((league) => league.id)), [leagueOptions]);
+
+  useEffect(() => {
+    if (selectedLeagueIds.length === 0) return;
+    if (optionIds.size === 0) return;
+
+    const hasKnownSelection = selectedLeagueIds.some((id) => optionIds.has(id));
+    if (!hasKnownSelection) {
+      clearSelectedLeagues();
+    }
+  }, [selectedLeagueIds, optionIds, clearSelectedLeagues]);
 
   const fixedLeagues = useMemo(
     () => leagueOptions.filter((league) => fixedIds.has(league.id)),
