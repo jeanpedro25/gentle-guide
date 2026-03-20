@@ -31,6 +31,7 @@ function ConfidenceBar({ value }: { value: number }) {
 export function RankedMatchCard({ analise, rank, onAnalyze, onBet }: Props) {
   const { fixture } = analise;
   const { isLeagueAllowed, registerDynamicLeague } = useLeagueFilter();
+  const leagueId = String(fixture.league.id);
   const isLive = ['1H', '2H', 'HT', 'LIVE', 'PEN'].includes(fixture.fixture.status.short);
 
   const time = new Date(fixture.fixture.date).toLocaleTimeString('pt-BR', {
@@ -41,14 +42,14 @@ export function RankedMatchCard({ analise, rank, onAnalyze, onBet }: Props) {
 
   useEffect(() => {
     registerDynamicLeague({
-      id: String(fixture.league.id),
+      id: leagueId,
       apiId: fixture.league.id,
       nome: fixture.league.name,
       bandeira: '🏟️',
     });
   }, [fixture.league.id, fixture.league.name, registerDynamicLeague]);
 
-  if (!isLeagueAllowed(fixture.league.name, fixture.league.id)) {
+  if (!isLeagueAllowed(fixture.league.name, leagueId)) {
     return null;
   }
 

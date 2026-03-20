@@ -50,6 +50,8 @@ const AppRoutes = () => {
         <Route path="/aovivo" element={<MatchLobby />} />
         <Route path="/proximos" element={<MatchLobby />} />
         <Route path="/match/:id" element={<MatchDetail />} />
+        <Route path="/jogue-agora" element={<Navigate to="/jogar" replace />} />
+        <Route path="/jogueagora" element={<Navigate to="/jogar" replace />} />
         <Route path="/jogar" element={<JogueAgoraPage />} />
         <Route path="/banca" element={<BankrollPage />} />
         <Route path="/perfil" element={<HistoryPage />} />
