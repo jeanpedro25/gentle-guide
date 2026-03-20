@@ -5,13 +5,13 @@ import { useBankroll } from "@/hooks/usePredictions";
 import { FIXED_LEAGUES, LeagueFilterProvider, useLeagueFilter } from "@/contexts/LeagueFilterContext";
 import { normalizeLeagueName } from "@/lib/leagueFilter";
 
-const MENU_ITEMS = [
-  { icon: "ðŸ”´", label: "Ao Vivo", rota: "/aovivo", badge: "LIVE" },
-  { icon: "âš¡", label: "Jogue Agora", rota: "/jogar", badge: "TOP" },
-  { icon: "ðŸ“…", label: "Proximos Jogos", rota: "/proximos" },
-  { icon: "ðŸ’°", label: "Minha Banca", rota: "/banca" },
-  { icon: "ðŸ‘¤", label: "Meu Perfil", rota: "/perfil" },
-] as const;
+const MENU_ITEMS: { icon: string; label: string; rota: string; badge?: string }[] = [
+  { icon: "🔴", label: "Ao Vivo", rota: "/aovivo", badge: "LIVE" },
+  { icon: "⚡", label: "Jogue Agora", rota: "/jogar", badge: "TOP" },
+  { icon: "📅", label: "Proximos Jogos", rota: "/proximos" },
+  { icon: "💰", label: "Minha Banca", rota: "/banca" },
+  { icon: "👤", label: "Meu Perfil", rota: "/perfil" },
+];
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { leagueOptions, selectedLeagueIds, toggleLeague, clearSelectedLeagues } = useLeagueFilter();
