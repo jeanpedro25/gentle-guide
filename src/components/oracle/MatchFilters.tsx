@@ -36,7 +36,7 @@ export function MatchFilters({ filters, onChange, availableLeagues }: Props) {
   // Leagues are registered dynamically via MatchCard
 
   const hasActiveFilters = filters.league !== '' || filters.timeOfDay !== 'all' || filters.sortBy !== 'time';
-  const hasGlobalLeagueFilter = selectedLeagueIds.length > 0;
+  const hasGlobalLeagueFilter = selectedLeague !== null;
 
   const reset = () => onChange({ league: '', timeOfDay: 'all', sortBy: 'time' });
 
