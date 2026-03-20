@@ -31,7 +31,7 @@ const SORT_OPTIONS = [
 
 export function MatchFilters({ filters, onChange, availableLeagues }: Props) {
   const [open, setOpen] = useState(false);
-  const { selectedLeagueIds, registerLeagueNames } = useLeagueFilter();
+  const { selectedLeague, setSelectedLeague } = useLeagueFilter();
 
   useEffect(() => {
     registerLeagueNames(availableLeagues);

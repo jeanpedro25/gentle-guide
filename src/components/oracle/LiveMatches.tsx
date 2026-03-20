@@ -68,9 +68,7 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
     [filteredMatches],
   );
 
-  useEffect(() => {
-    registerLeagueNames(matches.map((m) => m.league));
-  }, [matches, registerLeagueNames]);
+  // League names registered via MatchCard's useEffect
 
   useEffect(() => {
     if (teamNames.length > 0) preloadTeamLogos(teamNames);
