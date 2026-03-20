@@ -37,10 +37,13 @@ export function RankedMatchCard({ analise, rank, onAnalyze, onBet }: Props) {
   const hasOnlyFixedSelections = selectedLeagueIds.length > 0 && selectedLeagueIds.every((id) => FIXED_LEAGUE_IDS.has(id));
   const isLive = ['1H', '2H', 'HT', 'LIVE', 'PEN'].includes(fixture.fixture.status.short);
 
-  const time = new Date(fixture.fixture.date).toLocaleTimeString('pt-BR', {
+  const kickoffDate = new Date(fixture.fixture.date);
+  const kickoffLabel = kickoffDate.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'America/Sao_Paulo',
+    timeZone: 'America/Manaus',
   });
 
   useEffect(() => {
@@ -78,7 +81,7 @@ export function RankedMatchCard({ analise, rank, onAnalyze, onBet }: Props) {
             </span>
           ) : (
             <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-              <Clock className="w-3 h-3" /> {time}
+              <Clock className="w-3 h-3" /> {kickoffLabel}
             </span>
           )}
         </div>

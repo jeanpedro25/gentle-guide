@@ -6,7 +6,7 @@ import { isValid, parseISO } from 'date-fns';
 import { Plus, Check, Star, Zap, RefreshCw } from 'lucide-react';
 import { useMultipla } from '@/contexts/MultiplaContext';
 import { useState, useMemo, useEffect } from 'react';
-import { getRelativeDayLabel, getStatusDisplay, formatBrazilTime } from '@/services/footballApi';
+import { getRelativeDayLabel, getStatusDisplay } from '@/services/footballApi';
 import { OracleAnalysis, normalizeProbabilities } from '@/types/prediction';
 import { analyzeMatch } from '@/services/oracleService';
 import { fetchMatchContext } from '@/services/footballApi';
@@ -40,9 +40,15 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
   const matchDate = isValid(parsedDate) ? parsedDate : fallbackDate;
   const hasValidDate = isValid(matchDate);
 
-  const dateStr = fixture.fixture.date.slice(0, 10);
-  const timeStr = fixture.fixture.date.slice(11, 19);
-  const formattedDate = hasValidDate ? formatBrazilTime(dateStr, timeStr) : 'Data a confirmar';
+  const formattedDate = hasValidDate
+    ? matchDate.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'America/Manaus',
+      })
+    : 'Data a confirmar';
   const dayLabel = hasValidDate ? getRelativeDayLabel(fixture.fixture.date) : null;
 
   const statusShort = fixture.fixture.status.short;
@@ -73,7 +79,7 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
       id: String(fixture.league.id),
       apiId: fixture.league.id,
       nome: fixture.league.name,
-      bandeira: '🏟️',
+      bandeira: 'üèüÔ∏è',
     });
   }, [fixture.league.id, fixture.league.name, registerDynamicLeague]);
 
@@ -142,10 +148,10 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
         oracle_data: result as unknown as Record<string, unknown>,
       });
 
-      toast.success('Análise salva!');
+      toast.success('An√°lise salva!');
     } catch (err) {
       console.error('[MatchCard] Analysis error:', err);
-      toast.error(err instanceof Error ? err.message : 'Erro na análise');
+      toast.error(err instanceof Error ? err.message : 'Erro na an√°lise');
     } finally {
       setIsAnalyzing(false);
     }
@@ -164,7 +170,7 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
       league: fixture.league.name,
       status: statusShort,
       userBet: existingPrediction?.recommended_market,
-      context: existingPrediction ? `Previsão inicial: ${existingPrediction.predicted_score} com ${existingPrediction.confidence}% confiança` : undefined,
+      context: existingPrediction ? `Previs√£o inicial: ${existingPrediction.predicted_score} com ${existingPrediction.confidence}% confian√ßa` : undefined,
     });
 
     if (existingPrediction) {
@@ -186,7 +192,7 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
           selected ? 'border-primary/50 ring-1 ring-primary/20' : 'hover:border-primary/30'
         }`}
       >
-        {/* Add to Múltipla button */}
+        {/* Add to M√∫ltipla button */}
         <button
           onClick={handleAddClick}
           className={`absolute top-3 right-3 w-6 h-6 rounded-full flex items-center justify-center transition-all z-10 ${
@@ -233,7 +239,7 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
               <span className="text-[10px] text-muted-foreground">{fixture.league.name}</span>
               {bestValue && (
                 <span className="bg-primary/10 text-primary text-[9px] px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5 animate-pulse">
-                  💰 PAGANDO MAIS
+                  üí∞ PAGANDO MAIS
                 </span>
               )}
               {!isLive && <EVBadge fixtureId={fixture.fixture.id} />}
@@ -247,9 +253,9 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
           {/* Favorite next goal indicator */}
           {isLive && verdict?.favoriteNextGoal && (
             <div className="mb-2 text-[10px] font-bold text-primary flex items-center gap-1">
-              <span>⚡</span>
+              <span>‚ö°</span>
               <span>
-                {verdict.favoriteNextGoal === 'HOME' ? fixture.teams.home.name : fixture.teams.away.name} favorito ao próximo gol
+                {verdict.favoriteNextGoal === 'HOME' ? fixture.teams.home.name : fixture.teams.away.name} favorito ao pr√≥ximo gol
               </span>
             </div>
           )}
@@ -273,84 +279,4 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
                     {fixture.goals.home ?? 0} - {fixture.goals.away ?? 0}
                   </span>
                   {isLive && (
-                    <span className="text-[10px] font-bold text-destructive mt-1 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
-                      {statusDisplay.label}
-                    </span>
-                  )}
-                  {statusShort === 'FT' && (
-                    <span className="text-[9px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded mt-1">FINAL</span>
-                  )}
-                </>
-              ) : statusShort === 'NS' ? (
-                <div className="flex flex-col items-center">
-                  <span className="text-lg font-bold text-muted-foreground">{formattedDate}</span>
-                  {dayLabel && <span className="text-[10px] text-muted-foreground">{dayLabel}</span>}
-                </div>
-              ) : (
-                <span className="text-sm text-muted-foreground">{statusDisplay.label}</span>
-              )}
-            </div>
-
-            <div className="flex flex-col items-center gap-2 w-1/3">
-              <img
-                src={getTeamLogoLive(fixture.teams.away.name, fixture.teams.away.logo)}
-                alt={fixture.teams.away.name}
-                className="w-10 h-10 object-contain"
-                onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
-              />
-              <span className="text-xs font-semibold text-foreground text-center leading-tight">{fixture.teams.away.name}</span>
-            </div>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex items-center justify-center gap-2 mt-4">
-            {isLive ? (
-              <button
-                onClick={handleLiveReanalyze}
-                className="flex items-center gap-1 px-3 py-1.5 bg-destructive/10 text-destructive rounded-lg text-[11px] font-bold hover:bg-destructive/20 transition-colors"
-              >
-                <RefreshCw className="w-3 h-3" />
-                Re-analisar ao vivo
-              </button>
-            ) : (
-              <button
-                onClick={handleAnalyze}
-                className="flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-[11px] font-bold hover:bg-primary/20 transition-colors"
-              >
-                <Star className="w-3 h-3" />
-                Analisar
-              </button>
-            )}
-          </div>
-        </button>
-
-        {/* Cashout alert for live matches */}
-        {isLive && cashoutAlert.type && (
-          <CashoutAlert type={cashoutAlert.type} message={cashoutAlert.message} />
-        )}
-      </motion.div>
-
-      {/* Modals */}
-      <AnalyzeModal
-        isOpen={showAnalyzeModal}
-        onClose={() => setShowAnalyzeModal(false)}
-        oracle={oracleResult}
-        homeTeam={fixture.teams.home.name}
-        awayTeam={fixture.teams.away.name}
-        isLoading={isAnalyzing}
-        bankrollAmount={bankrollAmount}
-      />
-
-      <LiveReanalysisModal
-        isOpen={showLiveModal}
-        onClose={() => setShowLiveModal(false)}
-        advice={matchAdvice ?? null}
-        isLoading={advisorLoading[String(fixture.fixture.id)] ?? false}
-        homeTeam={fixture.teams.home.name}
-        awayTeam={fixture.teams.away.name}
-        score={`${fixture.goals.home ?? 0} x ${fixture.goals.away ?? 0}`}
-      />
-    </>
-  );
-}
+  

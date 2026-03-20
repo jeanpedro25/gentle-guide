@@ -79,7 +79,7 @@ export function AnalysisPanel({ fixture, analysis, analyzing, onClose }: Props) 
         potential_profit: potentialProfit,
         odd: analysis.melhor_odd,
       });
-      toast.success('✅ Aposta registrada no histórico! Aguardando resultado do jogo.');
+      toast.success('‚úÖ Aposta registrada no hist√≥rico! Aguardando resultado do jogo.');
       setBetAmount('');
       setShowConfirm(false);
       onClose();
@@ -121,7 +121,7 @@ export function AnalysisPanel({ fixture, analysis, analyzing, onClose }: Props) 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <BarChart3 className="w-4 h-4 text-primary" />
-                  <span className="font-bold text-sm text-foreground">ANÁLISE PROFETA</span>
+                  <span className="font-bold text-sm text-foreground">AN√ÅLISE PROFETA</span>
                 </div>
                 <button onClick={handleClose} className="text-muted-foreground hover:text-foreground">
                   <X className="w-5 h-5" />
@@ -140,7 +140,8 @@ export function AnalysisPanel({ fixture, analysis, analyzing, onClose }: Props) 
                     month: 'short',
                     hour: '2-digit',
                     minute: '2-digit',
-                    timeZone: 'America/Sao_Paulo',
+                    timeZone: 'America/Manaus',
+                    timeZoneName: 'short',
                   })}
                 </p>
               </div>
@@ -148,7 +149,7 @@ export function AnalysisPanel({ fixture, analysis, analyzing, onClose }: Props) 
               {analyzing ? (
                 <div className="flex flex-col items-center py-10 gap-3">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  <p className="text-sm font-bold text-foreground">Gerando análise...</p>
+                  <p className="text-sm font-bold text-foreground">Gerando an√°lise...</p>
                   <p className="text-[10px] text-muted-foreground">Calculando Poisson, EV e Kelly Criterion</p>
                 </div>
               ) : analysis ? (
@@ -165,7 +166,7 @@ export function AnalysisPanel({ fixture, analysis, analyzing, onClose }: Props) 
 
                   {/* Predicted score */}
                   <div className="bg-secondary/60 rounded-lg p-4 text-center">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Placar Provável</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Placar Prov√°vel</p>
                     <p className="text-3xl font-black text-foreground tracking-widest">{analysis.placar_provavel}</p>
                     <p className="text-[10px] text-muted-foreground">{analysis.prob_placar.toFixed(1)}% de probabilidade</p>
                   </div>
@@ -190,7 +191,7 @@ export function AnalysisPanel({ fixture, analysis, analyzing, onClose }: Props) 
 
                   {/* Confidence */}
                   <div>
-                    <p className="text-[10px] text-muted-foreground mb-1">Confiança</p>
+                    <p className="text-[10px] text-muted-foreground mb-1">Confian√ßa</p>
                     <ConfidenceBar value={analysis.confianca} />
                   </div>
 
@@ -199,7 +200,7 @@ export function AnalysisPanel({ fixture, analysis, analyzing, onClose }: Props) 
                     onClick={() => setShowDetails(!showDetails)}
                     className="w-full flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/50 border border-border text-sm font-bold text-foreground hover:bg-secondary/80 transition-colors"
                   >
-                    <span>📊 Ver Análise Detalhada</span>
+                    <span>üìä Ver An√°lise Detalhada</span>
                     {showDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   </button>
 
@@ -250,138 +251,4 @@ export function AnalysisPanel({ fixture, analysis, analyzing, onClose }: Props) 
                             </div>
                             <div>
                               <p className="text-[10px] text-muted-foreground">Fora</p>
-                              <p className="text-sm font-bold text-foreground">{analysis.odd_fora.toFixed(2)}</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Kelly suggestion */}
-                        <div className="bg-card border border-border rounded-lg p-3">
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Kelly Criterion — Sugestão</p>
-                          <p className="text-sm font-bold text-primary mt-1">
-                            R$ {(bankrollAmount * analysis.kellyFraction).toFixed(2)} ({(analysis.kellyFraction * 100).toFixed(1)}% da banca)
-                          </p>
-                          <p className="text-[10px] text-muted-foreground mt-0.5">
-                            Banca: R$ {bankrollAmount.toFixed(2)} • Máx seguro: R$ {(bankrollAmount * 0.05).toFixed(2)} (5%)
-                          </p>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* ── BET SECTION ── */}
-                  <div className="border-t border-border pt-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="w-4 h-4 text-primary" />
-                      <span className="font-bold text-sm text-foreground">VALOR DA APOSTA</span>
-                    </div>
-
-                    {!showConfirm ? (
-                      <>
-                        <div className="flex items-center gap-2">
-                          <div className="relative flex-1">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">R$</span>
-                            <input
-                              type="number"
-                              inputMode="decimal"
-                              value={betAmount}
-                              onChange={e => setBetAmount(e.target.value)}
-                              placeholder="0,00"
-                              className="w-full pl-10 pr-4 py-3 rounded-lg border border-border bg-card text-lg font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                            />
-                          </div>
-                          <button
-                            onClick={() => betValue > 0 && !exceedsBankroll && setShowConfirm(true)}
-                            disabled={betValue <= 0 || exceedsBankroll}
-                            className="px-5 py-3 rounded-lg bg-primary text-primary-foreground font-bold text-sm disabled:opacity-40 transition-all hover:bg-primary/90"
-                          >
-                            Confirmar
-                          </button>
-                        </div>
-
-                        {/* Potential return display */}
-                        {betValue > 0 && !exceedsBankroll && (
-                          <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 space-y-1">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">Lucro potencial (odd ×{analysis.melhor_odd.toFixed(2)}):</span>
-                              <span className="text-primary font-bold">+ R$ {potentialProfit.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">Retorno total se ganhar:</span>
-                              <span className="text-primary font-extrabold text-base">R$ {totalReturn.toFixed(2)}</span>
-                            </div>
-                          </div>
-                        )}
-
-                        <p className="text-[10px] text-muted-foreground">
-                          Sugestão: R$ {safeBet.toFixed(2)} (2% da banca) • Banca: R$ {bankrollAmount.toFixed(2)}
-                        </p>
-
-                        {exceedsBankroll && (
-                          <div className="flex items-center gap-2 p-2 rounded-lg bg-destructive/10 border border-destructive/20">
-                            <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-                            <p className="text-xs text-destructive font-bold">Valor maior que a banca!</p>
-                          </div>
-                        )}
-                        {isDangerous && !exceedsBankroll && (
-                          <div className="flex items-center gap-2 p-2 rounded-lg bg-destructive/10 border border-destructive/20">
-                            <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-                            <p className="text-xs text-destructive font-bold">🚨 Acima de 5% — risco muito alto!</p>
-                          </div>
-                        )}
-                        {isExcessive && !isDangerous && !exceedsBankroll && (
-                          <div className="flex items-center gap-2 p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                            <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0" />
-                            <p className="text-xs text-yellow-500 font-bold">⚠️ Acima de 2% — cuidado</p>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <div className="space-y-3">
-                        <p className="text-xs font-bold text-muted-foreground uppercase">📋 Confirmar aposta</p>
-                        <div className="bg-card border border-border rounded-lg p-3 space-y-2 text-sm">
-                          {[
-                            ['Jogo', `${analysis.fixture.teams.home.name} vs ${analysis.fixture.teams.away.name}`],
-                            ['Previsão', `${analysis.melhor_resultado} (${PICK_LABELS[analysis.melhor_resultado]})`],
-                            ['Odd', analysis.melhor_odd.toFixed(2)],
-                            ['Valor apostado', `R$ ${betValue.toFixed(2)}`],
-                            ['Lucro se ganhar', `+ R$ ${potentialProfit.toFixed(2)}`],
-                            ['Retorno total', `R$ ${totalReturn.toFixed(2)}`],
-                          ].map(([l, v]) => (
-                            <div key={l} className="flex justify-between">
-                              <span className="text-muted-foreground">{l}</span>
-                              <span className="font-bold text-foreground">{v}</span>
-                            </div>
-                          ))}
-                        </div>
-                        <p className="text-[10px] text-muted-foreground text-center">
-                          A aposta será registrada no histórico e resolvida automaticamente após o jogo.
-                        </p>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setShowConfirm(false)}
-                            className="flex-1 py-3 rounded-lg border border-border text-muted-foreground font-bold text-sm"
-                          >
-                            Voltar
-                          </button>
-                          <button
-                            onClick={handleConfirmBet}
-                            disabled={createBet.isPending}
-                            className="flex-1 py-3 rounded-lg bg-primary text-primary-foreground font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
-                          >
-                            {createBet.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                            ✅ Confirmar
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </>
-              ) : null}
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  );
-}
+     

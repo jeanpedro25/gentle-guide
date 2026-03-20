@@ -16,10 +16,16 @@ export function MatchListItem({ fixture, onAnalyze }: Props) {
   const leagueId = String(fixture.league.id);
   const hasOnlyFixedSelections = selectedLeagueIds.length > 0 && selectedLeagueIds.every((id) => FIXED_LEAGUE_IDS.has(id));
 
-  const time = new Date(fixture.fixture.date).toLocaleTimeString('pt-BR', {
+  const kickoffDate = new Date(fixture.fixture.date);
+  const kickoffDay = kickoffDate.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone: 'America/Manaus',
+  });
+  const kickoffTime = kickoffDate.toLocaleTimeString('pt-BR', {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'America/Sao_Paulo',
+    timeZone: 'America/Manaus',
   });
 
   useEffect(() => {
@@ -46,8 +52,9 @@ export function MatchListItem({ fixture, onAnalyze }: Props) {
       className="w-full flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-primary/5 transition-all active:scale-[0.98] text-left"
       data-fixture-id={fixture.fixture.id}
     >
-      <div className="text-center shrink-0 w-12">
-        <p className="text-xs font-bold text-foreground">{time}</p>
+      <div className="text-center shrink-0 w-[76px]">
+        <p className="text-[10px] font-semibold text-muted-foreground leading-tight">{kickoffDay}</p>
+        <p className="text-xs font-bold text-foreground leading-tight">{kickoffTime}</p>
       </div>
 
       <div className="flex-1 min-w-0">

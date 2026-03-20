@@ -50,7 +50,13 @@ export function TopCard({ analise, index, onBet }: Props) {
         <p className="text-base font-extrabold text-foreground">{analise.fixture.teams.home.name}</p>
         <p className="text-sm text-muted-foreground">vs {analise.fixture.teams.away.name}</p>
         <p className="text-[10px] text-muted-foreground mt-1">
-          {new Date(analise.fixture.fixture.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}
+          {new Date(analise.fixture.fixture.date).toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'America/Manaus',
+          })}
         </p>
       </div>
 
@@ -62,7 +68,7 @@ export function TopCard({ analise, index, onBet }: Props) {
 
       {/* Predicted score */}
       <div className="bg-secondary/60 rounded-lg p-3 text-center">
-        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Placar Provável</p>
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Placar Prov√°vel</p>
         <p className="text-2xl font-black text-foreground tracking-widest">{analise.placar_provavel}</p>
         <p className="text-[10px] text-muted-foreground">{analise.prob_placar.toFixed(1)}% de probabilidade</p>
       </div>
@@ -85,7 +91,7 @@ export function TopCard({ analise, index, onBet }: Props) {
 
       {/* Confidence */}
       <div>
-        <p className="text-[10px] text-muted-foreground mb-1">Confiança</p>
+        <p className="text-[10px] text-muted-foreground mb-1">Confian√ßa</p>
         <ConfidenceBar value={analise.confianca} />
       </div>
 
@@ -100,7 +106,7 @@ export function TopCard({ analise, index, onBet }: Props) {
         onClick={() => onBet(analise)}
         className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-bold text-sm transition-all hover:bg-primary/90 active:scale-[0.98]"
       >
-        🎯 APOSTAR AGORA
+        üéØ APOSTAR AGORA
       </button>
     </motion.div>
   );
@@ -129,7 +135,13 @@ export function MedioCard({ analise, index, onBet }: Props) {
         </div>
         <div className="text-right">
           <p className="text-xs text-muted-foreground">
-            {new Date(analise.fixture.fixture.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}
+            {new Date(analise.fixture.fixture.date).toLocaleString('pt-BR', {
+              day: '2-digit',
+              month: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              timeZone: 'America/Manaus',
+            })}
           </p>
         </div>
       </div>
@@ -193,7 +205,7 @@ export function ExplorarCard({ analise, index, onBet }: Props) {
           onClick={() => onBet(analise)}
           className="text-[10px] font-bold text-muted-foreground hover:text-foreground transition-colors underline"
         >
-          VER ANÁLISE →
+          VER AN√ÅLISE ‚Üí
         </button>
       </div>
     </motion.div>
