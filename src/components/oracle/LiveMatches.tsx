@@ -56,7 +56,7 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
   const { isLeagueAllowed } = useLeagueFilter();
 
   const filteredMatches = useMemo(
-    () => matches.filter((m) => isLeagueAllowed(m.league)),
+    () => matches.filter((m) => isLeagueAllowed(m.league, 0)),
     [matches, isLeagueAllowed],
   );
 
