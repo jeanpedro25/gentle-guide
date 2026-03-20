@@ -68,7 +68,7 @@ export function MatchFilters({ filters, onChange, availableLeagues }: Props) {
         >
           {hasGlobalLeagueFilter && (
             <div className="text-[10px] px-2 py-1 rounded bg-primary/10 border border-primary/30 text-primary font-semibold">
-              Filtro global ativo no menu lateral: {selectedLeagueIds.length} liga(s).
+              Filtro global ativo no menu lateral.
             </div>
           )}
           {/* League filter */}
