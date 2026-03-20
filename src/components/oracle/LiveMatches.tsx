@@ -4,6 +4,7 @@ import { preloadTeamLogos } from '@/services/teamLogos';
 import { useTeamLogos } from '@/hooks/useTeamLogos';
 import { useLiveAdvisor, LiveAdvice } from '@/hooks/useLiveAdvisor';
 import { useEffect, useMemo } from 'react';
+import { useLeagueFilter } from '@/contexts/LeagueFilterContext';
 
 export interface LiveMatch {
   id: string;
@@ -51,14 +52,30 @@ const ACTION_CONFIG: Record<string, { bg: string; text: string; label: string }>
 };
 
 export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
-  const liveMatches = matches.filter(m => isLive(m.status));
-  const finishedMatches = matches.filter(m => !isLive(m.status) && (m.homeScore !== null));
   const { advice, loading, getAdvice, clearAdvice } = useLiveAdvisor();
+  const { isLeagueAllowed, registerDynamicLeague } = useLeagueFilter();
+
+  const filteredMatches = useMemo(
+    () => matches.filter(m => isLeagueAllowed(m.league)),
+    [matches, isLeagueAllowed],
+  );
+
+  const liveMatches = filteredMatches.filter(m => isLive(m.status));
+  const finishedMatches = filteredMatches.filter(m => !isLive(m.status) && (m.homeScore !== null));
 
   const teamNames = useMemo(() =>
-    matches.flatMap(m => [m.homeTeam, m.awayTeam]),
-    [matches]
+    filteredMatches.flatMap(m => [m.homeTeam, m.awayTeam]),
+    [filteredMatches]
   );
+
+  useEffect(() => {
+    filteredMatches.forEach((match) => {
+      registerDynamicLeague({
+        nome: match.league,
+        bandeira: '🏟️',
+      });
+    });
+  }, [filteredMatches, registerDynamicLeague]);
 
   useEffect(() => {
     if (teamNames.length > 0) preloadTeamLogos(teamNames);

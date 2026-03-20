@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Target, TrendingUp, Clock, Zap } from 'lucide-react';
 import { AnaliseJogo, PICK_LABELS_FULL } from '@/lib/jogueAgora';
+import { useLeagueFilter } from '@/contexts/LeagueFilterContext';
 
 interface Props {
   analise: AnaliseJogo;
@@ -28,6 +30,7 @@ function ConfidenceBar({ value }: { value: number }) {
 
 export function RankedMatchCard({ analise, rank, onAnalyze, onBet }: Props) {
   const { fixture } = analise;
+  const { isLeagueAllowed, registerDynamicLeague } = useLeagueFilter();
   const isLive = ['1H', '2H', 'HT', 'LIVE', 'PEN'].includes(fixture.fixture.status.short);
 
   const time = new Date(fixture.fixture.date).toLocaleTimeString('pt-BR', {
@@ -35,6 +38,19 @@ export function RankedMatchCard({ analise, rank, onAnalyze, onBet }: Props) {
     minute: '2-digit',
     timeZone: 'America/Sao_Paulo',
   });
+
+  useEffect(() => {
+    registerDynamicLeague({
+      id: String(fixture.league.id),
+      apiId: fixture.league.id,
+      nome: fixture.league.name,
+      bandeira: '🏟️',
+    });
+  }, [fixture.league.id, fixture.league.name, registerDynamicLeague]);
+
+  if (!isLeagueAllowed(fixture.league.name, fixture.league.id)) {
+    return null;
+  }
 
   return (
     <motion.div

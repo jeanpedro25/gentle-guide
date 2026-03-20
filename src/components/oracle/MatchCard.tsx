@@ -5,7 +5,7 @@ import { useTeamLogos } from '@/hooks/useTeamLogos';
 import { isValid, parseISO } from 'date-fns';
 import { Plus, Check, Star, Zap, RefreshCw } from 'lucide-react';
 import { useMultipla } from '@/contexts/MultiplaContext';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { getRelativeDayLabel, getStatusDisplay, formatBrazilTime } from '@/services/footballApi';
 import { OracleAnalysis, normalizeProbabilities } from '@/types/prediction';
 import { analyzeMatch } from '@/services/oracleService';
@@ -19,6 +19,7 @@ import { CashoutAlert } from './CashoutAlert';
 import { MatchHeatBadge } from './MatchHeatBadge';
 import { calculateVerdict, getCashoutAlert } from '@/lib/matchVerdict';
 import { toast } from 'sonner';
+import { useLeagueFilter } from '@/contexts/LeagueFilterContext';
 
 const LEAGUE_ID_TO_ISPORTS = new Map(LEAGUES.map(l => [l.id, l.iSportsId]));
 
@@ -65,6 +66,16 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
   const currentSelection = getSelection(fixture.fixture.id);
   const matchAdvice = advice[String(fixture.fixture.id)];
   const bankrollAmount = bankroll?.amount ?? 200;
+  const { isLeagueAllowed, registerDynamicLeague } = useLeagueFilter();
+
+  useEffect(() => {
+    registerDynamicLeague({
+      id: String(fixture.league.id),
+      apiId: fixture.league.id,
+      nome: fixture.league.name,
+      bandeira: '🏟️',
+    });
+  }, [fixture.league.id, fixture.league.name, registerDynamicLeague]);
 
   // Match heat badge for live games
   const verdict = useMemo(() => {
@@ -160,6 +171,10 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
       await updateStatus.mutateAsync({ id: existingPrediction.id, status: 'live_reviewed' });
     }
   };
+
+  if (!isLeagueAllowed(fixture.league.name, fixture.league.id)) {
+    return null;
+  }
 
   return (
     <>
@@ -267,87 +282,4 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
                     <span className="text-[9px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded mt-1">FINAL</span>
                   )}
                 </>
-              ) : (
-                <>
-                  <span className="text-2xl font-black text-foreground">0 - 0</span>
-                  {dayLabel && (
-                    <span className={`text-[10px] font-bold mt-1 ${
-                      dayLabel === 'HOJE' ? 'text-primary' : dayLabel === 'AMANHÃ' ? 'text-primary' : 'text-muted-foreground'
-                    }`}>
-                      {dayLabel}
-                    </span>
-                  )}
-                </>
-              )}
-            </div>
-
-            <div className="flex flex-col items-center gap-2 w-1/3">
-              <img
-                src={getTeamLogoLive(fixture.teams.away.name, fixture.teams.away.logo)}
-                alt={fixture.teams.away.name}
-                className="w-10 h-10 object-contain"
-                onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
-              />
-              <span className="text-xs font-semibold text-foreground text-center leading-tight">{fixture.teams.away.name}</span>
-            </div>
-          </div>
-        </button>
-
-        {/* Cashout Alert */}
-        {cashoutAlert.type && (
-          <CashoutAlert type={cashoutAlert.type} message={cashoutAlert.message} />
-        )}
-
-        {/* Bet input for live matches */}
-        {isLive && (
-          <BetInputWidget bankrollAmount={bankrollAmount} odd={DEFAULT_ODDS.home} />
-        )}
-
-        {/* Footer: date + analyze button */}
-        <div className="mt-4 pt-4 border-t border-border/50 flex justify-between items-center">
-          <span className="text-[10px] text-muted-foreground capitalize">{formattedDate}</span>
-
-          {isLive && existingPrediction ? (
-            <button
-              onClick={handleLiveReanalyze}
-              className="flex items-center gap-2 bg-destructive/10 text-destructive text-[10px] font-bold px-3 py-1.5 rounded-full border border-destructive/20 hover:bg-destructive/20 transition-colors"
-            >
-              <RefreshCw className="w-3 h-3" />
-              Re-analisar
-            </button>
-          ) : (
-            <button
-              onClick={handleAnalyze}
-              disabled={isAnalyzing}
-              className="flex items-center gap-2 bg-primary/10 text-primary text-[10px] font-bold px-3 py-1.5 rounded-full border border-primary/20 hover:bg-primary/20 transition-colors disabled:opacity-50"
-            >
-              <Zap className="w-3 h-3" />
-              Analisar
-            </button>
-          )}
-        </div>
-      </motion.div>
-
-      {/* Modals */}
-      <AnalyzeModal
-        isOpen={showAnalyzeModal}
-        onClose={() => setShowAnalyzeModal(false)}
-        oracle={oracleResult}
-        homeTeam={fixture.teams.home.name}
-        awayTeam={fixture.teams.away.name}
-        isLoading={isAnalyzing}
-        bankrollAmount={bankrollAmount}
-      />
-
-      <LiveReanalysisModal
-        isOpen={showLiveModal}
-        onClose={() => setShowLiveModal(false)}
-        advice={matchAdvice ?? null}
-        isLoading={advisorLoading[String(fixture.fixture.id)] ?? false}
-        homeTeam={fixture.teams.home.name}
-        awayTeam={fixture.teams.away.name}
-        score={isLive ? `${fixture.goals.home ?? 0} x ${fixture.goals.away ?? 0}` : undefined}
-      />
-    </>
-  );
-}
+    

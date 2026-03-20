@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import { ApiFixture } from '@/types/fixture';
+import { useLeagueFilter } from '@/contexts/LeagueFilterContext';
 
 interface Props {
   fixture: ApiFixture;
@@ -8,11 +10,26 @@ interface Props {
 }
 
 export function MatchListItem({ fixture, onAnalyze }: Props) {
+  const { isLeagueAllowed, registerDynamicLeague } = useLeagueFilter();
+
   const time = new Date(fixture.fixture.date).toLocaleTimeString('pt-BR', {
     hour: '2-digit',
     minute: '2-digit',
     timeZone: 'America/Sao_Paulo',
   });
+
+  useEffect(() => {
+    registerDynamicLeague({
+      id: String(fixture.league.id),
+      apiId: fixture.league.id,
+      nome: fixture.league.name,
+      bandeira: '🏟️',
+    });
+  }, [fixture.league.id, fixture.league.name, registerDynamicLeague]);
+
+  if (!isLeagueAllowed(fixture.league.name, fixture.league.id)) {
+    return null;
+  }
 
   return (
     <motion.button
