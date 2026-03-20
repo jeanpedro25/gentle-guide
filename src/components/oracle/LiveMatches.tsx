@@ -53,10 +53,10 @@ const ACTION_CONFIG: Record<string, { bg: string; text: string; label: string }>
 
 export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
   const { advice, loading, getAdvice, clearAdvice } = useLiveAdvisor();
-  const { isLeagueAllowed, registerLeagueNames } = useLeagueFilter();
+  const { isLeagueAllowed } = useLeagueFilter();
 
   const filteredMatches = useMemo(
-    () => matches.filter((m) => isLeagueAllowed(m.league)),
+    () => matches.filter((m) => isLeagueAllowed(m.league, 0)),
     [matches, isLeagueAllowed],
   );
 
@@ -68,9 +68,7 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
     [filteredMatches],
   );
 
-  useEffect(() => {
-    registerLeagueNames(matches.map((m) => m.league));
-  }, [matches, registerLeagueNames]);
+  // League names registered via MatchCard's useEffect
 
   useEffect(() => {
     if (teamNames.length > 0) preloadTeamLogos(teamNames);

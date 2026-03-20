@@ -31,14 +31,12 @@ const SORT_OPTIONS = [
 
 export function MatchFilters({ filters, onChange, availableLeagues }: Props) {
   const [open, setOpen] = useState(false);
-  const { selectedLeagueIds, registerLeagueNames } = useLeagueFilter();
+  const { selectedLeague, setSelectedLeague } = useLeagueFilter();
 
-  useEffect(() => {
-    registerLeagueNames(availableLeagues);
-  }, [availableLeagues, registerLeagueNames]);
+  // Leagues are registered dynamically via MatchCard
 
   const hasActiveFilters = filters.league !== '' || filters.timeOfDay !== 'all' || filters.sortBy !== 'time';
-  const hasGlobalLeagueFilter = selectedLeagueIds.length > 0;
+  const hasGlobalLeagueFilter = selectedLeague !== null;
 
   const reset = () => onChange({ league: '', timeOfDay: 'all', sortBy: 'time' });
 
@@ -70,7 +68,7 @@ export function MatchFilters({ filters, onChange, availableLeagues }: Props) {
         >
           {hasGlobalLeagueFilter && (
             <div className="text-[10px] px-2 py-1 rounded bg-primary/10 border border-primary/30 text-primary font-semibold">
-              Filtro global ativo no menu lateral: {selectedLeagueIds.length} liga(s).
+              Filtro global ativo no menu lateral.
             </div>
           )}
           {/* League filter */}
@@ -140,10 +138,7 @@ export function applyMatchFilters(
   let result = fixtures;
 
   const globalSelectedLeagues = readSelectedLeagueIdsFromStorage();
-  const globalMatcher = createLeagueMatcher(
-    globalSelectedLeagues,
-    resolveLeagueOptions(fixtures.map((g) => g.leagueName)),
-  );
+  const globalMatcher = createLeagueMatcher();
 
   if (globalSelectedLeagues.length > 0) {
     result = result

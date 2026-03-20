@@ -282,4 +282,75 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
                     <span className="text-[9px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded mt-1">FINAL</span>
                   )}
                 </>
-    
+              ) : statusShort === 'NS' ? (
+                <div className="flex flex-col items-center">
+                  <span className="text-lg font-bold text-muted-foreground">{formattedDate}</span>
+                  {dayLabel && <span className="text-[10px] text-muted-foreground">{dayLabel}</span>}
+                </div>
+              ) : (
+                <span className="text-sm text-muted-foreground">{statusDisplay.label}</span>
+              )}
+            </div>
+
+            <div className="flex flex-col items-center gap-2 w-1/3">
+              <img
+                src={getTeamLogoLive(fixture.teams.away.name, fixture.teams.away.logo)}
+                alt={fixture.teams.away.name}
+                className="w-10 h-10 object-contain"
+                onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
+              />
+              <span className="text-xs font-semibold text-foreground text-center leading-tight">{fixture.teams.away.name}</span>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center justify-center gap-2 mt-4">
+            {isLive ? (
+              <button
+                onClick={handleLiveReanalyze}
+                className="flex items-center gap-1 px-3 py-1.5 bg-destructive/10 text-destructive rounded-lg text-[11px] font-bold hover:bg-destructive/20 transition-colors"
+              >
+                <RefreshCw className="w-3 h-3" />
+                Re-analisar ao vivo
+              </button>
+            ) : (
+              <button
+                onClick={handleAnalyze}
+                className="flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-[11px] font-bold hover:bg-primary/20 transition-colors"
+              >
+                <Star className="w-3 h-3" />
+                Analisar
+              </button>
+            )}
+          </div>
+        </button>
+
+        {/* Cashout alert for live matches */}
+        {isLive && cashoutAlert.type && (
+          <CashoutAlert type={cashoutAlert.type} message={cashoutAlert.message} />
+        )}
+      </motion.div>
+
+      {/* Modals */}
+      <AnalyzeModal
+        isOpen={showAnalyzeModal}
+        onClose={() => setShowAnalyzeModal(false)}
+        oracle={oracleResult}
+        homeTeam={fixture.teams.home.name}
+        awayTeam={fixture.teams.away.name}
+        isLoading={isAnalyzing}
+        bankrollAmount={bankrollAmount}
+      />
+
+      <LiveReanalysisModal
+        isOpen={showLiveModal}
+        onClose={() => setShowLiveModal(false)}
+        advice={matchAdvice ?? null}
+        isLoading={advisorLoading[String(fixture.fixture.id)] ?? false}
+        homeTeam={fixture.teams.home.name}
+        awayTeam={fixture.teams.away.name}
+        score={`${fixture.goals.home ?? 0} x ${fixture.goals.away ?? 0}`}
+      />
+    </>
+  );
+}
