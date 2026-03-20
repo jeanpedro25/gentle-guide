@@ -53,7 +53,7 @@ const ACTION_CONFIG: Record<string, { bg: string; text: string; label: string }>
 
 export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
   const { advice, loading, getAdvice, clearAdvice } = useLiveAdvisor();
-  const { isLeagueAllowed, registerLeagueNames } = useLeagueFilter();
+  const { isLeagueAllowed } = useLeagueFilter();
 
   const filteredMatches = useMemo(
     () => matches.filter((m) => isLeagueAllowed(m.league)),

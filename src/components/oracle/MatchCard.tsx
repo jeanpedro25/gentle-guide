@@ -333,20 +333,23 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
 
       {/* Modals */}
       <AnalyzeModal
-        open={showAnalyzeModal}
+        isOpen={showAnalyzeModal}
         onClose={() => setShowAnalyzeModal(false)}
-        fixture={fixture}
-        analysis={oracleResult}
-        isAnalyzing={isAnalyzing}
+        oracle={oracleResult}
+        homeTeam={fixture.teams.home.name}
+        awayTeam={fixture.teams.away.name}
+        isLoading={isAnalyzing}
         bankrollAmount={bankrollAmount}
       />
 
       <LiveReanalysisModal
-        open={showLiveModal}
+        isOpen={showLiveModal}
         onClose={() => setShowLiveModal(false)}
-        fixture={fixture}
-        advice={matchAdvice}
-        loading={advisorLoading}
+        advice={matchAdvice ?? null}
+        isLoading={advisorLoading}
+        homeTeam={fixture.teams.home.name}
+        awayTeam={fixture.teams.away.name}
+        score={`${fixture.goals.home ?? 0} x ${fixture.goals.away ?? 0}`}
       />
     </>
   );
