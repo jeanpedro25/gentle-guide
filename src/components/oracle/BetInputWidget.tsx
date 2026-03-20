@@ -8,15 +8,35 @@ interface BetInputWidgetProps {
   maxPct?: number; // default 5% = R$10 on R$200
 }
 
+type BetOutcome = 'GANHA' | 'PERDE' | 'EMPATA';
+
+const OUTCOME_LABEL: Record<BetOutcome, string> = {
+  GANHA: 'Ganha',
+  PERDE: 'Perde',
+  EMPATA: 'Empata',
+};
+
 export function BetInputWidget({ bankrollAmount, odd, maxPct = 5 }: BetInputWidgetProps) {
   const [betAmount, setBetAmount] = useState('');
+  const [betOutcome, setBetOutcome] = useState<BetOutcome>('GANHA');
 
   const maxBet = (bankrollAmount * maxPct) / 100;
   const safeBet = (bankrollAmount * 2) / 100; // 2% = safe recommendation
   const numAmount = parseFloat(betAmount) || 0;
   const isExcessive = numAmount > maxBet;
+
   const potentialProfit = numAmount * (odd - 1);
   const totalReturn = numAmount + potentialProfit;
+
+  const settledProfit =
+    betOutcome === 'GANHA' ? potentialProfit :
+    betOutcome === 'PERDE' ? -numAmount :
+    0;
+
+  const settledReturn =
+    betOutcome === 'GANHA' ? totalReturn :
+    betOutcome === 'PERDE' ? 0 :
+    numAmount;
 
   return (
     <div className="space-y-2 mt-3">
@@ -47,10 +67,43 @@ export function BetInputWidget({ bankrollAmount, odd, maxPct = 5 }: BetInputWidg
         )}
       </div>
 
-      {numAmount > 0 && !isExcessive && (
-        <p className="text-[10px] text-muted-foreground">
-          Retorno total estimado: <span className="font-bold text-foreground">R$ {totalReturn.toFixed(2)}</span>
-        </p>
+      {numAmount > 0 && (
+        <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-2">
+          <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">Resultado da aposta</p>
+
+          <div className="grid grid-cols-3 gap-1">
+            {(['GANHA', 'EMPATA', 'PERDE'] as BetOutcome[]).map((outcome) => {
+              const selected = betOutcome === outcome;
+              return (
+                <button
+                  key={outcome}
+                  type="button"
+                  onClick={() => setBetOutcome(outcome)}
+                  className={`py-1.5 rounded-md text-[10px] font-bold border transition-colors ${
+                    selected
+                      ? 'bg-primary/20 text-primary border-primary/40'
+                      : 'bg-secondary/40 text-muted-foreground border-border hover:bg-secondary/60'
+                  }`}
+                >
+                  {OUTCOME_LABEL[outcome]}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="space-y-1 text-[11px]">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Lucro / Prejuízo</span>
+              <span className={`font-bold ${settledProfit >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                {settledProfit >= 0 ? '+' : '-'}R$ {Math.abs(settledProfit).toFixed(2)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between border-t border-primary/20 pt-1">
+              <span className="text-muted-foreground">Retorno total</span>
+              <span className="font-bold text-foreground">R$ {settledReturn.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
       )}
 
       <AnimatePresence>

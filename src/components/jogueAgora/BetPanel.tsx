@@ -11,10 +11,19 @@ interface Props {
   onClose: () => void;
 }
 
+type BetOutcome = 'GANHA' | 'PERDE' | 'EMPATA';
+
+const OUTCOME_LABEL: Record<BetOutcome, string> = {
+  GANHA: 'Ganha',
+  PERDE: 'Perde',
+  EMPATA: 'Empata (devolvida)',
+};
+
 export function BetPanel({ analise, bankrollAmount, onClose }: Props) {
   const createBet = useCreateBet();
   const [betAmount, setBetAmount] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
+  const [betOutcome, setBetOutcome] = useState<BetOutcome>('GANHA');
 
   const safeBet = bankrollAmount * 0.02;
   const betValue = parseFloat(betAmount.replace(',', '.')) || 0;
@@ -25,13 +34,25 @@ export function BetPanel({ analise, bankrollAmount, onClose }: Props) {
   const potentialProfit = analise ? Math.max(0, betValue * (analise.melhor_odd - 1)) : 0;
   const totalReturn = betValue + potentialProfit;
 
+  const settledProfit =
+    betOutcome === 'GANHA' ? potentialProfit :
+    betOutcome === 'PERDE' ? -betValue :
+    0;
+
+  const settledReturn =
+    betOutcome === 'GANHA' ? totalReturn :
+    betOutcome === 'PERDE' ? 0 :
+    betValue;
+
   const handleOpen = () => {
     setBetAmount(safeBet.toFixed(2));
+    setBetOutcome('GANHA');
     setShowConfirm(false);
   };
 
   const handleClose = () => {
     setBetAmount('');
+    setBetOutcome('GANHA');
     setShowConfirm(false);
     onClose();
   };
@@ -114,6 +135,29 @@ export function BetPanel({ analise, bankrollAmount, onClose }: Props) {
                 <p className="text-[10px] text-muted-foreground">Sugestão: R$ {safeBet.toFixed(2)} (2% da banca)</p>
               </div>
 
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground font-semibold">RESULTADO DA APOSTA</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['GANHA', 'EMPATA', 'PERDE'] as BetOutcome[]).map((outcome) => {
+                    const selected = betOutcome === outcome;
+                    return (
+                      <button
+                        key={outcome}
+                        type="button"
+                        onClick={() => setBetOutcome(outcome)}
+                        className={`py-2 rounded-lg text-xs font-bold border transition-colors ${
+                          selected
+                            ? 'bg-primary/20 text-primary border-primary/40'
+                            : 'bg-secondary/40 text-muted-foreground border-border hover:bg-secondary/60'
+                        }`}
+                      >
+                        {OUTCOME_LABEL[outcome]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {exceedsBankroll && (
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                   <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
@@ -142,12 +186,18 @@ export function BetPanel({ analise, bankrollAmount, onClose }: Props) {
                     <span className="font-bold text-foreground">R$ {betValue.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Lucro se ganhar</span>
-                    <span className="font-bold text-primary">+R$ {potentialProfit.toFixed(2)}</span>
+                    <span className="text-muted-foreground">Resultado marcado</span>
+                    <span className="font-bold text-foreground">{OUTCOME_LABEL[betOutcome]}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Lucro / Prejuízo</span>
+                    <span className={`font-bold ${settledProfit >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                      {settledProfit >= 0 ? '+' : '-'}R$ {Math.abs(settledProfit).toFixed(2)}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm border-t border-primary/20 pt-1.5">
                     <span className="text-muted-foreground">Retorno total</span>
-                    <span className="font-bold text-foreground">R$ {totalReturn.toFixed(2)}</span>
+                    <span className="font-bold text-foreground">R$ {settledReturn.toFixed(2)}</span>
                   </div>
                 </div>
               )}
@@ -167,7 +217,13 @@ export function BetPanel({ analise, bankrollAmount, onClose }: Props) {
                 <p className="text-muted-foreground mt-1">
                   Você vai apostar <strong>R$ {betValue.toFixed(2)}</strong> com odd <strong>{analise.melhor_odd.toFixed(2)}</strong>.
                 </p>
-                <p className="text-primary font-bold mt-1">Lucro se ganhar: +R$ {potentialProfit.toFixed(2)}</p>
+                <p className="text-muted-foreground mt-1">
+                  Resultado marcado: <strong>{OUTCOME_LABEL[betOutcome]}</strong>
+                </p>
+                <p className={`font-bold mt-1 ${settledProfit >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                  Lucro / Prejuízo: {settledProfit >= 0 ? '+' : '-'}R$ {Math.abs(settledProfit).toFixed(2)}
+                </p>
+                <p className="text-foreground font-semibold mt-1">Retorno total: R$ {settledReturn.toFixed(2)}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
