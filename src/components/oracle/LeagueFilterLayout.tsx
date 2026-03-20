@@ -6,30 +6,21 @@ import { FIXED_LEAGUES, LeagueFilterProvider, useLeagueFilter } from "@/contexts
 import { normalizeLeagueName } from "@/lib/leagueFilter";
 
 const MENU_ITEMS = [
-  { icon: "🔴", label: "Ao Vivo", rota: "/aovivo", badge: "LIVE" },
-  { icon: "⚡", label: "Jogue Agora", rota: "/jogar", badge: "TOP" },
-  { icon: "📅", label: "Proximos Jogos", rota: "/proximos" },
-  { icon: "💰", label: "Minha Banca", rota: "/banca" },
-  { icon: "👤", label: "Meu Perfil", rota: "/perfil" },
+  { icon: "ðŸ”´", label: "Ao Vivo", rota: "/aovivo", badge: "LIVE" },
+  { icon: "âš¡", label: "Jogue Agora", rota: "/jogar", badge: "TOP" },
+  { icon: "ðŸ“…", label: "Proximos Jogos", rota: "/proximos" },
+  { icon: "ðŸ’°", label: "Minha Banca", rota: "/banca" },
+  { icon: "ðŸ‘¤", label: "Meu Perfil", rota: "/perfil" },
 ] as const;
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { leagueOptions, selectedLeagueIds, toggleLeague, clearSelectedLeagues } = useLeagueFilter();
   const [query, setQuery] = useState("");
   const [showAllLeagues, setShowAllLeagues] = useState(false);
+  const { pathname } = useLocation();
 
   const fixedIds = useMemo(() => new Set(FIXED_LEAGUES.map((league) => league.id)), []);
   const optionIds = useMemo(() => new Set(leagueOptions.map((league) => league.id)), [leagueOptions]);
-
-  useEffect(() => {
-    if (selectedLeagueIds.length === 0) return;
-    if (optionIds.size === 0) return;
-
-    const hasKnownSelection = selectedLeagueIds.some((id) => optionIds.has(id));
-    if (!hasKnownSelection) {
-      clearSelectedLeagues();
-    }
-  }, [selectedLeagueIds, optionIds, clearSelectedLeagues]);
 
   const fixedLeagues = useMemo(
     () => leagueOptions.filter((league) => fixedIds.has(league.id)),
@@ -40,6 +31,28 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
     () => leagueOptions.filter((league) => !fixedIds.has(league.id)),
     [leagueOptions, fixedIds],
   );
+
+  const dynamicIds = useMemo(() => new Set(dynamicLeagues.map((league) => league.id)), [dynamicLeagues]);
+
+  useEffect(() => {
+    if (selectedLeagueIds.length === 0) return;
+    if (optionIds.size === 0) return;
+
+    const hasKnownSelection = selectedLeagueIds.some((id) => optionIds.has(id));
+    if (!hasKnownSelection) {
+      clearSelectedLeagues();
+      return;
+    }
+
+    const onJogueAgora = pathname === "/jogar" || pathname === "/jogue-agora" || pathname === "/jogueagora";
+    if (!onJogueAgora) return;
+    if (dynamicIds.size === 0) return;
+
+    const hasSelectionInCurrentMatches = selectedLeagueIds.some((id) => dynamicIds.has(id));
+    if (!hasSelectionInCurrentMatches) {
+      clearSelectedLeagues();
+    }
+  }, [selectedLeagueIds, optionIds, dynamicIds, pathname, clearSelectedLeagues]);
 
   const visibleLeagues = useMemo(() => {
     const pool = showAllLeagues ? [...fixedLeagues, ...dynamicLeagues] : fixedLeagues;
@@ -112,7 +125,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                 <span>{league.bandeira}</span>
                 <span className="truncate">{league.nome}</span>
                 <span className="ml-auto text-[10px] text-[#888]">
-                  {typeof league.totalJogos === "number" ? league.totalJogos : "—"}
+                  {typeof league.totalJogos === "number" ? league.totalJogos : "â€”"}
                 </span>
               </label>
             );
@@ -123,7 +136,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           onClick={() => setShowAllLeagues((prev) => !prev)}
           className="mt-2 w-full rounded-md border border-[#444] bg-transparent px-2 py-1.5 text-[11px] text-[#C9A84C] hover:bg-[#C9A84C]/10"
         >
-          {showAllLeagues ? "➖ Mostrar apenas ligas principais" : "➕ Ver todas as ligas disponíveis"}
+          {showAllLeagues ? "âž– Mostrar apenas ligas principais" : "âž• Ver todas as ligas disponÃ­veis"}
         </button>
 
         {selectedLeagueIds.length > 0 && (
