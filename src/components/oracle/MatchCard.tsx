@@ -67,6 +67,7 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
   const selected = isSelected(fixture.fixture.id);
   const currentSelection = getSelection(fixture.fixture.id);
   const matchAdvice = advice[String(fixture.fixture.id)] ?? null;
+  const isAdvisorLoading = advisorLoading[String(fixture.fixture.id)] ?? false;
 
   useEffect(() => {
     registerDynamicLeague({
