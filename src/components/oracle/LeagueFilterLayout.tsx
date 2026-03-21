@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { Bell, Menu, UserCircle2, X, LayoutDashboard, Zap, Calendar, Wallet, History, User } from "lucide-react";
 import { useBankroll } from "@/hooks/usePredictions";
 import { FIXED_LEAGUES, useLeagueFilter } from "@/contexts/LeagueFilterContext";
