@@ -288,7 +288,7 @@ export default function JogueAgoraPage() {
         fixture={selectedFixture}
         analysis={analysis}
         analyzing={analyzing}
-        onBet={() => {}}
+        betMode={betMode}
         onClose={handleCloseAnalysis}
       />
 
