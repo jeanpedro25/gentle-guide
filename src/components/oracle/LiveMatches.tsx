@@ -1,4 +1,3 @@
-América do Sul > Outros) e corrigindo filtros">
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Zap, Loader2, X, Trophy } from 'lucide-react';
 import { preloadTeamLogos } from '@/services/teamLogos';
@@ -53,14 +52,10 @@ const ACTION_CONFIG: Record<string, { bg: string; text: string; label: string }>
   HEDGE: { bg: 'bg-primary/20 border-primary/40', text: 'text-primary', label: '🛡️ PROTEGER' },
 };
 
-// Função para definir prioridade de exibição
 function getLeaguePriority(leagueName: string): number {
   const name = leagueName.toLowerCase();
-  // 1. Brasil (Série A, B, Copa do Brasil, Estaduais)
   if (name.includes('brazil') || name.includes('brasileir') || name.includes('paulista') || name.includes('carioca') || name.includes('mineiro') || name.includes('gaucho')) return 1;
-  // 2. América do Sul (Libertadores, Sul-Americana, Argentina, etc)
   if (name.includes('libertadores') || name.includes('sudamericana') || name.includes('argentin') || name.includes('colombia') || name.includes('chile') || name.includes('uruguay')) return 2;
-  // 3. Resto do mundo
   return 3;
 }
 
@@ -74,7 +69,6 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
     [matches, isLeagueAllowed],
   );
 
-  // Ordenação por prioridade regional e depois por nome da liga
   const sortedMatches = useMemo(() => {
     return [...filteredMatches].sort((a, b) => {
       const prioA = getLeaguePriority(a.league);
@@ -158,8 +152,6 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
                   })}
                   onClearAdvice={() => clearAdvice(match.id)}
                   onClick={() => {
-                    // Salva no session storage para a página de detalhes conseguir carregar
-                    // Nota: Como o objeto LiveMatch é simplificado, a página de detalhes pode precisar buscar dados extras
                     sessionStorage.setItem('selected-fixture-id', match.id);
                     navigate(`/match/${match.id}`);
                   }}
@@ -251,7 +243,6 @@ function LiveMatchCard({ match, advice, isLoadingAdvice, onRequestAdvice, onClea
         </div>
       </div>
 
-      {/* Consult button / Advice */}
       <div className="mt-4" onClick={(e) => e.stopPropagation()}>
         {!advice && !isLoadingAdvice && (
           <button
@@ -289,7 +280,7 @@ function LiveMatchCard({ match, advice, isLoadingAdvice, onRequestAdvice, onClea
                 </button>
               </div>
             </div>
-            <p className="text-[10px] text-muted-foreground leading-relaxed">{advice.suggestion}</p>
+            <p className="text-[10px] text-muted-foreground leading-relaxed">{advice.reasoning}</p>
             <p className="text-[10px] text-primary">💡 {advice.profitTip}</p>
           </motion.div>
         )}
