@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Target, TrendingUp, Clock, Zap } from 'lucide-react';
+import { Target, TrendingUp, Clock, Zap, BarChart3 } from 'lucide-react';
 import { AnaliseJogo, PICK_LABELS_FULL } from '@/lib/jogueAgora';
 import { FIXED_LEAGUES, useLeagueFilter } from '@/contexts/LeagueFilterContext';
 
@@ -43,7 +43,7 @@ export function RankedMatchCard({ analise, rank, onAnalyze, onBet }: Props) {
     month: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'America/Manaus',
+    timeZone: 'America/Sao_Paulo',
   });
 
   useEffect(() => {
@@ -51,7 +51,7 @@ export function RankedMatchCard({ analise, rank, onAnalyze, onBet }: Props) {
       id: leagueId,
       apiId: fixture.league.id,
       nome: fixture.league.name,
-      bandeira: 'üèüÔ∏è',
+      bandeira: '🏟️',
     });
   }, [fixture.league.id, fixture.league.name, registerDynamicLeague]);
 
@@ -63,82 +63,81 @@ export function RankedMatchCard({ analise, rank, onAnalyze, onBet }: Props) {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: rank * 0.05 }}
-      className="bg-card border border-border rounded-xl p-4 space-y-3 hover:border-primary/30 transition-colors"
+      className="bg-[#1A1A1A] border border-[#2B2B2B] rounded-2xl p-5 space-y-4 hover:border-primary/40 transition-all shadow-xl relative overflow-hidden"
     >
-      {/* Top row: rank + league + time/live */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-black text-primary bg-primary/10 w-6 h-6 rounded-full flex items-center justify-center">
-            {rank}
-          </span>
-          <span className="text-[10px] text-muted-foreground truncate max-w-[160px]">{fixture.league.name}</span>
-        </div>
+      {/* Rank Badge */}
+      <div className="absolute top-0 left-0 bg-primary text-black font-black text-[10px] px-3 py-1 rounded-br-xl">
+        TOP {rank}
+      </div>
+
+      <div className="flex items-center justify-between pt-2">
+        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest truncate max-w-[200px]">
+          {fixture.league.name}
+        </span>
         <div className="flex items-center gap-1.5">
           {isLive ? (
-            <span className="text-[10px] font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded animate-pulse">
-              üî¥ AO VIVO
+            <span className="text-[10px] font-black text-red-500 bg-red-500/10 px-2 py-1 rounded-lg animate-pulse border border-red-500/20">
+              AO VIVO
             </span>
           ) : (
-            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+            <span className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 bg-white/5 px-2 py-1 rounded-lg">
               <Clock className="w-3 h-3" /> {kickoffLabel}
             </span>
           )}
         </div>
       </div>
 
-      {/* Teams */}
-      <div>
-        <p className="text-sm font-extrabold text-foreground">{fixture.teams.home.name}</p>
-        <p className="text-xs text-muted-foreground">vs {fixture.teams.away.name}</p>
-      </div>
-
-      {/* Score + Prediction */}
-      <div className="flex items-center gap-3">
-        <div className="bg-secondary/60 rounded-lg px-3 py-2 text-center">
-          <p className="text-[9px] text-muted-foreground uppercase">Placar</p>
-          <p className="text-lg font-black text-foreground tracking-wider">{analise.placar_provavel}</p>
-        </div>
+      <div className="flex items-center justify-between gap-4">
         <div className="flex-1 space-y-1">
-          <div className="inline-flex items-center gap-1 px-2 py-1 rounded bg-primary/15 border border-primary/20">
-            <Target className="w-3 h-3 text-primary" />
-            <span className="text-xs font-bold text-primary">{PICK_LABELS_FULL[analise.melhor_resultado]}</span>
+          <p className="text-base font-black text-white leading-tight">{fixture.teams.home.name}</p>
+          <p className="text-sm font-bold text-muted-foreground">vs {fixture.teams.away.name}</p>
+        </div>
+        <div className="bg-black/40 border border-white/5 rounded-xl px-4 py-2 text-center min-w-[80px]">
+          <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Placar</p>
+          <p className="text-xl font-black text-primary tracking-tighter">{analise.placar_provavel}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-xl px-3 py-2">
+          <Target className="w-4 h-4 text-primary" />
+          <div>
+            <p className="text-[8px] font-black text-primary uppercase">Previsão</p>
+            <p className="text-[10px] font-black text-white">{PICK_LABELS_FULL[analise.melhor_resultado]}</p>
           </div>
-          <div className="flex items-center gap-2">
-            <span className={`text-sm font-bold ${analise.melhor_ev > 0 ? 'text-primary' : 'text-destructive'}`}>
-              <TrendingUp className="w-3 h-3 inline mr-0.5" />
-              {analise.melhor_ev > 0 ? '+' : ''}{analise.melhor_ev.toFixed(1)}% EV
-            </span>
-            <span className="text-xs text-muted-foreground">Odd {analise.melhor_odd.toFixed(2)}</span>
+        </div>
+        <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2">
+          <TrendingUp className="w-4 h-4 text-oracle-win" />
+          <div>
+            <p className="text-[8px] font-black text-oracle-win uppercase">Valor (EV)</p>
+            <p className="text-[10px] font-black text-white">+{analise.melhor_ev.toFixed(1)}%</p>
           </div>
         </div>
       </div>
 
-      {/* Confidence */}
-      <div>
-        <p className="text-[9px] text-muted-foreground mb-1">Confian√ßa</p>
-        <ConfidenceBar value={analise.confianca} />
+      <div className="flex items-center justify-between border-t border-white/5 pt-4">
+        <div className="space-y-1">
+          <p className="text-[9px] font-black text-muted-foreground uppercase">Confiança do Profeta</p>
+          <ConfidenceBar value={analise.confianca} />
+        </div>
+        <div className="text-right">
+          <p className="text-[9px] font-black text-muted-foreground uppercase">Odd Estimada</p>
+          <p className="text-sm font-black text-white">@{analise.melhor_odd.toFixed(2)}</p>
+        </div>
       </div>
 
-      {isLive && (
-        <p className="text-[10px] text-oracle-draw bg-oracle-draw/10 rounded px-2 py-1">
-          ‚ö†Ô∏è Jogo j√° come√ßou ‚Äî odd pode ter mudado
-        </p>
-      )}
-
-      {/* Action buttons */}
-      <div className="flex gap-2">
+      <div className="flex gap-3 pt-2">
         <button
           onClick={onAnalyze}
-          className="flex-1 py-2.5 rounded-lg bg-secondary text-foreground text-xs font-bold hover:bg-secondary/80 transition-colors flex items-center justify-center gap-1"
+          className="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-xs font-black hover:bg-white/10 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
         >
-          üìä ANALISAR
+          <BarChart3 className="w-4 h-4 text-primary" /> Analisar
         </button>
         <button
           onClick={onBet}
-          className="flex-1 py-2.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-colors flex items-center justify-center gap-1"
+          className="flex-1 py-3 rounded-xl bg-primary text-black text-xs font-black hover:brightness-110 transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-[0_0_20px_rgba(236,200,19,0.2)]"
         >
-          <Zap className="w-3 h-3" /> APOSTAR
+          <Zap className="w-4 h-4 fill-current" /> Apostar
         </button>
       </div>
     </motion.div>
