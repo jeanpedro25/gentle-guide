@@ -23,6 +23,7 @@ import { FormationPitch } from '@/components/oracle/FormationPitch';
 import { GoalkeeperDuelCard } from '@/components/oracle/GoalkeeperDuelCard';
 import { PlayerMatchups } from '@/components/oracle/PlayerMatchups';
 import { LoadingState } from '@/components/oracle/LoadingState';
+import { BetCard } from '@/components/oracle/BetCard';
 import { H2HFixture } from '@/types/fixture';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Zap } from 'lucide-react';
@@ -107,7 +108,6 @@ export default function MatchDetail() {
 
   const matchDate = parseISO(fixture.fixture.date);
 
-  // Safely get normalized percentages for gauges
   const getGaugeValue = (prob: number) => {
     const val = prob > 1 ? prob : prob * 100;
     return Math.min(100, Math.max(0, Math.round(val)));
@@ -116,7 +116,6 @@ export default function MatchDetail() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto p-3 md:p-6 space-y-4">
-        {/* Back button */}
         <motion.button
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -126,7 +125,6 @@ export default function MatchDetail() {
           <ArrowLeft className="w-4 h-4" /> Voltar aos jogos
         </motion.button>
 
-        {/* Match Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -191,7 +189,6 @@ export default function MatchDetail() {
           </div>
         </motion.div>
 
-        {/* Analyze button */}
         {!analysis && !isAnalyzing && (
           <motion.button
             initial={{ opacity: 0, scale: 0.9 }}
@@ -206,20 +203,26 @@ export default function MatchDetail() {
           </motion.button>
         )}
 
-        {/* Loading */}
         {isAnalyzing && <LoadingState />}
 
-        {/* Results */}
         {analysis && oracle && (
           <div className="space-y-4">
-            {/* 0. Complete Analysis Summary - TOP */}
             <AnalysisSummary
               oracle={oracle}
               homeTeam={analysis.homeTeam}
               awayTeam={analysis.awayTeam}
             />
 
-            {/* 1. Verdict */}
+            {/* NOVO: Card de Aposta Premium aqui nos detalhes */}
+            <BetCard
+              homeTeam={fixture.teams.home.name}
+              awayTeam={fixture.teams.away.name}
+              league={fixture.league.name}
+              fixtureId={fixture.fixture.id}
+              prediction={oracle.primaryBet.market.includes(fixture.teams.home.name) ? '1' : oracle.primaryBet.market.includes(fixture.teams.away.name) ? '2' : 'X'}
+              odd={oracle.primaryBet.ev > 0 ? 1.85 : 2.10}
+            />
+
             <VerdictCard
               result={analysis.result}
               oracle={oracle}
@@ -227,10 +230,8 @@ export default function MatchDetail() {
               awayTeam={analysis.awayTeam}
             />
 
-            {/* 2. Confidence Grade */}
             <ConfidenceGradeCard oracle={oracle} />
 
-            {/* 3. Circular Gauges - with normalization */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -260,66 +261,20 @@ export default function MatchDetail() {
               </div>
             </motion.div>
 
-            {/* 4. EV + Kelly */}
             <EVDisplay oracle={oracle} />
-
-            {/* 5. Poisson xG + Predicted Score + Top Scores */}
             <PoissonSection oracle={oracle} homeTeam={analysis.homeTeam} awayTeam={analysis.awayTeam} />
-
-            {/* 6. Poisson Heatmap Matrix 7x7 */}
-            <PoissonHeatmap
-              oracle={oracle}
-              homeTeam={analysis.homeTeam}
-              awayTeam={analysis.awayTeam}
-            />
-
-            {/* 7. Formation Pitch */}
-            <FormationPitch
-              oracle={oracle}
-              homeTeam={analysis.homeTeam}
-              awayTeam={analysis.awayTeam}
-            />
-
-            {/* 8. Player Lineup */}
-            <PlayerLineup
-              oracle={oracle}
-              homeTeam={analysis.homeTeam}
-              awayTeam={analysis.awayTeam}
-            />
-
-            {/* 9. Goalkeeper Duel */}
-            <GoalkeeperDuelCard
-              oracle={oracle}
-              homeTeam={analysis.homeTeam}
-              awayTeam={analysis.awayTeam}
-            />
-
-            {/* 10. Key Player Matchups */}
-            <PlayerMatchups
-              oracle={oracle}
-              homeTeam={analysis.homeTeam}
-              awayTeam={analysis.awayTeam}
-            />
-
-            {/* 11. Market Comparison */}
+            <PoissonHeatmap oracle={oracle} homeTeam={analysis.homeTeam} awayTeam={analysis.awayTeam} />
+            <FormationPitch oracle={oracle} homeTeam={analysis.homeTeam} awayTeam={analysis.awayTeam} />
+            <PlayerLineup oracle={oracle} homeTeam={analysis.homeTeam} awayTeam={analysis.awayTeam} />
+            <GoalkeeperDuelCard oracle={oracle} homeTeam={analysis.homeTeam} awayTeam={analysis.awayTeam} />
+            <PlayerMatchups oracle={oracle} homeTeam={analysis.homeTeam} awayTeam={analysis.awayTeam} />
             <MarketComparisonCard oracle={oracle} />
-
-            {/* 12. Tactical Analysis */}
             <AnalysisBreakdown result={analysis.result} oracle={oracle} />
-
-            {/* 13. Betting Insight */}
             <BettingInsight result={analysis.result} oracle={oracle} />
-
-            {/* 14. Red Flags */}
             {oracle.redFlags.length > 0 && <RedFlagsCard redFlags={oracle.redFlags} />}
-
-            {/* 15. H2H History */}
             <H2HHistory h2h={h2h} homeTeamId={fixture.teams.home.id} />
-
-            {/* 16. Bankroll Calculator */}
             <BankrollCalculator oracle={oracle} />
 
-            {/* Analyze again */}
             <motion.button
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Zap, TrendingUp, AlertTriangle, Target, DollarSign, Check } from 'lucide-react';
 import { OracleAnalysis, probAsPercent } from '@/types/prediction';
+import { BetCard } from './BetCard';
 import { toast } from 'sonner';
 
 interface AnalyzeModalProps {
@@ -12,38 +13,27 @@ interface AnalyzeModalProps {
   awayTeam: string;
   isLoading: boolean;
   bankrollAmount?: number;
+  fixtureId?: number;
+  league?: string;
 }
 
-export function AnalyzeModal({ isOpen, onClose, oracle, homeTeam, awayTeam, isLoading, bankrollAmount = 200 }: AnalyzeModalProps) {
-  const [betAmount, setBetAmount] = useState('');
-  const [confirmed, setConfirmed] = useState(false);
-
+export function AnalyzeModal({ 
+  isOpen, 
+  onClose, 
+  oracle, 
+  homeTeam, 
+  awayTeam, 
+  isLoading, 
+  bankrollAmount = 200,
+  fixtureId,
+  league = ''
+}: AnalyzeModalProps) {
   if (!isOpen) return null;
 
   const kellyStake = oracle ? Math.min(oracle.primaryBet.kellyFraction * bankrollAmount, bankrollAmount * 0.1) : 0;
   const kellyPct = oracle ? Math.min(oracle.primaryBet.kellyFraction * 100, 10) : 0;
 
-  const maxSafe = bankrollAmount * 0.05; // 5% = R$10 for R$200
-  const betValue = parseFloat(betAmount) || 0;
-  const isExcessive = betValue > maxSafe;
-  const suggestedSafe = bankrollAmount * 0.02;
-
-  // Calculate potential profit based on a default odd
-  const defaultOdd = 2.0;
-  const potentialProfit = betValue > 0 ? betValue * (defaultOdd - 1) : 0;
-
-  const handleConfirm = () => {
-    if (betValue <= 0) {
-      toast.error('Digite um valor válido');
-      return;
-    }
-    setConfirmed(true);
-    toast.success(`Aposta de R$ ${betValue.toFixed(2)} confirmada! Sistema monitorando...`);
-  };
-
   const handleClose = () => {
-    setBetAmount('');
-    setConfirmed(false);
     onClose();
   };
 
@@ -63,7 +53,6 @@ export function AnalyzeModal({ isOpen, onClose, oracle, homeTeam, awayTeam, isLo
           className="glass-card w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 space-y-5"
           onClick={e => e.stopPropagation()}
         >
-          {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Zap className="w-5 h-5 text-primary" />
@@ -81,7 +70,6 @@ export function AnalyzeModal({ isOpen, onClose, oracle, homeTeam, awayTeam, isLo
             </div>
           ) : oracle ? (
             <>
-              {/* Predicted Score */}
               {oracle.predictedScore && (
                 <div className="text-center space-y-2">
                   <p className="text-xs font-display tracking-wider text-muted-foreground">PLACAR PREVISTO</p>
@@ -95,7 +83,6 @@ export function AnalyzeModal({ isOpen, onClose, oracle, homeTeam, awayTeam, isLo
                 </div>
               )}
 
-              {/* Confidence bar */}
               <div className="space-y-2">
                 <div className="flex justify-between text-xs font-body">
                   <span className="text-muted-foreground">Confiança</span>
@@ -113,7 +100,6 @@ export function AnalyzeModal({ isOpen, onClose, oracle, homeTeam, awayTeam, isLo
                 </div>
               </div>
 
-              {/* Verdict */}
               <div className={`p-4 rounded-xl border text-center ${
                 oracle.verdict === 'APOSTAR'
                   ? 'border-primary/40 bg-primary/5'
@@ -126,7 +112,18 @@ export function AnalyzeModal({ isOpen, onClose, oracle, homeTeam, awayTeam, isLo
                 </span>
               </div>
 
-              {/* Market + EV */}
+              {/* NOVO: Card de Aposta Premium aqui no Modal */}
+              {fixtureId && (
+                <BetCard
+                  homeTeam={homeTeam}
+                  awayTeam={awayTeam}
+                  league={league}
+                  fixtureId={fixtureId}
+                  prediction={oracle.primaryBet.market.includes(homeTeam) ? '1' : oracle.primaryBet.market.includes(awayTeam) ? '2' : 'X'}
+                  odd={oracle.primaryBet.ev > 0 ? 1.85 : 2.10}
+                />
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="glass-card p-3 space-y-1">
                   <div className="flex items-center gap-1 text-xs text-muted-foreground font-body">
@@ -144,7 +141,6 @@ export function AnalyzeModal({ isOpen, onClose, oracle, homeTeam, awayTeam, isLo
                 </div>
               </div>
 
-              {/* Kelly / Suggested Stake */}
               <div className="glass-card p-4 space-y-2">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground font-body">
                   <DollarSign className="w-3 h-3" /> Kelly Criterion — Sugestão
@@ -152,119 +148,13 @@ export function AnalyzeModal({ isOpen, onClose, oracle, homeTeam, awayTeam, isLo
                 <p className="font-display text-xl text-primary">
                   R$ {kellyStake.toFixed(2)} <span className="text-sm text-muted-foreground">({kellyPct.toFixed(1)}% da banca)</span>
                 </p>
-                <p className="text-xs font-body text-muted-foreground">
-                  Banca: R$ {bankrollAmount.toFixed(2)} • Máx seguro: R$ {maxSafe.toFixed(2)} (5%)
-                </p>
               </div>
 
-              {/* ═══ BET INPUT SECTION ═══ */}
-              <div className={`p-4 rounded-xl border-2 space-y-3 transition-colors ${
-                isExcessive
-                  ? 'border-destructive/60 bg-destructive/5'
-                  : confirmed
-                    ? 'border-primary/60 bg-primary/5'
-                    : 'border-border bg-card'
-              }`}>
-                <p className="text-xs font-display tracking-wider text-muted-foreground">
-                  💰 VALOR DA APOSTA
-                </p>
-
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">R$</span>
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      value={betAmount}
-                      onChange={e => { setBetAmount(e.target.value); setConfirmed(false); }}
-                      placeholder="0,00"
-                      disabled={confirmed}
-                      className={`w-full pl-10 pr-4 py-3 rounded-lg border text-lg font-bold bg-background focus:outline-none transition-colors ${
-                        isExcessive
-                          ? 'border-destructive text-destructive focus:ring-destructive'
-                          : 'border-border text-foreground focus:ring-primary focus:border-primary'
-                      } disabled:opacity-60`}
-                    />
-                  </div>
-                  <button
-                    onClick={handleConfirm}
-                    disabled={betValue <= 0 || confirmed}
-                    className={`px-5 py-3 rounded-lg font-bold text-sm transition-all ${
-                      confirmed
-                        ? 'bg-primary/20 text-primary border border-primary/30'
-                        : 'bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40'
-                    }`}
-                  >
-                    {confirmed ? (
-                      <Check className="w-5 h-5" />
-                    ) : (
-                      'Confirmar'
-                    )}
-                  </button>
-                </div>
-
-                {/* Excessive risk warning */}
-                {isExcessive && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20"
-                  >
-                    <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-bold text-destructive">
-                        ⚠️ Risco Excessivo! Use 2% (R$ {suggestedSafe.toFixed(2)})
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-1">
-                        Valor excede 5% da banca (R$ {maxSafe.toFixed(2)}). Proteja seu capital!
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Potential profit */}
-                {betValue > 0 && !isExcessive && (
-                  <div className="text-xs text-muted-foreground flex justify-between">
-                    <span>Lucro potencial (odd ~{defaultOdd.toFixed(2)}):</span>
-                    <span className="text-primary font-bold">+ R$ {potentialProfit.toFixed(2)}</span>
-                  </div>
-                )}
-
-                {/* Confirmed message */}
-                {confirmed && (
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-xs text-primary font-semibold text-center"
-                  >
-                    ✅ Aposta registrada! O sistema monitorará o jogo.
-                  </motion.p>
-                )}
-              </div>
-
-              {/* Justification */}
               <div className="space-y-2">
                 <p className="text-xs font-display tracking-wider text-muted-foreground">JUSTIFICATIVA</p>
                 <p className="font-body text-sm text-foreground leading-relaxed">{oracle.primaryBet.reasoning}</p>
               </div>
 
-              {/* Red Flags */}
-              {oracle.redFlags.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1 text-xs font-display tracking-wider text-destructive">
-                    <AlertTriangle className="w-3 h-3" /> ALERTAS DE RISCO
-                  </div>
-                  <ul className="space-y-1">
-                    {oracle.redFlags.map((flag, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm font-body text-muted-foreground">
-                        <span className="text-destructive shrink-0">⚠️</span> {flag}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Probabilities */}
               <div className="grid grid-cols-3 gap-2">
                 {[
                   { label: homeTeam, value: oracle.probabilities.homeWin },
