@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { Bell, Menu, UserCircle2, X } from "lucide-react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Bell, Menu, UserCircle2, X, LayoutDashboard, Zap, Calendar, Wallet, History, User } from "lucide-react";
 import { useBankroll } from "@/hooks/usePredictions";
-import { FIXED_LEAGUES, LeagueFilterProvider, useLeagueFilter } from "@/contexts/LeagueFilterContext";
+import { FIXED_LEAGUES, useLeagueFilter } from "@/contexts/LeagueFilterContext";
 import { normalizeLeagueName } from "@/lib/leagueFilter";
 
-const MENU_ITEMS: { icon: string; label: string; rota: string; badge?: string }[] = [
+const MENU_ITEMS = [
   { icon: "🔴", label: "Ao Vivo", rota: "/aovivo", badge: "LIVE" },
   { icon: "⚡", label: "Jogue Agora", rota: "/jogar", badge: "TOP" },
-  { icon: "📅", label: "Proximos Jogos", rota: "/proximos" },
+  { icon: "📅", label: "Próximos Jogos", rota: "/proximos" },
   { icon: "💰", label: "Minha Banca", rota: "/banca" },
   { icon: "👤", label: "Meu Perfil", rota: "/perfil" },
+  { icon: "📜", label: "Histórico", rota: "/historico" },
 ];
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
@@ -20,224 +21,164 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { pathname } = useLocation();
 
   const fixedIds = useMemo(() => new Set(FIXED_LEAGUES.map((league) => league.id)), []);
-  const optionIds = useMemo(() => new Set(leagueOptions.map((league) => league.id)), [leagueOptions]);
-
-  const fixedLeagues = useMemo(
-    () => leagueOptions.filter((league) => fixedIds.has(league.id)),
-    [leagueOptions, fixedIds],
-  );
-
-  const dynamicLeagues = useMemo(
-    () => leagueOptions.filter((league) => !fixedIds.has(league.id)),
-    [leagueOptions, fixedIds],
-  );
-
-  const dynamicIds = useMemo(() => new Set(dynamicLeagues.map((league) => league.id)), [dynamicLeagues]);
-
-  useEffect(() => {
-    if (selectedLeagueIds.length === 0) return;
-    if (optionIds.size === 0) return;
-
-    const hasKnownSelection = selectedLeagueIds.some((id) => optionIds.has(id));
-    if (!hasKnownSelection) {
-      clearSelectedLeagues();
-      return;
-    }
-
-    const onJogueAgora = pathname === "/jogar" || pathname === "/jogue-agora" || pathname === "/jogueagora";
-    if (!onJogueAgora) return;
-    if (dynamicIds.size === 0) return;
-
-    const hasSelectionInCurrentMatches = selectedLeagueIds.some((id) => dynamicIds.has(id));
-    if (!hasSelectionInCurrentMatches) {
-      clearSelectedLeagues();
-    }
-  }, [selectedLeagueIds, optionIds, dynamicIds, pathname, clearSelectedLeagues]);
-
+  
   const visibleLeagues = useMemo(() => {
-    const pool = showAllLeagues ? [...fixedLeagues, ...dynamicLeagues] : fixedLeagues;
+    const pool = showAllLeagues ? leagueOptions : leagueOptions.filter(l => fixedIds.has(l.id));
     const normalizedQuery = normalizeLeagueName(query);
-
     if (!normalizedQuery) return pool;
-
-    return pool.filter((league) => {
-      const leagueNorm = normalizeLeagueName(league.nome);
-      return leagueNorm.includes(normalizedQuery);
-    });
-  }, [showAllLeagues, fixedLeagues, dynamicLeagues, query]);
+    return pool.filter((league) => normalizeLeagueName(league.nome).includes(normalizedQuery));
+  }, [showAllLeagues, leagueOptions, query, fixedIds]);
 
   return (
-    <div className="h-full flex flex-col">
-      <nav className="px-0 py-3">
+    <div className="h-full flex flex-col bg-[#1A1A1A]">
+      <nav className="flex-1 py-4 overflow-y-auto scrollbar-hide">
         {MENU_ITEMS.map((item) => (
           <NavLink
             key={item.rota}
             to={item.rota}
             onClick={onNavigate}
             className={({ isActive }) =>
-              `mx-2 mb-1 flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors border-l-[3px] ${
+              `mx-2 mb-1 flex items-center gap-3 rounded-md px-4 py-3 text-sm font-medium transition-all border-l-[3px] ${
                 isActive
-                  ? "bg-[#C9A84C]/12 text-[#C9A84C] border-l-[#C9A84C]"
+                  ? "bg-[#C9A84C]/10 text-[#C9A84C] border-l-[#C9A84C]"
                   : "text-[#CFCFCF] border-l-transparent hover:bg-white/5"
               }`
             }
           >
-            <span className="text-base">{item.icon}</span>
+            <span className="text-lg">{item.icon}</span>
             <span className="flex-1">{item.label}</span>
-            {item.badge ? (
+            {item.badge && (
               <span className="rounded px-1.5 py-0.5 text-[9px] font-bold bg-[#C9A84C]/20 text-[#C9A84C]">
                 {item.badge}
               </span>
-            ) : null}
+            )}
           </NavLink>
         ))}
-      </nav>
 
-      <div className="mx-3 border-t border-[#C9A84C]/40" />
+        <div className="mx-4 my-4 border-t border-[#C9A84C]/20" />
 
-      <div className="px-4 py-3">
-        <p className="mb-2 text-[10px] font-bold tracking-[1px] uppercase text-[#C9A84C]">
-          Filtrar por Liga
-        </p>
-
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Buscar liga..."
-          className="w-full rounded-md border border-[#444] bg-[#2D2D2D] px-2.5 py-1.5 text-xs text-white placeholder:text-[#8f8f8f] focus:outline-none focus:ring-1 focus:ring-[#C9A84C]/60"
-        />
-
-        <div className="mt-2 max-h-[300px] overflow-y-auto pr-1">
-          {visibleLeagues.map((league) => {
-            const checked = selectedLeagueIds.includes(league.id);
-
-            return (
-              <label
-                key={league.id}
-                className="flex items-center gap-2 py-1 text-xs text-[#CCCCCC] cursor-pointer"
-              >
+        <div className="px-4 space-y-3">
+          <p className="text-[10px] font-bold tracking-[1px] uppercase text-[#C9A84C]">
+            Filtrar por Liga
+          </p>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar liga..."
+            className="w-full rounded-md border border-[#444] bg-[#2D2D2D] px-3 py-2 text-xs text-white placeholder:text-[#888] focus:outline-none focus:ring-1 focus:ring-[#C9A84C]/50"
+          />
+          <div className="max-h-[300px] overflow-y-auto pr-1 space-y-1 scrollbar-hide">
+            {visibleLeagues.map((league) => (
+              <label key={league.id} className="flex items-center gap-2 py-1.5 text-xs text-[#CCCCCC] cursor-pointer hover:text-white transition-colors">
                 <input
                   type="checkbox"
-                  checked={checked}
+                  checked={selectedLeagueIds.includes(league.id)}
                   onChange={() => toggleLeague(league.id)}
-                  className="accent-[#C9A84C]"
+                  className="accent-[#C9A84C] w-3.5 h-3.5"
                 />
                 <span>{league.bandeira}</span>
-                <span className="truncate">{league.nome}</span>
-                <span className="ml-auto text-[10px] text-[#888]">
-                  {typeof league.totalJogos === "number" ? league.totalJogos : "â€”"}
-                </span>
+                <span className="truncate flex-1">{league.nome}</span>
               </label>
-            );
-          })}
-        </div>
-
-        <button
-          onClick={() => setShowAllLeagues((prev) => !prev)}
-          className="mt-2 w-full rounded-md border border-[#444] bg-transparent px-2 py-1.5 text-[11px] text-[#C9A84C] hover:bg-[#C9A84C]/10"
-        >
-          {showAllLeagues ? "âž– Mostrar apenas ligas principais" : "âž• Ver todas as ligas disponÃ­veis"}
-        </button>
-
-        {selectedLeagueIds.length > 0 && (
+            ))}
+          </div>
           <button
-            onClick={clearSelectedLeagues}
-            className="mt-2 w-full rounded-md border border-[#C9A84C] bg-transparent px-2 py-1.5 text-[11px] text-[#C9A84C] hover:bg-[#C9A84C]/10"
+            onClick={() => setShowAllLeagues(!showAllLeagues)}
+            className="w-full text-[10px] text-[#C9A84C] font-bold uppercase hover:underline text-left"
           >
-            Limpar filtros ({selectedLeagueIds.length})
+            {showAllLeagues ? "- Ver menos" : "+ Ver todas as ligas"}
           </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function LeagueFilterShell() {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const location = useLocation();
-  const { data: bankroll } = useBankroll();
-
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [location.pathname]);
-
-  const bankrollLabel = useMemo(() => {
-    const amount = bankroll?.amount ?? 200;
-    return amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  }, [bankroll?.amount]);
-
-  return (
-    <div className="min-h-screen bg-[#111111] text-white">
-      <header className="fixed top-0 inset-x-0 z-[70] h-14 border-b border-[#2B2B2B] bg-[#111111]/95 backdrop-blur">
-        <div className="h-full px-3 md:px-5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          {selectedLeagueIds.length > 0 && (
             <button
-              onClick={() => setMobileOpen(true)}
-              className="md:hidden inline-flex h-8 w-8 items-center justify-center rounded border border-[#3B3B3B] text-[#CFCFCF]"
-              aria-label="Abrir menu"
+              onClick={clearSelectedLeagues}
+              className="w-full py-2 rounded border border-[#C9A84C]/40 text-[10px] text-[#C9A84C] font-bold uppercase hover:bg-[#C9A84C]/10 transition-colors"
             >
-              <Menu className="w-4 h-4" />
+              Limpar Filtros ({selectedLeagueIds.length})
             </button>
-            <span className="font-extrabold tracking-wide text-[#F5F5F5]">PROFETA BET</span>
-          </div>
-
-          <div className="flex items-center gap-2 md:gap-3">
-            <span className="rounded-md border border-[#C9A84C]/60 px-2 py-1 text-[11px] font-semibold text-[#C9A84C]">
-              banca: {bankrollLabel}
-            </span>
-            <button className="inline-flex h-8 w-8 items-center justify-center rounded border border-[#3B3B3B] text-[#CFCFCF]">
-              <Bell className="w-4 h-4" />
-            </button>
-            <button className="inline-flex h-8 w-8 items-center justify-center rounded border border-[#3B3B3B] text-[#CFCFCF]">
-              <UserCircle2 className="w-4 h-4" />
-            </button>
-          </div>
+          )}
         </div>
-      </header>
-
-      <div className="pt-14">
-        <aside className="hidden md:flex fixed left-0 top-14 bottom-0 w-[220px] bg-[#1A1A1A] border-r border-[#C9A84C]">
-          <SidebarContent />
-        </aside>
-
-        <div className={`md:hidden fixed inset-0 z-[80] ${mobileOpen ? "pointer-events-auto" : "pointer-events-none"}`}>
-          <button
-            onClick={() => setMobileOpen(false)}
-            className={`absolute inset-0 bg-black/60 transition-opacity ${mobileOpen ? "opacity-100" : "opacity-0"}`}
-            aria-label="Fechar menu"
-          />
-
-          <aside
-            className={`absolute left-0 top-0 bottom-0 w-[min(86vw,320px)] bg-[#1A1A1A] border-r border-[#C9A84C] transition-transform ${
-              mobileOpen ? "translate-x-0" : "-translate-x-full"
-            }`}
-          >
-            <div className="h-14 flex items-center justify-between px-3 border-b border-[#2B2B2B]">
-              <span className="font-bold text-[#F5F5F5]">MENU</span>
-              <button
-                onClick={() => setMobileOpen(false)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded border border-[#3B3B3B] text-[#CFCFCF]"
-                aria-label="Fechar menu"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <SidebarContent onNavigate={() => setMobileOpen(false)} />
-          </aside>
-        </div>
-
-        <main className="md:ml-[220px] h-[calc(100vh-56px)] overflow-y-auto bg-[#111111] p-5">
-          <Outlet />
-        </main>
-      </div>
+      </nav>
     </div>
   );
 }
 
 export function LeagueFilterLayout() {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const { data: bankroll } = useBankroll();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
+
   return (
-    <LeagueFilterProvider>
-      <LeagueFilterShell />
-    </LeagueFilterProvider>
+    <div className="min-h-screen bg-[#111111] text-white flex flex-col">
+      {/* Header Fixo */}
+      <header className="fixed top-0 inset-x-0 z-[70] h-14 border-b border-[#2B2B2B] bg-[#111111]/95 backdrop-blur flex items-center justify-between px-4">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setMobileOpen(true)} className="md:hidden p-2 border border-[#3B3B3B] rounded">
+            <Menu className="w-4 h-4" />
+          </button>
+          <span className="font-black tracking-tighter text-xl gold-gradient-text cursor-pointer" onClick={() => navigate('/')}>
+            PROFETABET
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="bg-[#C9A84C]/10 border border-[#C9A84C]/30 px-3 py-1 rounded-full flex items-center gap-2">
+            <span className="text-[#C9A84C] text-[10px] font-bold">BANCA:</span>
+            <span className="text-sm font-bold">R$ {(bankroll?.amount ?? 0).toFixed(2)}</span>
+          </div>
+          <button className="p-2 border border-[#3B3B3B] rounded hover:bg-white/5 transition-colors">
+            <Bell className="w-4 h-4 text-[#CFCFCF]" />
+          </button>
+          <button onClick={() => navigate('/perfil')} className="p-2 border border-[#3B3B3B] rounded hover:bg-white/5 transition-colors">
+            <UserCircle2 className="w-4 h-4 text-[#CFCFCF]" />
+          </button>
+        </div>
+      </header>
+
+      <div className="flex flex-1 pt-14">
+        {/* Sidebar Desktop */}
+        <aside className="hidden md:block fixed left-0 top-14 bottom-0 w-[220px] border-r border-[#C9A84C]/40 z-50">
+          <SidebarContent />
+        </aside>
+
+        {/* Sidebar Mobile (Drawer) */}
+        <AnimatePresence>
+          {mobileOpen && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setMobileOpen(false)}
+                className="fixed inset-0 bg-black/80 z-[80] md:hidden"
+              />
+              <motion.aside
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                className="fixed left-0 top-0 bottom-0 w-[280px] bg-[#1A1A1A] border-r border-[#C9A84C] z-[90] md:hidden"
+              >
+                <div className="h-14 flex items-center justify-between px-4 border-b border-[#2B2B2B]">
+                  <span className="font-bold text-[#C9A84C]">MENU</span>
+                  <button onClick={() => setMobileOpen(false)} className="p-2">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <SidebarContent onNavigate={() => setMobileOpen(false)} />
+              </motion.aside>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Conteúdo Principal */}
+        <main className="flex-1 md:ml-[220px] min-h-[calc(100vh-56px)] bg-[#111111] p-4 md:p-6 overflow-x-hidden">
+          <Outlet />
+        </main>
+      </div>
+    </div>
   );
 }

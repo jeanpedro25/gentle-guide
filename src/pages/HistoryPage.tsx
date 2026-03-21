@@ -1,175 +1,197 @@
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, CheckCircle, XCircle, Clock, Filter } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, Clock, Filter, Zap, Target, BarChart3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePredictions, useBetResults, PredictionRow, BetResultRow } from '@/hooks/usePredictions';
-import { useState, useMemo } from 'react';
-import { BottomNav } from '@/components/oracle/BottomNav';
+import { useBets, BetRow } from '@/hooks/useBets';
+import { AnalyzeModal } from '@/components/oracle/AnalyzeModal';
+import { analyzeMatch } from '@/services/oracleService';
+import { fetchTodayMatches } from '@/services/footballApi';
+import { OracleAnalysis } from '@/types/prediction';
+import { toast } from 'sonner';
 
 type FilterStatus = 'all' | 'pending' | 'won' | 'lost';
 
 export default function HistoryPage() {
   const navigate = useNavigate();
-  const { data: predictions = [] } = usePredictions();
-  const { data: betResults = [] } = useBetResults();
+  const { data: bets = [], isLoading } = useBets();
   const [filter, setFilter] = useState<FilterStatus>('all');
-
-  const resultsMap = useMemo(() => {
-    const map = new Map<string, BetResultRow>();
-    for (const r of betResults) {
-      map.set(r.prediction_id, r);
-    }
-    return map;
-  }, [betResults]);
+  
+  // Modal de Análise
+  const [showAnalyzeModal, setShowAnalyzeModal] = useState(false);
+  const [selectedBet, setSelectedBet] = useState<BetRow | null>(null);
+  const [oracleResult, setOracleResult] = useState<OracleAnalysis | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const filtered = useMemo(() => {
-    return predictions.filter(p => {
+    return bets.filter(b => {
       if (filter === 'all') return true;
-      const result = resultsMap.get(p.id);
-      if (filter === 'pending') return !result || result.won === null;
-      if (filter === 'won') return result?.won === true;
-      if (filter === 'lost') return result?.won === false;
-      return true;
+      return b.status === filter;
     });
-  }, [predictions, filter, resultsMap]);
+  }, [bets, filter]);
 
   const stats = useMemo(() => {
-    const resolved = betResults.filter(r => r.won !== null);
-    const wins = resolved.filter(r => r.won);
     return {
-      total: predictions.length,
-      resolved: resolved.length,
-      wins: wins.length,
-      losses: resolved.length - wins.length,
-      pending: predictions.length - resolved.length,
+      total: bets.length,
+      wins: bets.filter(b => b.status === 'won').length,
+      losses: bets.filter(b => b.status === 'lost').length,
+      pending: bets.filter(b => b.status === 'pending').length,
     };
-  }, [predictions, betResults]);
+  }, [bets]);
+
+  const handleOpenAnalysis = async (bet: BetRow) => {
+    setSelectedBet(bet);
+    setShowAnalyzeModal(true);
+    setIsAnalyzing(true);
+    setOracleResult(null);
+
+    try {
+      const matches = await fetchTodayMatches();
+      const fixture = matches.find(m => m.fixture.id === bet.fixture_id);
+      
+      if (fixture) {
+        const result = await analyzeMatch(fixture, null, null, []);
+        setOracleResult(result);
+      } else {
+        // Fallback: se não achar o jogo hoje, tenta simular ou avisa
+        toast.error('Dados originais do jogo não encontrados para re-análise.');
+        setShowAnalyzeModal(false);
+      }
+    } catch (err) {
+      toast.error('Erro ao carregar análise.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      {/* Header */}
-      <header className="sticky top-0 z-40 px-4 py-4 bg-background/80 backdrop-blur-lg border-b border-border flex items-center gap-3">
-        <button onClick={() => navigate('/')} className="text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h1 className="text-lg font-extrabold tracking-tight gold-gradient-text">HISTÓRICO</h1>
+    <div className="space-y-6">
+      <header className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-black gold-gradient-text uppercase tracking-tighter">Histórico Central</h1>
+          <p className="text-xs text-muted-foreground">Todas as suas operações em um só lugar</p>
+        </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-2">
-          <StatCard label="Total" value={stats.total} color="text-foreground" />
-          <StatCard label="Pendente" value={stats.pending} color="text-primary" />
-          <StatCard label="Green ✅" value={stats.wins} color="text-oracle-win" />
-          <StatCard label="Red ❌" value={stats.losses} color="text-destructive" />
-        </div>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard label="Total" value={stats.total} color="text-foreground" />
+        <StatCard label="Pendentes" value={stats.pending} color="text-primary" />
+        <StatCard label="Greens ✅" value={stats.wins} color="text-oracle-win" />
+        <StatCard label="Reds ❌" value={stats.losses} color="text-destructive" />
+      </div>
 
-        {/* Filter pills */}
-        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-          <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
-          {(['all', 'pending', 'won', 'lost'] as FilterStatus[]).map(f => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all ${
-                filter === f
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-card border-border text-muted-foreground hover:border-primary/50'
-              }`}
+      {/* Filters */}
+      <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1">
+        <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
+        {(['all', 'pending', 'won', 'lost'] as FilterStatus[]).map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`shrink-0 px-4 py-2 rounded-full text-[10px] font-bold border transition-all ${
+              filter === f
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-card border-border text-muted-foreground hover:border-primary/30'
+            }`}
+          >
+            {f === 'all' ? 'TODOS' : f === 'pending' ? '⏳ PENDENTES' : f === 'won' ? '✅ GREENS' : '❌ REDS'}
+          </button>
+        ))}
+      </div>
+
+      {/* List */}
+      {isLoading ? (
+        <div className="py-20 text-center text-muted-foreground animate-pulse">Carregando histórico...</div>
+      ) : filtered.length === 0 ? (
+        <div className="py-20 text-center text-muted-foreground border border-dashed border-border rounded-xl">
+          Nenhuma aposta encontrada com este filtro.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((bet, i) => (
+            <motion.button
+              key={bet.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.02 }}
+              onClick={() => handleOpenAnalysis(bet)}
+              className="w-full text-left"
             >
-              {f === 'all' ? 'Todos' : f === 'pending' ? '⏳ Pendente' : f === 'won' ? '✅ Green' : '❌ Red'}
-            </button>
+              <BetHistoryCard bet={bet} />
+            </motion.button>
           ))}
         </div>
+      )}
 
-        {/* Predictions list */}
-        {filtered.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-muted-foreground text-sm">Nenhuma análise encontrada.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {filtered.map((p, i) => (
-              <HistoryCard key={p.id} prediction={p} result={resultsMap.get(p.id)} index={i} />
-            ))}
-          </div>
-        )}
-      </main>
-
-      <BottomNav />
+      <AnalyzeModal
+        isOpen={showAnalyzeModal}
+        onClose={() => setShowAnalyzeModal(false)}
+        oracle={oracleResult}
+        homeTeam={selectedBet?.home_team ?? ''}
+        awayTeam={selectedBet?.away_team ?? ''}
+        isLoading={isAnalyzing}
+      />
     </div>
   );
 }
 
 function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="glass-card p-3 text-center">
-      <p className={`font-extrabold text-xl ${color}`}>{value}</p>
-      <p className="text-[10px] text-muted-foreground font-semibold uppercase">{label}</p>
+    <div className="glass-card p-4 text-center border border-border/50">
+      <p className={`font-black text-2xl ${color}`}>{value}</p>
+      <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">{label}</p>
     </div>
   );
 }
 
-function HistoryCard({ prediction: p, result, index }: { prediction: PredictionRow; result?: BetResultRow; index: number }) {
-  const status = result?.won === true ? 'won' : result?.won === false ? 'lost' : 'pending';
+function BetHistoryCard({ bet }: { bet: BetRow }) {
+  const status = bet.status;
+  const predLabel = bet.prediction === '1' ? 'Casa' : bet.prediction === 'X' ? 'Empate' : 'Fora';
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.03 }}
-      className={`glass-card p-4 space-y-3 border ${
-        status === 'won' ? 'border-oracle-win' :
-        status === 'lost' ? 'border-oracle-loss' :
-        'border-border'
-      }`}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className={`glass-card p-4 border transition-all hover:border-primary/40 ${
+      status === 'won' ? 'border-oracle-win/30 bg-oracle-win/5' :
+      status === 'lost' ? 'border-destructive/30 bg-destructive/5' :
+      'border-border bg-card'
+    }`}>
+      <div className="flex items-center justify-between mb-3">
         <div>
-          <p className="font-bold text-sm text-foreground">{p.home_team} vs {p.away_team}</p>
-          <p className="text-[10px] text-muted-foreground">{p.league} • {new Date(p.created_at).toLocaleDateString('pt-BR')}</p>
+          <p className="font-bold text-sm text-foreground">{bet.home_team} vs {bet.away_team}</p>
+          <p className="text-[10px] text-muted-foreground uppercase">{bet.league} • {new Date(bet.created_at).toLocaleDateString('pt-BR')}</p>
         </div>
-        <div className="flex items-center gap-1">
-          {status === 'won' && <CheckCircle className="w-5 h-5 text-oracle-win" />}
-          {status === 'lost' && <XCircle className="w-5 h-5 text-destructive" />}
-          {status === 'pending' && <Clock className="w-5 h-5 text-primary" />}
-          <span className={`text-xs font-bold uppercase ${
-            status === 'won' ? 'text-oracle-win' : status === 'lost' ? 'text-destructive' : 'text-primary'
-          }`}>
-            {status === 'won' ? 'GREEN' : status === 'lost' ? 'RED' : 'PENDENTE'}
-          </span>
+        <div className={`px-2 py-1 rounded text-[9px] font-black uppercase border ${
+          status === 'won' ? 'text-oracle-win border-oracle-win/40 bg-oracle-win/10' :
+          status === 'lost' ? 'text-destructive border-destructive/40 bg-destructive/10' :
+          'text-primary border-primary/40 bg-primary/10'
+        }`}>
+          {status === 'won' ? 'GREEN ✅' : status === 'lost' ? 'RED ❌' : 'PENDENTE ⏳'}
         </div>
       </div>
 
-      {/* Details */}
-      <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="glass-card p-2">
-          <p className="text-[9px] text-muted-foreground">Placar IA</p>
-          <p className="text-sm font-bold text-primary">{p.predicted_score ?? '-'}</p>
+      <div className="grid grid-cols-4 gap-2 text-center">
+        <div className="space-y-1">
+          <p className="text-[9px] text-muted-foreground font-bold uppercase">Previsão</p>
+          <p className="text-xs font-black text-primary">{predLabel}</p>
         </div>
-        <div className="glass-card p-2">
-          <p className="text-[9px] text-muted-foreground">Confiança</p>
-          <p className={`text-sm font-bold ${p.confidence >= 70 ? 'text-oracle-win' : p.confidence >= 40 ? 'text-primary' : 'text-destructive'}`}>
-            {p.confidence}%
+        <div className="space-y-1">
+          <p className="text-[9px] text-muted-foreground font-bold uppercase">Aposta</p>
+          <p className="text-xs font-black text-foreground">R$ {bet.stake.toFixed(2)}</p>
+        </div>
+        <div className="space-y-1">
+          <p className="text-[9px] text-muted-foreground font-bold uppercase">Resultado</p>
+          <p className="text-xs font-black text-foreground">{bet.actual_score ?? '—'}</p>
+        </div>
+        <div className="space-y-1">
+          <p className="text-[9px] text-muted-foreground font-bold uppercase">Lucro Real</p>
+          <p className={`text-xs font-black ${bet.profit_loss >= 0 ? 'text-oracle-win' : 'text-destructive'}`}>
+            {status === 'pending' ? '—' : `${bet.profit_loss >= 0 ? '+' : ''}R$ ${bet.profit_loss.toFixed(2)}`}
           </p>
         </div>
-        <div className="glass-card p-2">
-          <p className="text-[9px] text-muted-foreground">Mercado</p>
-          <p className="text-[10px] font-bold text-foreground truncate">{p.recommended_market ?? '-'}</p>
-        </div>
       </div>
-
-      {/* Result row */}
-      {result && (
-        <div className="flex items-center justify-between pt-2 border-t border-border/30 text-xs">
-          <span className="text-muted-foreground">Resultado real: <span className="text-foreground font-bold">{result.actual_score ?? '—'}</span></span>
-          {result.profit_loss !== null && (
-            <span className={`font-bold ${result.profit_loss >= 0 ? 'text-oracle-win' : 'text-destructive'}`}>
-              {result.profit_loss >= 0 ? '+' : ''}R$ {result.profit_loss.toFixed(2)}
-            </span>
-          )}
-        </div>
-      )}
-    </motion.div>
+      
+      <div className="mt-3 pt-2 border-t border-border/30 flex items-center justify-center gap-1 text-[9px] text-muted-foreground font-bold uppercase">
+        <Zap className="w-3 h-3 text-primary" /> Clique para ver análise detalhada
+      </div>
+    </div>
   );
 }

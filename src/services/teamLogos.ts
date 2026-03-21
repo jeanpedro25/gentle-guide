@@ -5,22 +5,18 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-const LOGO_CACHE_KEY = 'team-logo-cache-v2';
-const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+const LOGO_CACHE_KEY = 'team-logo-cache-v3';
+const CACHE_TTL = 15 * 24 * 60 * 60 * 1000; // 15 days
 
 interface LogoCacheEntry {
   url: string;
   ts: number;
 }
 
-// In-memory cache for current session
 const memoryCache = new Map<string, string>();
+const listeners = new Set<() => void>();
 
-// Listeners for logo updates (trigger re-renders)
-type LogoListener = () => void;
-const listeners = new Set<LogoListener>();
-
-export function subscribeToLogoUpdates(listener: LogoListener): () => void {
+export function subscribeToLogoUpdates(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
@@ -29,7 +25,6 @@ function notifyListeners() {
   listeners.forEach(fn => fn());
 }
 
-// Load persisted cache
 function loadCache(): Record<string, LogoCacheEntry> {
   try {
     return JSON.parse(localStorage.getItem(LOGO_CACHE_KEY) || '{}');
@@ -44,14 +39,10 @@ function saveCache(cache: Record<string, LogoCacheEntry>) {
   } catch { /* quota exceeded */ }
 }
 
-// Pending fetches to avoid duplicate requests
 const pending = new Map<string, Promise<string>>();
 
-/**
- * Generate a team initials avatar as a data URI SVG (fallback)
- */
 function generateInitialsAvatar(teamName: string): string {
-  const words = teamName.replace(/FC|SC|CF|AC|RC|CD|SD|SE|EC|CR|CA|CE|AA|AD/gi, '').trim().split(/\s+/);
+  const words = teamName.replace(/FC|SC|CF|AC|RC|CD|SD|SE|EC|CR|CA|CE|AA|AD|U20|U23|Women|Fem/gi, '').trim().split(/\s+/);
   const initials = words.length >= 2
     ? (words[0][0] + words[1][0]).toUpperCase()
     : teamName.slice(0, 2).toUpperCase();
@@ -63,40 +54,38 @@ function generateInitialsAvatar(teamName: string): string {
   const hue = Math.abs(hash % 360);
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">
-    <rect width="80" height="80" rx="16" fill="hsl(${hue}, 60%, 25%)"/>
-    <text x="40" y="44" text-anchor="middle" dominant-baseline="central" font-family="system-ui, sans-serif" font-weight="700" font-size="28" fill="hsl(${hue}, 70%, 75%)">${initials}</text>
+    <rect width="80" height="80" rx="20" fill="hsl(${hue}, 40%, 15%)"/>
+    <text x="40" y="44" text-anchor="middle" dominant-baseline="central" font-family="Inter, system-ui, sans-serif" font-weight="800" font-size="28" fill="hsl(${hue}, 80%, 70%)">${initials}</text>
   </svg>`;
 
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
-/**
- * Fetch real logo from TheSportsDB via proxy
- */
 async function fetchLogoFromAPI(teamName: string): Promise<string | null> {
   try {
-    const { data, error } = await supabase.functions.invoke('football-proxy', {
-      body: { mode: 'logo', teamName },
-    });
+    // Tenta variações do nome para aumentar chance de acerto
+    const variations = [
+      teamName,
+      teamName.replace(/FC|SC|CF|AC|RC|CD|SD|SE|EC|CR|CA|CE|AA|AD/gi, '').trim(),
+      teamName.split(' ')[0]
+    ];
 
-    if (error || !data?.logoUrl) return null;
-    return data.logoUrl;
+    for (const name of variations) {
+      const { data, error } = await supabase.functions.invoke('football-proxy', {
+        body: { mode: 'logo', teamName: name },
+      });
+      if (!error && data?.logoUrl) return data.logoUrl;
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
-/**
- * Resolve and cache a team logo async.
- */
-async function resolveLogoAsync(teamName: string): Promise<string> {
+export async function resolveLogoAsync(teamName: string): Promise<string> {
   const key = teamName.toLowerCase().trim();
+  if (memoryCache.has(key)) return memoryCache.get(key)!;
 
-  // Check memory cache
-  const mem = memoryCache.get(key);
-  if (mem) return mem;
-
-  // Check localStorage cache
   const diskCache = loadCache();
   const cached = diskCache[key];
   if (cached && Date.now() - cached.ts < CACHE_TTL) {
@@ -104,22 +93,15 @@ async function resolveLogoAsync(teamName: string): Promise<string> {
     return cached.url;
   }
 
-  // Fetch from API (deduplicate)
   if (!pending.has(key)) {
     const promise = fetchLogoFromAPI(teamName).then(url => {
       const resolvedUrl = url || generateInitialsAvatar(teamName);
       memoryCache.set(key, resolvedUrl);
-
-      // Persist
       const cache = loadCache();
       cache[key] = { url: resolvedUrl, ts: Date.now() };
       saveCache(cache);
-
       pending.delete(key);
-      
-      // Notify React components to re-render with new logo
       if (url) notifyListeners();
-      
       return resolvedUrl;
     });
     pending.set(key, promise);
@@ -128,22 +110,14 @@ async function resolveLogoAsync(teamName: string): Promise<string> {
   return pending.get(key)!;
 }
 
-/**
- * Get team logo synchronously. Returns cached logo or fallback.
- * Triggers background fetch if not cached.
- */
 export function getTeamLogo(teamName: string, currentLogo?: string): string {
-  if (currentLogo && currentLogo !== '/placeholder.svg' && !currentLogo.includes('placeholder')) {
+  if (currentLogo && currentLogo !== '/placeholder.svg' && !currentLogo.includes('placeholder') && currentLogo.startsWith('http')) {
     return currentLogo;
   }
 
   const key = teamName.toLowerCase().trim();
+  if (memoryCache.has(key)) return memoryCache.get(key)!;
 
-  // Check memory cache first (instant)
-  const mem = memoryCache.get(key);
-  if (mem) return mem;
-
-  // Check localStorage
   const diskCache = loadCache();
   const cached = diskCache[key];
   if (cached && Date.now() - cached.ts < CACHE_TTL) {
@@ -151,28 +125,14 @@ export function getTeamLogo(teamName: string, currentLogo?: string): string {
     return cached.url;
   }
 
-  // Start async fetch in background
   resolveLogoAsync(teamName);
-
-  // Return initials avatar immediately
   return generateInitialsAvatar(teamName);
 }
 
-/**
- * Preload logos for a list of team names.
- */
 export async function preloadTeamLogos(teamNames: string[]): Promise<void> {
   const unique = [...new Set(teamNames.map(n => n.toLowerCase().trim()))];
-  const uncached = unique.filter(name => {
-    if (memoryCache.has(name)) return false;
-    const cache = loadCache();
-    const entry = cache[name];
-    return !entry || Date.now() - entry.ts >= CACHE_TTL;
-  });
-
+  const uncached = unique.filter(name => !memoryCache.has(name));
   if (uncached.length === 0) return;
-
-  // Batch fetch — max 5 concurrent
   const BATCH = 5;
   for (let i = 0; i < uncached.length; i += BATCH) {
     const batch = uncached.slice(i, i + BATCH);

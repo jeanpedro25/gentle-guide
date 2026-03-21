@@ -1,18 +1,14 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   ArrowLeft, DollarSign, TrendingUp, TrendingDown, Target, BarChart3,
-  Edit2, Check, Trophy, XCircle, Clock, Shield, AlertTriangle, Plus, Loader2, Zap
+  Edit2, Check, Trophy, XCircle, Clock, Shield, AlertTriangle, Plus, Loader2, Zap, ArrowRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useBankroll, useUpdateBankroll } from '@/hooks/usePredictions';
-import { useBets, useCreateBet, useResolveBet, BetRow } from '@/hooks/useBets';
-import { BottomNav } from '@/components/oracle/BottomNav';
+import { useBets, useResolveBet, BetRow } from '@/hooks/useBets';
 import { fetchTodayMatches } from '@/services/footballApi';
 import { ApiFixture } from '@/types/fixture';
-import { AnalyzeModal } from '@/components/oracle/AnalyzeModal';
-import { analyzeMatch } from '@/services/oracleService';
-import { OracleAnalysis } from '@/types/prediction';
 import profetaLogo from '@/assets/profeta-bet-logo.png';
 import { toast } from 'sonner';
 
@@ -35,23 +31,14 @@ export default function BankrollPage() {
   const [editingBankroll, setEditingBankroll] = useState(false);
   const [bankrollInput, setBankrollInput] = useState('');
   const [resolving, setResolving] = useState(false);
-  
-  // Modal de Análise
-  const [showAnalyzeModal, setShowAnalyzeModal] = useState(false);
-  const [selectedBetForAnalysis, setSelectedBetForAnalysis] = useState<BetRow | null>(null);
-  const [oracleResult, setOracleResult] = useState<OracleAnalysis | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const bankrollAmount = bankroll?.amount ?? 100;
   const initialBankroll = 100;
 
   const resolved = bets.filter(b => b.status !== 'pending');
   const wins = resolved.filter(b => b.status === 'won');
-  const losses = resolved.filter(b => b.status === 'lost');
   const pending = bets.filter(b => b.status === 'pending');
-  const totalProfitLoss = resolved.reduce((s, b) => s + (b.profit_loss ?? 0), 0);
-  const hitRate = resolved.length > 0 ? (wins.length / resolved.length) * 100 : 0;
-
+  
   const healthPct = Math.min(100, Math.max(0, (bankrollAmount / Math.max(initialBankroll, 1)) * 100));
   const healthLabel = healthPct >= 70 ? 'SAUDÁVEL' : healthPct >= 40 ? 'ATENÇÃO' : 'CRÍTICO';
   const healthBarColor = healthPct >= 70 ? 'bg-primary' : healthPct >= 40 ? 'bg-yellow-500' : 'bg-destructive';
@@ -62,37 +49,6 @@ export default function BankrollPage() {
     if (isNaN(amount) || amount < 0) return;
     await updateBankroll.mutateAsync(amount);
     setEditingBankroll(false);
-  };
-
-  const handleOpenAnalysis = async (bet: BetRow) => {
-    if (!bet.fixture_id) {
-      toast.error('Esta aposta manual não possui dados de análise.');
-      return;
-    }
-    
-    setSelectedBetForAnalysis(bet);
-    setShowAnalyzeModal(true);
-    setIsAnalyzing(true);
-    setOracleResult(null);
-
-    try {
-      // Simulando a busca do fixture para análise
-      const matches = await fetchTodayMatches();
-      const fixture = matches.find(m => m.fixture.id === bet.fixture_id);
-      
-      if (fixture) {
-        const result = await analyzeMatch(fixture, null, null, []);
-        setOracleResult(result);
-      } else {
-        toast.error('Dados do jogo não encontrados para análise.');
-        setShowAnalyzeModal(false);
-      }
-    } catch (err) {
-      console.error('Erro ao carregar análise:', err);
-      toast.error('Erro ao carregar análise.');
-    } finally {
-      setIsAnalyzing(false);
-    }
   };
 
   const autoResolve = useCallback(async () => {
@@ -152,19 +108,16 @@ export default function BankrollPage() {
   }, [bets.length]);
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      <header className="sticky top-0 z-40 px-4 py-4 bg-background/80 backdrop-blur-lg border-b border-border flex items-center gap-3">
-        <button onClick={() => navigate('/')} className="text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <img src={profetaLogo} alt="Profeta" className="w-7 h-7" />
-        <h1 className="text-lg font-extrabold tracking-tight gold-gradient-text">💰 GESTÃO DE BANCA</h1>
+    <div className="space-y-6">
+      <header>
+        <h1 className="text-2xl font-black gold-gradient-text uppercase tracking-tighter">Gestão de Banca</h1>
+        <p className="text-xs text-muted-foreground">Controle financeiro e saúde da sua conta</p>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-5 space-y-5">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground font-semibold uppercase">Minha Banca</span>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-6 space-y-6 border border-primary/20">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Saldo Disponível</span>
             {editingBankroll ? (
               <div className="flex items-center gap-2">
                 <span className="text-primary font-bold">R$</span>
@@ -172,156 +125,85 @@ export default function BankrollPage() {
                   type="number"
                   value={bankrollInput}
                   onChange={e => setBankrollInput(e.target.value)}
-                  className="bg-secondary border border-border rounded-lg px-2 py-1 text-foreground text-sm w-28 focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="bg-secondary border border-border rounded-lg px-3 py-2 text-foreground text-lg w-32 focus:outline-none focus:ring-1 focus:ring-primary"
                   autoFocus
                   onKeyDown={e => e.key === 'Enter' && handleSaveBankroll()}
                 />
-                <button onClick={handleSaveBankroll} className="p-1 bg-primary rounded text-primary-foreground">
-                  <Check className="w-4 h-4" />
+                <button onClick={handleSaveBankroll} className="p-2 bg-primary rounded text-primary-foreground">
+                  <Check className="w-5 h-5" />
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-2xl text-primary">R$ {bankrollAmount.toFixed(2)}</span>
+              <div className="flex items-center gap-3">
+                <span className="font-black text-4xl text-primary">R$ {bankrollAmount.toFixed(2)}</span>
                 <button
                   onClick={() => { setEditingBankroll(true); setBankrollInput(String(bankrollAmount)); }}
-                  className="p-1 bg-secondary rounded text-muted-foreground hover:text-foreground"
+                  className="p-1.5 bg-secondary rounded-full text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <Edit2 className="w-4 h-4" />
                 </button>
               </div>
             )}
           </div>
-
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-[10px] text-muted-foreground">Saúde da Banca</span>
-              <span className={`text-[10px] font-bold ${healthTextColor}`}>{healthLabel} ({healthPct.toFixed(0)}%)</span>
-            </div>
-            <div className="w-full bg-secondary rounded-full h-2.5 overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${Math.min(healthPct, 100)}%` }}
-                transition={{ duration: 1 }}
-                className={`h-full rounded-full ${healthBarColor}`}
-              />
-            </div>
+          <div className="text-right">
+            <p className="text-[10px] text-muted-foreground font-bold uppercase">Status</p>
+            <p className={`text-sm font-black ${healthTextColor}`}>{healthLabel}</p>
           </div>
-        </motion.div>
-
-        <div className="grid grid-cols-4 gap-2">
-          <StatCard label="Apostas" value={bets.length} color="text-foreground" />
-          <StatCard label="Pendente" value={pending.length} color="text-primary" icon={<Clock className="w-3 h-3" />} />
-          <StatCard label="Green ✅" value={wins.length} color="text-primary" />
-          <StatCard label="Red ❌" value={losses.length} color="text-destructive" />
         </div>
 
-        {pending.length > 0 && (
-          <button
-            onClick={autoResolve}
-            disabled={resolving}
-            className="w-full py-3 rounded-lg border border-primary/30 bg-primary/5 text-primary font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary/10 transition-all disabled:opacity-50"
-          >
-            {resolving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4" />}
-            {resolving ? 'Verificando resultados...' : `🔄 Verificar Resultados (${pending.length} pendentes)`}
-          </button>
-        )}
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="text-[10px] text-muted-foreground font-bold uppercase">Saúde da Banca</span>
+            <span className={`text-[10px] font-black ${healthTextColor}`}>{healthPct.toFixed(0)}%</span>
+          </div>
+          <div className="w-full bg-secondary rounded-full h-3 overflow-hidden border border-white/5">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(healthPct, 100)}%` }}
+              transition={{ duration: 1.5, ease: "easeOut" }}
+              className={`h-full rounded-full ${healthBarColor} shadow-[0_0_10px_rgba(201,168,76,0.3)]`}
+            />
+          </div>
+        </div>
+      </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="glass-card p-5">
-          <h2 className="font-extrabold text-sm tracking-wider text-foreground uppercase mb-4 flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-primary" />
-            HISTÓRICO DE APOSTAS
-          </h2>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard label="Apostas" value={bets.length} color="text-foreground" />
+        <StatCard label="Pendentes" value={pending.length} color="text-primary" />
+        <StatCard label="Greens" value={wins.length} color="text-oracle-win" />
+        <StatCard label="Reds" value={bets.filter(b => b.status === 'lost').length} color="text-destructive" />
+      </div>
 
-          {bets.length === 0 ? (
-            <p className="text-center text-muted-foreground text-sm py-8">
-              Nenhuma aposta registrada.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {bets.map((bet, i) => (
-                <button 
-                  key={bet.id} 
-                  onClick={() => handleOpenAnalysis(bet)}
-                  className="w-full text-left transition-transform active:scale-[0.98]"
-                >
-                  <BetHistoryRow bet={bet} index={i} />
-                </button>
-              ))}
-            </div>
-          )}
-        </motion.div>
-      </main>
+      {pending.length > 0 && (
+        <button
+          onClick={autoResolve}
+          disabled={resolving}
+          className="w-full py-4 rounded-xl border border-primary/30 bg-primary/5 text-primary font-black text-sm flex items-center justify-center gap-3 hover:bg-primary/10 transition-all disabled:opacity-50 shadow-lg"
+        >
+          {resolving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Target className="w-5 h-5" />}
+          {resolving ? 'VERIFICANDO RESULTADOS...' : `SINCRONIZAR RESULTADOS (${pending.length})`}
+        </button>
+      )}
 
-      <AnalyzeModal
-        isOpen={showAnalyzeModal}
-        onClose={() => setShowAnalyzeModal(false)}
-        oracle={oracleResult}
-        homeTeam={selectedBetForAnalysis?.home_team ?? ''}
-        awayTeam={selectedBetForAnalysis?.away_team ?? ''}
-        isLoading={isAnalyzing}
-        bankrollAmount={bankrollAmount}
-      />
-
-      <BottomNav />
+      <button
+        onClick={() => navigate('/historico')}
+        className="w-full py-4 rounded-xl bg-secondary/50 border border-border text-foreground font-bold text-sm flex items-center justify-between px-6 hover:bg-secondary transition-all"
+      >
+        <div className="flex items-center gap-3">
+          <History className="w-5 h-5 text-[#C9A84C]" />
+          <span>VER HISTÓRICO COMPLETO</span>
+        </div>
+        <ArrowRight className="w-5 h-5 text-muted-foreground" />
+      </button>
     </div>
   );
 }
 
-function StatCard({ label, value, color, icon }: { label: string; value: string | number; color: string; icon?: React.ReactNode }) {
+function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="glass-card p-3 text-center">
-      <p className={`font-extrabold text-lg ${color} flex items-center justify-center gap-1`}>{icon}{value}</p>
-      <p className="text-[9px] text-muted-foreground font-semibold uppercase">{label}</p>
+    <div className="glass-card p-4 text-center border border-border/50">
+      <p className={`font-black text-2xl ${color}`}>{value}</p>
+      <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">{label}</p>
     </div>
-  );
-}
-
-function BetHistoryRow({ bet, index }: { bet: BetRow; index: number }) {
-  const predLabel = bet.prediction === '1' ? 'Casa' : bet.prediction === 'X' ? 'Empate' : 'Fora';
-  const statusConfig = {
-    pending: { icon: <Clock className="w-3.5 h-3.5" />, text: 'PENDENTE', color: 'text-muted-foreground', bg: 'bg-secondary', border: 'border-border' },
-    won: { icon: <Trophy className="w-3.5 h-3.5" />, text: 'GREEN ✅', color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/30' },
-    lost: { icon: <XCircle className="w-3.5 h-3.5" />, text: 'RED ❌', color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/30' },
-  }[bet.status];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.02 }}
-      className={`p-3 rounded-lg border ${statusConfig.border} ${statusConfig.bg} space-y-2 hover:border-primary/40 transition-colors`}
-    >
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-bold text-foreground">{bet.home_team} vs {bet.away_team}</p>
-          <p className="text-[10px] text-muted-foreground">{new Date(bet.created_at).toLocaleDateString('pt-BR')} • Clique para ver análise</p>
-        </div>
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${statusConfig.color} ${statusConfig.bg} border ${statusConfig.border}`}>
-          {statusConfig.icon} {statusConfig.text}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-4 gap-2 text-center">
-        <div>
-          <p className="text-[9px] text-muted-foreground">Previsão</p>
-          <p className="text-xs font-bold text-primary">{bet.prediction} ({predLabel})</p>
-        </div>
-        <div>
-          <p className="text-[9px] text-muted-foreground">Aposta</p>
-          <p className="text-xs font-bold text-foreground">R$ {bet.stake.toFixed(2)}</p>
-        </div>
-        <div>
-          <p className="text-[9px] text-muted-foreground">Resultado</p>
-          <p className="text-xs font-bold text-foreground">{bet.actual_score ?? '—'}</p>
-        </div>
-        <div>
-          <p className="text-[9px] text-muted-foreground">Lucro Real</p>
-          <p className={`text-xs font-bold ${bet.profit_loss >= 0 ? 'text-primary' : 'text-destructive'}`}>
-            {bet.status === 'pending' ? '—' : `${bet.profit_loss >= 0 ? '+' : ''}R$ ${bet.profit_loss.toFixed(2)}`}
-          </p>
-        </div>
-      </div>
-    </motion.div>
   );
 }
