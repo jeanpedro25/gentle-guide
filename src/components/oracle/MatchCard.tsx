@@ -242,7 +242,7 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
               {isLive && verdict && <MatchHeatBadge {...verdict} />}
             </div>
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${isLive ? 'bg-destructive/10 text-destructive' : 'bg-secondary text-muted-foreground'}`}>
-              {statusDisplay}
+              {statusDisplay.label}
             </span>
           </div>
 
