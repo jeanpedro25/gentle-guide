@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, RefreshCw, Clock, Trophy, Zap, Search as SearchIcon, Timer } from 'lucide-react';
+import { RefreshCw, Clock, Trophy, Zap, Timer, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useBankroll } from '@/hooks/usePredictions';
-import { useTodayFixtures } from '@/hooks/useFixtures';
-import { BottomNav } from '@/components/oracle/BottomNav';
+import { useTodayFixtures, useTomorrowFixtures } from '@/hooks/useFixtures';
 import { AnalysisPanel } from '@/components/jogueAgora/AnalysisPanel';
 import { RankedMatchCard } from '@/components/jogueAgora/RankedMatchCard';
 import { LoadingSteps, type LoadingStep } from '@/components/jogueAgora/LoadingSteps';
@@ -12,12 +11,10 @@ import { analyzeMatch, classificarJogos, type AnaliseJogo, type RankingFinal } f
 import { ApiFixture } from '@/types/fixture';
 import profetaLogo from '@/assets/profeta-bet-logo.png';
 
-const AUTO_REFRESH_MS = 2 * 60 * 1000; // Atualiza a cada 2 min para pegar jogos novos
-
 export default function JogueAgoraPage() {
-  const navigate = useNavigate();
   const { data: bankroll } = useBankroll();
   const { data: todayMatches = [], isLoading: loadingToday, refetch: refetchToday } = useTodayFixtures();
+  const { data: tomorrowMatches = [] } = useTomorrowFixtures();
 
   const [ranking, setRanking] = useState<RankingFinal | null>(null);
   const [selectedFixture, setSelectedFixture] = useState<ApiFixture | null>(null);
@@ -26,26 +23,19 @@ export default function JogueAgoraPage() {
   const [betMode, setBetMode] = useState(false);
   const [steps, setSteps] = useState<LoadingStep[]>([]);
   const [isRanking, setIsRanking] = useState(false);
-  const [analyzedAt, setAnalyzedAt] = useState<Date | null>(null);
   const prevMatchCountRef = useRef(0);
 
   const bankrollAmount = bankroll?.amount ?? 200;
 
-  // Filtro: Apenas jogos que começam em breve (próximas 6 horas) ou que estão AO VIVO
-  const upcomingMatches = todayMatches.filter(m => {
-    const status = m.fixture.status.short;
-    const isLive = ['1H', 'HT', '2H', 'LIVE', 'PEN'].includes(status);
+  // Filtro: Apenas jogos que AINDA NÃO COMEÇARAM (NS) e que iniciam em até 12 horas
+  const upcomingMatches = [...todayMatches, ...tomorrowMatches].filter(m => {
+    if (m.fixture.status.short !== 'NS') return false;
     
-    if (isLive) return true;
+    const matchTime = new Date(m.fixture.date).getTime();
+    const now = Date.now();
+    const diffHours = (matchTime - now) / (1000 * 60 * 60);
     
-    if (status === 'NS') {
-      const matchTime = new Date(m.fixture.date).getTime();
-      const now = Date.now();
-      const diffHours = (matchTime - now) / (1000 * 60 * 60);
-      return diffHours >= -0.5 && diffHours <= 6; // Começa em até 6h ou começou há no máximo 30min
-    }
-    
-    return false;
+    return diffHours > 0 && diffHours <= 12; // Próximas 12 horas
   });
 
   useEffect(() => {
@@ -60,10 +50,10 @@ export default function JogueAgoraPage() {
     setRanking(null);
 
     const newSteps: LoadingStep[] = [
-      { icon: '⚽', text: `Localizando jogos iminentes... (${matches.length})`, status: 'done' },
-      { icon: '📊', text: 'Processando modelos matemáticos...', status: 'running' },
-      { icon: '🧮', text: 'Identificando Valor Esperado (EV)...', status: 'pending' },
-      { icon: '🏆', text: 'Gerando Top 10 Recomendações...', status: 'pending' },
+      { icon: '⚽', text: `Escaneando próximos jogos... (${matches.length})`, status: 'done' },
+      { icon: '📊', text: 'Cruzando dados estatísticos...', status: 'running' },
+      { icon: '🧮', text: 'Calculando Valor Esperado (EV)...', status: 'pending' },
+      { icon: '🏆', text: 'Selecionando as melhores entradas...', status: 'pending' },
     ];
     setSteps([...newSteps]);
 
@@ -85,7 +75,6 @@ export default function JogueAgoraPage() {
     setSteps([...newSteps]);
 
     setRanking(result);
-    setAnalyzedAt(new Date());
     setIsRanking(false);
   }
 
@@ -116,8 +105,6 @@ export default function JogueAgoraPage() {
     setBetMode(false);
   }, []);
 
-  const totalFound = ranking ? ranking.top.length + ranking.medio.length + ranking.explorar.length : 0;
-
   return (
     <div className="min-h-screen bg-[#111111] pb-24">
       <header className="sticky top-0 z-40 px-4 py-4 bg-[#111111]/90 backdrop-blur-lg border-b border-[#2B2B2B]">
@@ -125,7 +112,7 @@ export default function JogueAgoraPage() {
           <img src={profetaLogo} alt="Profeta" className="w-7 h-7" />
           <div className="flex-1">
             <h1 className="text-lg font-black tracking-tight gold-gradient-text uppercase">🎯 JOGUE AGORA</h1>
-            <p className="text-[10px] text-muted-foreground font-bold">JOGOS QUE COMEÇAM EM BREVE COM ALTO VALOR</p>
+            <p className="text-[10px] text-muted-foreground font-bold">PRÉ-ANÁLISE DOS MELHORES JOGOS DAS PRÓXIMAS HORAS</p>
           </div>
           <button
             onClick={handleRefresh}
@@ -140,7 +127,7 @@ export default function JogueAgoraPage() {
         <div className="flex items-center justify-between bg-[#1A1A1A] border border-[#2B2B2B] rounded-xl px-4 py-3 shadow-lg">
           <div className="flex items-center gap-2">
             <Timer className="w-4 h-4 text-primary" />
-            <span className="text-xs font-bold text-muted-foreground uppercase">Jogos Próximos:</span>
+            <span className="text-xs font-bold text-muted-foreground uppercase">Oportunidades:</span>
             <span className="font-black text-white">{upcomingMatches.length}</span>
           </div>
           <div className="flex items-center gap-2">
@@ -151,7 +138,7 @@ export default function JogueAgoraPage() {
 
         {(loadingToday || isRanking) ? (
           <LoadingSteps steps={steps.length > 0 ? steps : [
-            { icon: '⚽', text: 'Buscando jogos na API...', status: 'running' },
+            { icon: '⚽', text: 'Buscando jogos futuros...', status: 'running' },
             { icon: '📊', text: 'Calculando probabilidades...', status: 'pending' },
             { icon: '🧮', text: 'Analisando EV...', status: 'pending' },
             { icon: '🏆', text: 'Finalizando ranking...', status: 'pending' },
@@ -185,7 +172,7 @@ export default function JogueAgoraPage() {
                 <div className="flex items-center gap-2 px-1">
                   <Zap className="w-5 h-5 text-oracle-draw" />
                   <h2 className="text-sm font-black text-oracle-draw uppercase tracking-widest">
-                    OPORTUNIDADES DE VALOR
+                    VALE A PENA CONFERIR
                   </h2>
                 </div>
                 <div className="space-y-4">
@@ -202,14 +189,14 @@ export default function JogueAgoraPage() {
               </section>
             )}
 
-            {totalFound === 0 && (
+            {upcomingMatches.length === 0 && (
               <div className="text-center py-20 space-y-4">
                 <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto">
                   <Clock className="w-8 h-8 text-muted-foreground" />
                 </div>
-                <p className="text-lg font-bold text-white">Nenhum jogo de valor agora</p>
+                <p className="text-lg font-bold text-white">Nenhum jogo nas próximas horas</p>
                 <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                  O Profeta está monitorando a API. Novos jogos aparecerão assim que as odds abrirem.
+                  O Profeta está monitorando a grade. Novos jogos aparecerão assim que as odds de valor forem detectadas.
                 </p>
               </div>
             )}

@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Target, TrendingUp, Clock, Zap, BarChart3 } from 'lucide-react';
+import { Target, TrendingUp, Clock, Zap, BarChart3, Timer } from 'lucide-react';
 import { AnaliseJogo, PICK_LABELS_FULL } from '@/lib/jogueAgora';
 import { FIXED_LEAGUES, useLeagueFilter } from '@/contexts/LeagueFilterContext';
 
@@ -12,6 +12,43 @@ interface Props {
 }
 
 const FIXED_LEAGUE_IDS = new Set(FIXED_LEAGUES.map((league) => league.id));
+
+function CountdownTimer({ date }: { date: string }) {
+  const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    const target = new Date(date).getTime();
+    
+    const update = () => {
+      const now = Date.now();
+      const diff = target - now;
+      
+      if (diff <= 0) {
+        setTimeLeft('Começando...');
+        return;
+      }
+      
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      
+      if (hours > 0) {
+        setTimeLeft(`Começa em ${hours}h ${minutes}min`);
+      } else {
+        setTimeLeft(`Começa em ${minutes}min`);
+      }
+    };
+
+    update();
+    const interval = setInterval(update, 60000);
+    return () => clearInterval(interval);
+  }, [date]);
+
+  return (
+    <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-1 rounded-lg border border-primary/20 flex items-center gap-1">
+      <Timer className="w-3 h-3 animate-pulse" /> {timeLeft}
+    </span>
+  );
+}
 
 function ConfidenceBar({ value }: { value: number }) {
   const filled = Math.round(value / 10);
@@ -35,16 +72,6 @@ export function RankedMatchCard({ analise, rank, onAnalyze, onBet }: Props) {
   const { isLeagueAllowed, registerDynamicLeague, selectedLeagueIds } = useLeagueFilter();
   const leagueId = String(fixture.league.id);
   const hasOnlyFixedSelections = selectedLeagueIds.length > 0 && selectedLeagueIds.every((id) => FIXED_LEAGUE_IDS.has(id));
-  const isLive = ['1H', '2H', 'HT', 'LIVE', 'PEN'].includes(fixture.fixture.status.short);
-
-  const kickoffDate = new Date(fixture.fixture.date);
-  const kickoffLabel = kickoffDate.toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'America/Sao_Paulo',
-  });
 
   useEffect(() => {
     registerDynamicLeague({
@@ -71,20 +98,10 @@ export function RankedMatchCard({ analise, rank, onAnalyze, onBet }: Props) {
       </div>
 
       <div className="flex items-center justify-between pt-2">
-        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest truncate max-w-[200px]">
+        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest truncate max-w-[180px]">
           {fixture.league.name}
         </span>
-        <div className="flex items-center gap-1.5">
-          {isLive ? (
-            <span className="text-[10px] font-black text-red-500 bg-red-500/10 px-2 py-1 rounded-lg animate-pulse border border-red-500/20">
-              AO VIVO
-            </span>
-          ) : (
-            <span className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 bg-white/5 px-2 py-1 rounded-lg">
-              <Clock className="w-3 h-3" /> {kickoffLabel}
-            </span>
-          )}
-        </div>
+        <CountdownTimer date={fixture.fixture.date} />
       </div>
 
       <div className="flex items-center justify-between gap-4">
