@@ -80,17 +80,10 @@ function calcConfianca(
   homeExp: number,
   awayExp: number,
 ): number {
-  // ev_normalizado: clamp EV to 0-30% range → normalize to 0-1
   const evNorm = Math.min(Math.max(ev * 100, 0), 30) / 30;
-
-  // consistencia_historica: simulate from expected goals differential
   const diff = Math.abs(homeExp - awayExp);
   const consistencia = Math.min(diff / 1.5, 1);
-
-  // forca_diferencial: attack vs defense proxy
   const forcaDiff = Math.min(Math.max(homeExp, awayExp) / 2.5, 1);
-
-  // form_recente: probability-based proxy
   const formRecente = Math.min(prob / 0.6, 1);
 
   const raw = (evNorm * 40) + (consistencia * 30) + (forcaDiff * 20) + (formRecente * 10);
@@ -136,45 +129,40 @@ export function analyzeMatch(fixture: ApiFixture): AnaliseJogo {
     prob_placar: bestScoreProb * 100,
     confianca,
     kellyFraction: Math.min(kelly, 0.1),
-    categoria: 'explorar', // will be set by classificarJogos
+    categoria: 'explorar',
   };
 }
 
 export function classificarJogos(jogos: AnaliseJogo[]): RankingFinal {
-  // Filter only EV-positive matches
+  // Filtra apenas jogos com EV positivo relevante
   const positivos = jogos.filter(j => j.melhor_ev > 2);
   const ordenados = positivos.sort((a, b) => b.confianca - a.confianca);
 
-  // TOP 3: EV > 8% AND confiança > 65
-  const topCandidates = ordenados.filter(j => j.melhor_ev > 8 && j.confianca > 65);
-  const top = topCandidates.slice(0, 3).map(j => ({ ...j, categoria: 'top' as const }));
-
-  let avisoTop: string | undefined;
-  if (top.length < 3) {
-    avisoTop = top.length === 0
-      ? 'Hoje não temos jogos de alta confiança'
-      : `Hoje só temos ${top.length} jogo${top.length > 1 ? 's' : ''} de alta confiança`;
-  }
+  // TOP: EV > 8% E confiança > 65 (Sem limite de quantidade)
+  const top = ordenados
+    .filter(j => j.melhor_ev > 8 && j.confianca > 65)
+    .map(j => ({ ...j, categoria: 'top' as const }));
 
   const topIds = new Set(top.map(j => j.fixture.fixture.id));
   const remaining = ordenados.filter(j => !topIds.has(j.fixture.fixture.id));
 
-  // MEDIO: EV > 3% from remaining (lowered threshold for more results)
-  const medioCandidates = remaining.filter(j => j.melhor_ev > 3);
-  const medio = medioCandidates.slice(0, 2).map(j => ({ ...j, categoria: 'medio' as const }));
+  // MEDIO: EV > 4% (Sem limite de quantidade)
+  const medio = remaining
+    .filter(j => j.melhor_ev > 4)
+    .map(j => ({ ...j, categoria: 'medio' as const }));
 
   const medioIds = new Set(medio.map(j => j.fixture.fixture.id));
-  const rest = remaining.filter(j => !medioIds.has(j.fixture.fixture.id));
-
-  // EXPLORAR: any remaining EV-positive
-  const explorar = rest.slice(0, 5).map(j => ({ ...j, categoria: 'explorar' as const }));
+  
+  // EXPLORAR: O restante com EV positivo
+  const explorar = remaining
+    .filter(j => !medioIds.has(j.fixture.fixture.id))
+    .map(j => ({ ...j, categoria: 'explorar' as const }));
 
   return {
     top,
     medio,
     explorar,
     total: top.length + medio.length + explorar.length,
-    avisoTop,
   };
 }
 
