@@ -95,6 +95,15 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
     onClose();
   };
 
+  const applyQuickDelta = (delta: number) => {
+    const nextValue = Math.max(0, betValue + delta);
+    setBetAmount(nextValue > 0 ? nextValue.toFixed(2) : '');
+  };
+
+  const clearBetAmount = () => {
+    setBetAmount('');
+  };
+
   const handleConfirmBet = async () => {
     if (!analysis || betValue <= 0 || exceedsBankroll) return;
 
@@ -211,36 +220,70 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
                     <ConfidenceBar value={analysis.confianca} />
                   </div>
 
-                  <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                  <div className="space-y-3 rounded-2xl border border-destructive/40 bg-[linear-gradient(135deg,rgba(120,18,26,0.34),rgba(32,10,13,0.96))] p-4 shadow-[0_16px_44px_rgba(0,0,0,0.38)]">
                     <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-primary" />
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/30 bg-black/30">
+                        <DollarSign className="h-4 w-4 text-primary" />
+                      </div>
                       <div>
-                        <p className="text-sm font-bold text-foreground">Opcao de aposta</p>
+                        <p className="text-base font-extrabold uppercase tracking-[0.12em] text-foreground">Sua aposta</p>
                         <p className="text-[11px] text-muted-foreground">
-                          Digite quanto vai apostar e veja o lucro se acertar.
+                          Preencha o valor para calcular lucro e retorno automaticamente.
                         </p>
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-[11px] font-semibold text-foreground" htmlFor="bet-amount">
-                        Quanto vai apostar?
-                      </label>
-                      <div className="flex items-center rounded-lg border border-border bg-background px-3">
-                        <span className="text-sm font-bold text-primary">R$</span>
-                        <input
-                          id="bet-amount"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          inputMode="decimal"
-                          value={betAmount}
-                          onChange={(e) => setBetAmount(e.target.value)}
-                          placeholder="0,00"
-                          autoFocus={betMode}
-                          className="h-11 w-full bg-transparent px-2 text-sm font-semibold text-foreground outline-none"
-                        />
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/90" htmlFor="bet-amount">
+                          Valor apostado (R$)
+                        </label>
+                        <div className="flex h-12 items-center rounded-xl border border-white/10 bg-black/25 px-3 shadow-inner shadow-black/20">
+                          <input
+                            id="bet-amount"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            inputMode="decimal"
+                            value={betAmount}
+                            onChange={(e) => setBetAmount(e.target.value)}
+                            placeholder="Ex: 50.00"
+                            autoFocus={betMode}
+                            className="h-full w-full bg-transparent text-sm font-semibold text-foreground outline-none placeholder:text-muted-foreground/70"
+                          />
+                        </div>
                       </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/90">
+                          Lucro se ganhar (R$)
+                        </label>
+                        <div className="flex h-12 items-center rounded-xl border border-white/10 bg-black/25 px-3 shadow-inner shadow-black/20">
+                          <span className={`text-sm font-bold ${betValue > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
+                            {betValue > 0 ? `R$ ${potentialProfit.toFixed(2)}` : 'Calculado automaticamente'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {[10, 20, 50, 100].map((value) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => applyQuickDelta(value)}
+                          className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-bold text-foreground transition-colors hover:border-primary/40 hover:bg-white/10 hover:text-primary"
+                        >
+                          +{value}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={clearBetAmount}
+                        className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-bold uppercase text-muted-foreground transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        Limpar
+                      </button>
                     </div>
 
                     {quickValues.length > 0 && (
@@ -250,29 +293,29 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
                             key={value}
                             type="button"
                             onClick={() => setBetAmount(value.toFixed(2))}
-                            className="rounded-full border border-border bg-background px-3 py-1 text-[11px] font-semibold text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                            className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/15"
                           >
-                            R$ {value.toFixed(2)}
+                            Stake sugerida R$ {value.toFixed(2)}
                           </button>
                         ))}
                       </div>
                     )}
 
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      <div className="rounded-lg border border-border bg-background p-3">
-                        <p className="text-[10px] text-muted-foreground">Palpite</p>
+                      <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                        <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Palpite</p>
                         <p className="text-sm font-bold text-foreground">{PICK_LABELS[analysis.melhor_resultado]}</p>
                       </div>
-                      <div className="rounded-lg border border-border bg-background p-3">
-                        <p className="text-[10px] text-muted-foreground">Odd</p>
+                      <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                        <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Odd</p>
                         <p className="text-sm font-bold text-foreground">{analysis.melhor_odd.toFixed(2)}</p>
                       </div>
-                      <div className="rounded-lg border border-border bg-background p-3">
-                        <p className="text-[10px] text-muted-foreground">Lucro se acertar</p>
+                      <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                        <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Lucro</p>
                         <p className="text-sm font-bold text-primary">R$ {potentialProfit.toFixed(2)}</p>
                       </div>
-                      <div className="rounded-lg border border-border bg-background p-3">
-                        <p className="text-[10px] text-muted-foreground">Retorno total</p>
+                      <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                        <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Retorno</p>
                         <p className="text-sm font-bold text-foreground">R$ {totalReturn.toFixed(2)}</p>
                       </div>
                     </div>
@@ -328,11 +371,17 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
                       type="button"
                       onClick={handleConfirmBet}
                       disabled={betValue <= 0 || exceedsBankroll || createBet.isPending}
-                      className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,#ff4d4f,#ff2f2f)] text-sm font-extrabold uppercase tracking-[0.08em] text-white shadow-[0_14px_30px_rgba(255,58,58,0.28)] transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {createBet.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <DollarSign className="h-4 w-4" />}
                       Registrar aposta
                     </button>
+
+                    <p className="text-center text-[10px] text-muted-foreground">
+                      {betValue > 0
+                        ? `Aposta de R$ ${betValue.toFixed(2)} pode retornar R$ ${totalReturn.toFixed(2)} se bater.`
+                        : 'Preencha o valor para calcular lucro'}
+                    </p>
                   </div>
 
                   <button
