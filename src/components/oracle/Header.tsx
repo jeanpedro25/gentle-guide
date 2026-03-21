@@ -1,5 +1,4 @@
 import { History } from 'lucide-react';
-import profetaLogo from '@/assets/profeta-bet-logo.png';
 
 interface HeaderProps {
   onToggleHistory: () => void;
@@ -10,12 +9,16 @@ export function Header({ onToggleHistory, historyCount }: HeaderProps) {
   return (
     <header className="glass-card px-4 py-3 md:px-6 md:py-4 flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <img src={profetaLogo} alt="Profeta Bet" className="w-8 h-8 md:w-10 md:h-10" />
-        <h1 className="font-display text-2xl md:text-3xl tracking-wider text-foreground">
+        <img 
+          src="https://ai.gateway.lovable.dev/v1/storage/v1/object/public/project-assets/olt3f4olt3f4olt3.png" 
+          alt="Profeta Bet" 
+          className="h-10 md:h-14 object-contain rounded-lg shadow-lg" 
+        />
+        <h1 className="font-display text-2xl md:text-3xl tracking-wider text-foreground hidden sm:block">
           PROFETA BET
         </h1>
       </div>
-      <p className="hidden md:block text-oracle-muted text-sm font-body">
+      <p className="hidden lg:block text-oracle-muted text-sm font-body">
         Previsões Inteligentes Para Suas Apostas
       </p>
       <button

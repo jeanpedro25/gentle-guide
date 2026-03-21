@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Eye, EyeOff, LogIn, UserPlus } from 'lucide-react';
-import profetaLogo from '@/assets/profeta-bet-logo.png';
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -52,12 +51,18 @@ export default function AuthPage() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm space-y-8">
         {/* Logo */}
-        <div className="flex flex-col items-center gap-3">
-          <img src={profetaLogo} alt="ProfetaBet" className="w-16 h-16 rounded-xl" />
-          <h1 className="text-2xl font-extrabold tracking-tight gold-gradient-text">PROFETABET</h1>
-          <p className="text-muted-foreground text-sm text-center">
-            {isLogin ? 'Entre na sua conta para continuar' : 'Crie sua conta e comece a apostar'}
-          </p>
+        <div className="flex flex-col items-center gap-4">
+          <img 
+            src="https://ai.gateway.lovable.dev/v1/storage/v1/object/public/project-assets/olt3f4olt3f4olt3.png" 
+            alt="ProfetaBet" 
+            className="w-full rounded-2xl shadow-2xl border border-primary/20" 
+          />
+          <div className="text-center">
+            <h1 className="text-2xl font-extrabold tracking-tight gold-gradient-text">PROFETABET</h1>
+            <p className="text-muted-foreground text-sm">
+              {isLogin ? 'Entre na sua conta para continuar' : 'Crie sua conta e comece a apostar'}
+            </p>
+          </div>
         </div>
 
         {/* Form */}

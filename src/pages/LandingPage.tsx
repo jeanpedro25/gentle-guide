@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Shield, TrendingUp, Zap, BarChart3, CheckCircle, ArrowRight } from 'lucide-react';
-import profetaLogo from '@/assets/profeta-bet-logo.png';
 
 const FEATURES = [
   { icon: TrendingUp, title: 'EV Positivo', desc: 'Modelo Poisson calcula probabilidades reais e identifica apostas com valor esperado acima de +5%.' },
@@ -49,9 +48,13 @@ export default function LandingPage() {
       {/* Nav */}
       <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src={profetaLogo} alt="ProfetaBet" className="w-8 h-8 rounded-lg" />
-            <span className="text-lg font-extrabold tracking-tight gold-gradient-text">PROFETABET</span>
+          <div className="flex items-center gap-3">
+            <img 
+              src="https://ai.gateway.lovable.dev/v1/storage/v1/object/public/project-assets/olt3f4olt3f4olt3.png" 
+              alt="ProfetaBet" 
+              className="h-8 rounded shadow-md" 
+            />
+            <span className="text-lg font-extrabold tracking-tight gold-gradient-text hidden sm:block">PROFETABET</span>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={() => navigate('/login')} className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">
@@ -68,13 +71,22 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="relative py-20 md:py-32 px-4">
+      <section className="relative py-16 md:py-24 px-4">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
-        <div className="max-w-4xl mx-auto text-center relative z-10">
+        <div className="max-w-5xl mx-auto text-center relative z-10">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <span className="inline-block px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold mb-6">
+            <span className="inline-block px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold mb-8">
               🇧🇷 1º Sistema de Inteligência Esportiva do Brasil
             </span>
+            
+            <div className="mb-12 max-w-3xl mx-auto">
+              <img 
+                src="https://ai.gateway.lovable.dev/v1/storage/v1/object/public/project-assets/olt3f4olt3f4olt3.png" 
+                alt="Profeta Bet Banner" 
+                className="w-full rounded-3xl shadow-[0_20px_50px_rgba(236,200,19,0.2)] border border-primary/20" 
+              />
+            </div>
+
             <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-tight mb-6">
               Pare de perder.{' '}
               <span className="gold-gradient-text">Comece a ganhar.</span>
@@ -239,8 +251,12 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-border py-8 px-4">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <img src={profetaLogo} alt="ProfetaBet" className="w-6 h-6 rounded" />
+          <div className="flex items-center gap-3">
+            <img 
+              src="https://ai.gateway.lovable.dev/v1/storage/v1/object/public/project-assets/olt3f4olt3f4olt3.png" 
+              alt="ProfetaBet" 
+              className="h-6 rounded shadow-sm" 
+            />
             <span className="text-sm font-bold gold-gradient-text">PROFETABET</span>
           </div>
           <p className="text-xs text-muted-foreground text-center max-w-md">

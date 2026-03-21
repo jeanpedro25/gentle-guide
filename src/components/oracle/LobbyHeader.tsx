@@ -9,14 +9,14 @@ export function LobbyHeader() {
   const { signOut } = useAuth();
 
   return (
-    <header className="sticky top-0 z-50 px-4 py-4 bg-background/80 backdrop-blur-lg border-b border-border flex items-center justify-between">
-      <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-        <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-          <svg className="w-5 h-5 text-primary-foreground" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" />
-          </svg>
-        </div>
-        <h1 className="text-lg font-extrabold tracking-tight gold-gradient-text">PROFETABET</h1>
+    <header className="sticky top-0 z-50 px-4 py-3 bg-background/80 backdrop-blur-lg border-b border-border flex items-center justify-between">
+      <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
+        <img 
+          src="https://ai.gateway.lovable.dev/v1/storage/v1/object/public/project-assets/olt3f4olt3f4olt3.png" 
+          alt="ProfetaBet" 
+          className="h-8 md:h-10 object-contain rounded shadow-md" 
+        />
+        <h1 className="text-lg font-extrabold tracking-tight gold-gradient-text hidden xs:block">PROFETABET</h1>
       </div>
 
       <div className="flex items-center gap-3">
