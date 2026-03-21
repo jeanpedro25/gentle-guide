@@ -315,7 +315,7 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
               disabled={isAdvisorLoading}
               className="flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${advisorLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${isAdvisorLoading ? 'animate-spin' : ''}`} />
               Reanalise ao vivo
             </button>
           ) : (
