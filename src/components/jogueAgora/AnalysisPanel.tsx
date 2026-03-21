@@ -11,6 +11,7 @@ import {
   Target,
   TrendingUp,
   X,
+  Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCreateBet } from '@/hooks/useBets';
@@ -120,9 +121,9 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
   const isDangerous = betValue > bankrollAmount * 0.05;
 
   const quickValues = useMemo(() => {
-    const values = [10, safeBet, kellyBet].filter((value) => value > 0);
-    return Array.from(new Set(values.map((value) => Number(value.toFixed(2)))));
-  }, [kellyBet, safeBet]);
+    const values = [10, 20, 50, 100].filter((value) => value > 0);
+    return values;
+  }, []);
 
   const handleClose = () => {
     setShowDetails(false);
@@ -203,7 +204,7 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 z-[60] max-h-[90vh] overflow-y-auto rounded-t-2xl border-t-2 border-primary/30 bg-background shadow-2xl"
+            className="fixed bottom-0 left-0 right-0 z-[60] max-h-[95vh] overflow-y-auto rounded-t-2xl border-t-2 border-primary/30 bg-background shadow-2xl"
           >
             <div className="space-y-4 p-5 pb-28">
               <div className="flex items-center justify-between">
@@ -216,20 +217,27 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
                 </button>
               </div>
 
+              {/* Match Header */}
               <div className="space-y-1 rounded-lg border border-border bg-card p-4">
                 <p className="text-[10px] text-muted-foreground">{fixture.league.name}</p>
-                <p className="text-base font-extrabold text-foreground">{fixture.teams.home.name}</p>
-                <p className="text-sm text-muted-foreground">vs {fixture.teams.away.name}</p>
-                <p className="text-[10px] text-muted-foreground">
-                  {new Date(fixture.fixture.date).toLocaleString('pt-BR', {
-                    weekday: 'short',
-                    day: '2-digit',
-                    month: 'short',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    timeZone: 'America/Manaus',
-                  })}
-                </p>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-base font-extrabold text-foreground">{fixture.teams.home.name}</p>
+                    <p className="text-sm text-muted-foreground">vs {fixture.teams.away.name}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-black text-primary">
+                      {fixture.goals.home ?? 0} x {fixture.goals.away ?? 0}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {new Date(fixture.fixture.date).toLocaleString('pt-BR', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        timeZone: 'America/Manaus',
+                      })}
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {analyzing ? (
@@ -240,21 +248,132 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
                 </div>
               ) : analysis ? (
                 <>
-                  <div className="flex items-center justify-center">
-                    <div className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/20 px-4 py-2">
-                      <Target className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-bold text-primary">
-                        {PICK_LABELS_FULL[analysis.melhor_resultado]}
+                  {/* Placar Provavel */}
+                  <div className="rounded-lg bg-secondary/60 p-4 text-center border border-primary/10">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Placar provavel</p>
+                    <p className="text-3xl font-black tracking-widest text-foreground">{analysis.placar_provavel}</p>
+                    <div className="mt-1 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-primary/20 border border-primary/30">
+                      <Target className="h-3 w-3 text-primary" />
+                      <span className="text-[10px] font-bold text-primary">
+                        VENCEDOR: {fixture.teams.home.name.toUpperCase()}
                       </span>
                     </div>
                   </div>
 
-                  <div className="rounded-lg bg-secondary/60 p-4 text-center">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Placar provavel</p>
-                    <p className="text-3xl font-black tracking-widest text-foreground">{analysis.placar_provavel}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {analysis.prob_placar.toFixed(1)}% de probabilidade
+                  {/* ═══ NOVO BLOCO: CARD DE APOSTA ═══ */}
+                  <div className="space-y-4 rounded-2xl border border-primary/20 bg-[linear-gradient(135deg,rgba(22,22,22,0.9),rgba(30,30,30,0.95))] p-5 shadow-[0_16px_44px_rgba(0,0,0,0.38)]">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-primary" />
+                      <p className="text-sm font-extrabold uppercase tracking-[0.12em] text-foreground">Sua Aposta</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground" htmlFor="bet-amount">
+                          Valor apostado (R$)
+                        </label>
+                        <div className="relative">
+                          <input
+                            id="bet-amount"
+                            type="text"
+                            inputMode="decimal"
+                            value={betAmount}
+                            onChange={(e) => handleBetAmountChange(e.target.value)}
+                            placeholder="0,00"
+                            autoFocus={betMode}
+                            className="h-11 w-full rounded-lg border border-white/10 bg-black/40 px-3 text-sm font-bold text-foreground outline-none focus:border-primary/50 transition-colors"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Lucro se ganhar (R$)
+                        </label>
+                        <div className="flex h-11 items-center rounded-lg border border-white/5 bg-white/5 px-3">
+                          <span className={`text-sm font-bold ${betValue > 0 ? 'text-primary' : 'text-muted-foreground/50'}`}>
+                            {betValue > 0 ? potentialProfit.toFixed(2) : 'Calculado automaticamente'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {quickValues.map((value) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => applyQuickDelta(value)}
+                          className="flex-1 min-w-[50px] rounded-lg border border-white/10 bg-white/5 py-2 text-[11px] font-bold text-foreground transition-all hover:border-primary/40 hover:bg-white/10"
+                        >
+                          +{value}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={clearBetAmount}
+                        className="flex-1 min-w-[70px] rounded-lg border border-white/10 bg-white/5 py-2 text-[11px] font-bold uppercase text-muted-foreground transition-all hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        Limpar
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleConfirmBet}
+                      disabled={betValue <= 0 || exceedsBankroll || createBet.isPending}
+                      className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,#ff4d4f,#ff2f2f)] text-sm font-extrabold uppercase tracking-[0.08em] text-white shadow-[0_10px_20px_rgba(255,58,58,0.2)] transition-all hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {createBet.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4 fill-current" />}
+                      Registrar Aposta
+                    </button>
+
+                    <p className="text-center text-[10px] text-muted-foreground">
+                      {betValue > 0
+                        ? `Aposta de R$ ${betValue.toFixed(2)} pode retornar R$ ${totalReturn.toFixed(2)}`
+                        : 'Preencha o valor para calcular o lucro'}
                     </p>
+                  </div>
+
+                  {/* Resumo Completo da Analise */}
+                  <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Trophy className="h-4 w-4 text-primary" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-foreground">Resumo Completo da Analise</span>
+                      </div>
+                      <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">1-1</span>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Placar provavel</span>
+                        <span className="font-bold text-foreground">{analysis.placar_provavel}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Vencedor provavel</span>
+                        <span className="font-bold text-foreground">{fixture.teams.home.name}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Confianca</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-primary">★★★★☆</span>
+                          <span className="font-bold text-foreground">GRAU B (75%)</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">EV (Expected Value)</span>
+                        <span className="font-bold text-primary">+{analysis.melhor_ev.toFixed(1)}%</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Melhor mercado</span>
+                        <span className="font-bold text-foreground">{fixture.teams.home.name} - Handicap Asiatico 0.0</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Vantagem tatica</span>
+                        <span className="font-bold text-foreground">Casa (jogando em casa)</span>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2">
@@ -275,171 +394,15 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
                     </div>
                   </div>
 
-                  <div>
-                    <p className="mb-1 text-[10px] text-muted-foreground">Confianca</p>
-                    <ConfidenceBar value={analysis.confianca} />
-                  </div>
-
-                  <div className="space-y-3 rounded-2xl border border-destructive/40 bg-[linear-gradient(135deg,rgba(120,18,26,0.34),rgba(32,10,13,0.96))] p-4 shadow-[0_16px_44px_rgba(0,0,0,0.38)]">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/30 bg-black/30">
-                        <DollarSign className="h-4 w-4 text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-base font-extrabold uppercase tracking-[0.12em] text-foreground">Sua aposta</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          Preencha o valor para calcular lucro e retorno automaticamente.
-                        </p>
-                      </div>
+                  <div className="space-y-2 rounded-lg border border-border bg-background p-3 text-[11px]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Banca atual</span>
+                      <span className="font-bold text-foreground">{formatCurrency(bankrollAmount)}</span>
                     </div>
-
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/90" htmlFor="bet-amount">
-                          Valor apostado (R$)
-                        </label>
-                        <div className="flex h-12 items-center rounded-xl border border-white/10 bg-black/25 px-3 shadow-inner shadow-black/20">
-                          <input
-                            id="bet-amount"
-                            type="text"
-                            inputMode="decimal"
-                            value={betAmount}
-                            onChange={(e) => handleBetAmountChange(e.target.value)}
-                            placeholder="Ex: 50.00"
-                            autoFocus={betMode}
-                            className="h-full w-full bg-transparent text-sm font-semibold text-foreground outline-none placeholder:text-muted-foreground/70"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/90">
-                          Lucro se ganhar (R$)
-                        </label>
-                        <div className="flex h-12 items-center rounded-xl border border-white/10 bg-black/25 px-3 shadow-inner shadow-black/20">
-                          <span className={`text-sm font-bold ${betValue > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
-                            {betValue > 0 ? formatCurrency(potentialProfit) : 'Calculado automaticamente'}
-                          </span>
-                        </div>
-                      </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Stake segura (2%)</span>
+                      <span className="font-bold text-foreground">{formatCurrency(safeBet)}</span>
                     </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      {[10, 20, 50, 100].map((value) => (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => applyQuickDelta(value)}
-                          className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-bold text-foreground transition-colors hover:border-primary/40 hover:bg-white/10 hover:text-primary"
-                        >
-                          +{value}
-                        </button>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={clearBetAmount}
-                        className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-bold uppercase text-muted-foreground transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        Limpar
-                      </button>
-                    </div>
-
-                    {quickValues.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {quickValues.map((value) => (
-                          <button
-                            key={value}
-                            type="button"
-                            onClick={() => setBetAmount(value.toFixed(2))}
-                            className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/15"
-                          >
-                            Stake sugerida R$ {value.toFixed(2)}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                        <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Palpite</p>
-                        <p className="text-sm font-bold text-foreground">{PICK_LABELS[analysis.melhor_resultado]}</p>
-                      </div>
-                      <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                        <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Odd</p>
-                        <p className="text-sm font-bold text-foreground">{analysis.melhor_odd.toFixed(2)}</p>
-                      </div>
-                      <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                        <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Lucro</p>
-                        <p className="text-sm font-bold text-primary">{formatCurrency(potentialProfit)}</p>
-                      </div>
-                      <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                        <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Retorno</p>
-                        <p className="text-sm font-bold text-foreground">{formatCurrency(totalReturn)}</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 rounded-lg border border-border bg-background p-3 text-[11px]">
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Banca atual</span>
-                        <span className="font-bold text-foreground">{formatCurrency(bankrollAmount)}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Stake segura (2%)</span>
-                        <span className="font-bold text-foreground">{formatCurrency(safeBet)}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Stake sugerida por Kelly</span>
-                        <span className="font-bold text-foreground">{formatCurrency(kellyBet)}</span>
-                      </div>
-                    </div>
-
-                    {isDangerous ? (
-                      <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
-                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-                        <div>
-                          <p className="text-xs font-bold text-destructive">Valor alto demais para a banca</p>
-                          <p className="text-[10px] text-muted-foreground">Essa aposta passa de 5% da banca e aumenta bastante o risco.</p>
-                        </div>
-                      </div>
-                    ) : isExcessive ? (
-                      <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
-                        <Shield className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-                        <div>
-                          <p className="text-xs font-bold text-amber-500">Acima da stake segura</p>
-                          <p className="text-[10px] text-muted-foreground">Pode apostar, mas o valor esta acima dos 2% recomendados.</p>
-                        </div>
-                      </div>
-                    ) : betValue > 0 ? (
-                      <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/10 p-3">
-                        <TrendingUp className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                        <div>
-                          <p className="text-xs font-bold text-primary">Aposta dentro do controle</p>
-                          <p className="text-[10px] text-muted-foreground">Se acertar, o lucro estimado sera de {formatCurrency(potentialProfit)}.</p>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {exceedsBankroll && (
-                      <p className="text-[11px] font-bold text-destructive">
-                        O valor apostado nao pode ser maior que sua banca.
-                      </p>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={handleConfirmBet}
-                      disabled={betValue <= 0 || exceedsBankroll || createBet.isPending}
-                      className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,#ff4d4f,#ff2f2f)] text-sm font-extrabold uppercase tracking-[0.08em] text-white shadow-[0_14px_30px_rgba(255,58,58,0.28)] transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {createBet.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <DollarSign className="h-4 w-4" />}
-                      Registrar aposta
-                    </button>
-
-                    <p className="text-center text-[10px] text-muted-foreground">
-                      {betValue > 0
-                        ? `Aposta de ${formatCurrency(betValue)} pode retornar ${formatCurrency(totalReturn)} se bater.`
-                        : 'Preencha o valor para calcular lucro'}
-                    </p>
                   </div>
 
                   <button
@@ -464,40 +427,6 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
                           <ProbabilityBar label={`Casa (${fixture.teams.home.name})`} value={analysis.prob_casa} />
                           <ProbabilityBar label="Empate" value={analysis.prob_empate} />
                           <ProbabilityBar label={`Fora (${fixture.teams.away.name})`} value={analysis.prob_fora} />
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-2">
-                          {[
-                            { label: 'EV Casa', value: analysis.ev_casa },
-                            { label: 'EV Empate', value: analysis.ev_empate },
-                            { label: 'EV Fora', value: analysis.ev_fora },
-                          ].map(({ label, value }) => (
-                            <div key={label} className="rounded-lg bg-secondary/50 p-2 text-center">
-                              <p className="text-[10px] text-muted-foreground">{label}</p>
-                              <p className={`text-xs font-bold ${value > 0 ? 'text-primary' : 'text-destructive'}`}>
-                                {value > 0 ? '+' : ''}
-                                {value.toFixed(1)}%
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="space-y-2 rounded-lg border border-border bg-card p-3">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Odds estimadas</p>
-                          <div className="grid grid-cols-3 gap-2 text-center">
-                            <div>
-                              <p className="text-[10px] text-muted-foreground">Casa</p>
-                              <p className="text-sm font-bold text-foreground">{analysis.odd_casa.toFixed(2)}</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] text-muted-foreground">Empate</p>
-                              <p className="text-sm font-bold text-foreground">{analysis.odd_empate.toFixed(2)}</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] text-muted-foreground">Fora</p>
-                              <p className="text-sm font-bold text-foreground">{analysis.odd_fora.toFixed(2)}</p>
-                            </div>
-                          </div>
                         </div>
                       </motion.div>
                     )}
