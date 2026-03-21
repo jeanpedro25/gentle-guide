@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, DollarSign, TrendingUp, TrendingDown, Target, BarChart3,
-  Edit2, Check, Trophy, XCircle, Clock, Shield, AlertTriangle, Plus, Loader2, Zap, ArrowRight
+  Edit2, Check, Trophy, XCircle, Clock, Shield, AlertTriangle, Plus, Loader2, Zap, ArrowRight, History
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useBankroll, useUpdateBankroll } from '@/hooks/usePredictions';
