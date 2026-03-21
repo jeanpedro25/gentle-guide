@@ -1,29 +1,19 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import {
-  ArrowLeft, DollarSign, TrendingUp, TrendingDown, Target, BarChart3,
-  Edit2, Check, Trophy, XCircle, Clock, Shield, AlertTriangle, Plus, Loader2, Zap, ArrowRight, History
+import { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  DollarSign, Edit2, Check, Target, History, ArrowRight, 
+  Loader2, Wallet, ShieldCheck, TrendingUp 
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useBankroll, useUpdateBankroll } from '@/hooks/usePredictions';
-import { useBets, useResolveBet, BetRow } from '@/hooks/useBets';
+import { useBets, useResolveBet } from '@/hooks/useBets';
 import { fetchTodayMatches } from '@/services/footballApi';
 import { ApiFixture } from '@/types/fixture';
-import profetaLogo from '@/assets/profeta-bet-logo.png';
 import { toast } from 'sonner';
-
-function scoreToResult(score: string): '1' | 'X' | '2' | null {
-  const m = score.match(/(\d+)\s*[x×\-:]\s*(\d+)/i);
-  if (!m) return null;
-  const h = parseInt(m[1]), a = parseInt(m[2]);
-  if (h > a) return '1';
-  if (h < a) return '2';
-  return 'X';
-}
 
 export default function BankrollPage() {
   const navigate = useNavigate();
-  const { data: bankroll } = useBankroll();
+  const { data: bankroll, isLoading: loadingBankroll } = useBankroll();
   const updateBankroll = useUpdateBankroll();
   const { data: bets = [], refetch: refetchBets } = useBets();
   const resolveBet = useResolveBet();
@@ -32,80 +22,83 @@ export default function BankrollPage() {
   const [bankrollInput, setBankrollInput] = useState('');
   const [resolving, setResolving] = useState(false);
 
-  const bankrollAmount = bankroll?.amount ?? 100;
-  const initialBankroll = 100;
+  const bankrollAmount = bankroll?.amount ?? 0;
+  const isNewUser = !loadingBankroll && !bankroll;
 
   const resolved = bets.filter(b => b.status !== 'pending');
   const wins = resolved.filter(b => b.status === 'won');
   const pending = bets.filter(b => b.status === 'pending');
   
-  const healthPct = Math.min(100, Math.max(0, (bankrollAmount / Math.max(initialBankroll, 1)) * 100));
-  const healthLabel = healthPct >= 70 ? 'SAUDÁVEL' : healthPct >= 40 ? 'ATENÇÃO' : 'CRÍTICO';
-  const healthBarColor = healthPct >= 70 ? 'bg-primary' : healthPct >= 40 ? 'bg-yellow-500' : 'bg-destructive';
-  const healthTextColor = healthPct >= 70 ? 'text-primary' : healthPct >= 40 ? 'text-yellow-500' : 'text-destructive';
+  const healthPct = bankrollAmount > 0 ? 100 : 0; // Simplificado para o lançamento
 
   const handleSaveBankroll = async () => {
-    const amount = parseFloat(bankrollInput);
-    if (isNaN(amount) || amount < 0) return;
-    await updateBankroll.mutateAsync(amount);
-    setEditingBankroll(false);
+    const amount = parseFloat(bankrollInput.replace(',', '.'));
+    if (isNaN(amount) || amount < 0) {
+      toast.error('Insira um valor válido');
+      return;
+    }
+    try {
+      await updateBankroll.mutateAsync(amount);
+      setEditingBankroll(false);
+      toast.success('Banca configurada com sucesso!');
+    } catch {
+      toast.error('Erro ao salvar banca');
+    }
   };
 
-  const autoResolve = useCallback(async () => {
-    if (pending.length === 0) return;
-    setResolving(true);
-    try {
-      const allMatches = await fetchTodayMatches().catch(() => [] as ApiFixture[]);
-      const finished = allMatches.filter(m => ['FT', 'AET', 'PEN'].includes(m.fixture.status.short));
+  if (isNewUser) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center p-4">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="glass-card p-8 w-full max-w-md text-center space-y-6 border-primary/30"
+        >
+          <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto">
+            <Wallet className="w-10 h-10 text-primary" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-black text-white uppercase tracking-tighter">Bem-vindo ao Profeta!</h1>
+            <p className="text-sm text-muted-foreground">Para começar a analisar e lucrar, defina o valor total da sua banca atual.</p>
+          </div>
 
-      let bankrollDelta = 0;
+          <div className="space-y-4">
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-primary">R$</span>
+              <input
+                type="number"
+                value={bankrollInput}
+                onChange={e => setBankrollInput(e.target.value)}
+                placeholder="Ex: 500,00"
+                className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-12 pr-4 text-xl font-black text-white focus:border-primary outline-none transition-all"
+              />
+            </div>
+            <button
+              onClick={handleSaveBankroll}
+              disabled={updateBankroll.isPending || !bankrollInput}
+              className="w-full py-4 rounded-xl bg-primary text-black font-black uppercase tracking-widest hover:brightness-110 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {updateBankroll.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
+              Confirmar Banca Inicial
+            </button>
+          </div>
 
-      for (const bet of pending) {
-        const match = finished.find(m => m.fixture.id === bet.fixture_id) || 
-                      finished.find(m => {
-                        const hNorm = m.teams.home.name.toLowerCase();
-                        const aNorm = m.teams.away.name.toLowerCase();
-                        const bH = bet.home_team.toLowerCase();
-                        const bA = bet.away_team.toLowerCase();
-                        return (hNorm.includes(bH) || bH.includes(hNorm)) && (aNorm.includes(bA) || bA.includes(aNorm));
-                      });
-
-        if (!match || match.goals.home === null || match.goals.away === null) continue;
-
-        const actualScore = `${match.goals.home} x ${match.goals.away}`;
-        const actualResult = scoreToResult(actualScore);
-        if (!actualResult) continue;
-
-        const won = bet.prediction === actualResult;
-        const pl = won ? bet.potential_profit : -bet.stake;
-        bankrollDelta += pl;
-
-        await resolveBet.mutateAsync({
-          id: bet.id,
-          status: won ? 'won' : 'lost',
-          actual_result: actualResult,
-          actual_score: actualScore,
-          profit_loss: pl,
-        });
-      }
-
-      if (bankrollDelta !== 0) {
-        await updateBankroll.mutateAsync(bankrollAmount + bankrollDelta);
-        toast.success(`Banca atualizada! ${bankrollDelta >= 0 ? '+' : ''}R$ ${bankrollDelta.toFixed(2)}`);
-      }
-      refetchBets();
-    } catch (err) {
-      console.error('Auto-resolve error:', err);
-    } finally {
-      setResolving(false);
-    }
-  }, [pending, bankrollAmount, resolveBet, updateBankroll, refetchBets]);
-
-  useEffect(() => {
-    if (pending.length > 0) {
-      autoResolve();
-    }
-  }, [bets.length]);
+          <div className="grid grid-cols-2 gap-3 pt-4">
+            <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-left">
+              <ShieldCheck className="w-4 h-4 text-oracle-win mb-1" />
+              <p className="text-[10px] font-bold text-muted-foreground uppercase">Segurança</p>
+              <p className="text-[11px] text-white font-medium">Gestão de banca automática</p>
+            </div>
+            <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-left">
+              <TrendingUp className="w-4 h-4 text-primary mb-1" />
+              <p className="text-[10px] font-bold text-muted-foreground uppercase">Lucratividade</p>
+              <p className="text-[11px] text-white font-medium">Foco em valor esperado (EV)</p>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -147,43 +140,29 @@ export default function BankrollPage() {
           </div>
           <div className="text-right">
             <p className="text-[10px] text-muted-foreground font-bold uppercase">Status</p>
-            <p className={`text-sm font-black ${healthTextColor}`}>{healthLabel}</p>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="text-[10px] text-muted-foreground font-bold uppercase">Saúde da Banca</span>
-            <span className={`text-[10px] font-black ${healthTextColor}`}>{healthPct.toFixed(0)}%</span>
-          </div>
-          <div className="w-full bg-secondary rounded-full h-3 overflow-hidden border border-white/5">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${Math.min(healthPct, 100)}%` }}
-              transition={{ duration: 1.5, ease: "easeOut" }}
-              className={`h-full rounded-full ${healthBarColor} shadow-[0_0_10px_rgba(201,168,76,0.3)]`}
-            />
+            <p className="text-sm font-black text-primary">ATIVO</p>
           </div>
         </div>
       </motion.div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="Apostas" value={bets.length} color="text-foreground" />
-        <StatCard label="Pendentes" value={pending.length} color="text-primary" />
-        <StatCard label="Greens" value={wins.length} color="text-oracle-win" />
-        <StatCard label="Reds" value={bets.filter(b => b.status === 'lost').length} color="text-destructive" />
+        <div className="glass-card p-4 text-center border border-border/50">
+          <p className="font-black text-2xl text-white">{bets.length}</p>
+          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Apostas</p>
+        </div>
+        <div className="glass-card p-4 text-center border border-border/50">
+          <p className="font-black text-2xl text-primary">{pending.length}</p>
+          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Pendentes</p>
+        </div>
+        <div className="glass-card p-4 text-center border border-border/50">
+          <p className="font-black text-2xl text-oracle-win">{wins.length}</p>
+          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Greens</p>
+        </div>
+        <div className="glass-card p-4 text-center border border-border/50">
+          <p className="font-black text-2xl text-destructive">{bets.filter(b => b.status === 'lost').length}</p>
+          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Reds</p>
+        </div>
       </div>
-
-      {pending.length > 0 && (
-        <button
-          onClick={autoResolve}
-          disabled={resolving}
-          className="w-full py-4 rounded-xl border border-primary/30 bg-primary/5 text-primary font-black text-sm flex items-center justify-center gap-3 hover:bg-primary/10 transition-all disabled:opacity-50 shadow-lg"
-        >
-          {resolving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Target className="w-5 h-5" />}
-          {resolving ? 'VERIFICANDO RESULTADOS...' : `SINCRONIZAR RESULTADOS (${pending.length})`}
-        </button>
-      )}
 
       <button
         onClick={() => navigate('/historico')}
@@ -195,15 +174,6 @@ export default function BankrollPage() {
         </div>
         <ArrowRight className="w-5 h-5 text-muted-foreground" />
       </button>
-    </div>
-  );
-}
-
-function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <div className="glass-card p-4 text-center border border-border/50">
-      <p className={`font-black text-2xl ${color}`}>{value}</p>
-      <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">{label}</p>
     </div>
   );
 }

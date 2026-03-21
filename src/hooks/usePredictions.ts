@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface PredictionRow {
   id: string;
@@ -22,16 +23,8 @@ export interface PredictionRow {
 export interface BankrollRow {
   id: string;
   amount: number;
+  user_id: string;
   updated_at: string;
-}
-
-export interface BetResultRow {
-  id: string;
-  prediction_id: string;
-  actual_score: string | null;
-  won: boolean | null;
-  profit_loss: number | null;
-  resolved_at: string;
 }
 
 export function usePredictions() {
@@ -84,51 +77,51 @@ export function useSavePrediction() {
   });
 }
 
-export function useUpdatePredictionStatus() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase
-        .from('predictions')
-        .update({ status } as any)
-        .eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['predictions'] });
-    },
-  });
-}
-
 export function useBankroll() {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['bankroll'],
+    queryKey: ['bankroll', user?.id],
     queryFn: async () => {
+      if (!user) return null;
       const { data, error } = await supabase
         .from('bankroll')
         .select('*')
-        .limit(1);
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
       if (error) throw error;
-      return (data?.[0] as unknown as BankrollRow) ?? null;
+      return data as unknown as BankrollRow;
     },
+    enabled: !!user,
   });
 }
 
 export function useUpdateBankroll() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+
   return useMutation({
     mutationFn: async (amount: number) => {
-      // Get current bankroll id
-      const { data: current } = await supabase
+      if (!user) throw new Error('Usuário não autenticado');
+
+      const { data: existing } = await supabase
         .from('bankroll')
         .select('id')
-        .limit(1);
-      if (!current?.[0]) throw new Error('No bankroll found');
-      const { error } = await supabase
-        .from('bankroll')
-        .update({ amount, updated_at: new Date().toISOString() } as any)
-        .eq('id', current[0].id);
-      if (error) throw error;
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from('bankroll')
+          .update({ amount, updated_at: new Date().toISOString() } as any)
+          .eq('id', existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('bankroll')
+          .insert({ amount, user_id: user.id } as any);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bankroll'] });
@@ -145,25 +138,7 @@ export function useBetResults() {
         .select('*')
         .order('resolved_at', { ascending: false });
       if (error) throw error;
-      return data as unknown as BetResultRow[];
-    },
-  });
-}
-
-export function useSaveBetResult() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (result: Omit<BetResultRow, 'id' | 'resolved_at'>) => {
-      const { data, error } = await supabase
-        .from('bet_results')
-        .insert(result as any)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bet_results'] });
+      return data as unknown as any[];
     },
   });
 }
