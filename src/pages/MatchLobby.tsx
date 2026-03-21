@@ -17,7 +17,7 @@ import { ApiFixture } from '@/types/fixture';
 import { clearFootballCache } from '@/services/footballApi';
 import { motion } from 'framer-motion';
 import { Loader2, AlertCircle, RefreshCw, Search, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { MultiplaBar } from '@/components/oracle/MultiplaBar';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -25,11 +25,15 @@ import { useQueryClient } from '@tanstack/react-query';
 const LIVE_STATUSES = new Set(['1H', '2H', 'HT', 'LIVE', 'PEN']);
 
 export default function MatchLobby() {
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('today');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const queryClient = useQueryClient();
+  
+  // Sincroniza o filtro inicial com a rota
+  const initialFilter = location.pathname === '/aovivo' ? 'live' : 'today';
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>(initialFilter);
   const [searchQuery, setSearchQuery] = useState('');
   const [matchFilters, setMatchFilters] = useState<MatchFiltersState>({ league: '', timeOfDay: 'all', sortBy: 'time' });
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   const todayQuery = useTodayFixtures();
   const tomorrowQuery = useTomorrowFixtures();
@@ -38,6 +42,15 @@ export default function MatchLobby() {
   const { data: bets = [] } = useBets();
   const { data: bankroll } = useBankroll();
   const stopLoss = useStopLoss(bets, bankroll?.amount ?? 100, 100);
+
+  // Efeito para mudar a aba se a rota mudar (ex: clicou no menu lateral)
+  useEffect(() => {
+    if (location.pathname === '/aovivo') {
+      setTimeFilter('live');
+    } else if (location.pathname === '/proximos' && timeFilter === 'live') {
+      setTimeFilter('today');
+    }
+  }, [location.pathname]);
 
   const handleMatchClick = (fixture: ApiFixture) => {
     sessionStorage.setItem('selected-fixture', JSON.stringify(fixture));
@@ -53,7 +66,7 @@ export default function MatchLobby() {
       weekQuery.refetch(),
       liveQuery.refetch(),
     ]);
-    toast.success('Atualizado!');
+    toast.success('Dados atualizados!');
   }, [todayQuery, tomorrowQuery, weekQuery, liveQuery, queryClient]);
 
   // Preload logos
@@ -67,7 +80,7 @@ export default function MatchLobby() {
   const activeQuery = timeFilter === 'today' ? todayQuery
     : timeFilter === 'tomorrow' ? tomorrowQuery
     : timeFilter === 'week' ? weekQuery
-    : todayQuery; // 'live' uses liveQuery separately
+    : todayQuery;
 
   const fixtures: ApiFixture[] = (activeQuery.data as ApiFixture[] | undefined) ?? [];
 
@@ -75,15 +88,17 @@ export default function MatchLobby() {
   const grouped = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     const filtered = fixtures.filter(f => {
-      // For 'live' tab, only show live matches
+      // Para aba 'live', apenas jogos em andamento
       if (timeFilter === 'live') {
         if (!LIVE_STATUSES.has(f.fixture.status.short)) return false;
       }
-      // Exclude finished in today/tomorrow/week
+      
+      // Excluir encerrados nas abas de próximos
       if (timeFilter !== 'live') {
         const s = f.fixture.status.short;
         if (s === 'FT' || s === 'AET' || s === 'PEN') return false;
       }
+
       if (q && !f.teams.home.name.toLowerCase().includes(q) && !f.teams.away.name.toLowerCase().includes(q)) return false;
       return true;
     });
@@ -106,28 +121,33 @@ export default function MatchLobby() {
     });
   }, [fixtures, searchQuery, timeFilter]);
 
-  // Determine "best value" matches - pick top 3 with highest simulated odds
+  // Se a aba "Hoje" estiver vazia (fim do dia), sugere mudar para "Amanhã"
+  useEffect(() => {
+    if (timeFilter === 'today' && !activeQuery.isLoading && grouped.length === 0 && !searchQuery) {
+      // Se não tem nada hoje, pula pra amanhã automaticamente se houver jogos
+      if (tomorrowQuery.data && tomorrowQuery.data.length > 0) {
+        setTimeFilter('tomorrow');
+      }
+    }
+  }, [timeFilter, grouped.length, activeQuery.isLoading, tomorrowQuery.data, searchQuery]);
+
   const bestValueIds = useMemo(() => {
     const allFixtures = grouped.flatMap(g => g.fixtures);
     if (allFixtures.length === 0) return new Set<number>();
-    // Simulate value: prioritize matches not started yet, randomize with fixture id for variety
     const scored = allFixtures
       .filter(f => f.fixture.status.short === 'NS')
       .map(f => ({
         id: f.fixture.id,
-        // Higher score = "better odds" - use a hash-like approach for variety
         score: ((f.fixture.id * 7 + 13) % 100) / 100,
       }))
       .sort((a, b) => b.score - a.score);
     return new Set(scored.slice(0, 3).map(s => s.id));
   }, [grouped]);
 
-  // Available leagues for filter dropdown
   const availableLeagues = useMemo(() => {
     return grouped.map(g => g.leagueName).sort();
   }, [grouped]);
 
-  // Apply filters
   const filteredGrouped = useMemo(() => {
     return applyMatchFilters(grouped, matchFilters) as typeof grouped;
   }, [grouped, matchFilters]);
@@ -135,7 +155,6 @@ export default function MatchLobby() {
   const liveCount = (liveQuery.data ?? []).length;
   const currentLoading = timeFilter === 'live' ? liveQuery.isLoading : activeQuery.isLoading;
   const currentError = timeFilter === 'live' ? false : activeQuery.isError;
-  const currentErrorObj = activeQuery.error;
   const totalMatches = grouped.reduce((sum, g) => sum + g.fixtures.length, 0);
   const hasResults = timeFilter === 'live' ? liveCount > 0 : totalMatches > 0;
 
@@ -154,13 +173,13 @@ export default function MatchLobby() {
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Buscar time..."
-              className="w-full bg-card border border-border focus:ring-primary focus:border-primary rounded-lg pl-12 pr-10 py-3 text-sm font-body text-foreground placeholder:text-muted-foreground focus:outline-none transition-colors"
+              placeholder="Buscar time ou liga..."
+              className="w-full bg-card border border-border focus:ring-primary focus:border-primary rounded-lg pl-12 pr-10 py-3 text-sm font-body text-white placeholder:text-muted-foreground focus:outline-none transition-colors"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -173,7 +192,7 @@ export default function MatchLobby() {
           <TimeTabs selected={timeFilter} onSelect={setTimeFilter} liveBadge={liveCount} />
         </section>
 
-        {/* Live tab → use LiveMatches horizontal cards */}
+        {/* Live tab */}
         {timeFilter === 'live' && (
           <section className="mt-6">
             <LiveMatches matches={liveQuery.data ?? []} isLoading={liveQuery.isLoading} />
@@ -184,10 +203,7 @@ export default function MatchLobby() {
         {timeFilter !== 'live' && currentLoading && (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <Loader2 className="w-10 h-10 text-primary animate-spin" />
-            <p className="text-sm text-muted-foreground">
-              Buscando jogos
-              <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>...</motion.span>
-            </p>
+            <p className="text-sm text-muted-foreground">Buscando partidas...</p>
           </div>
         )}
 
@@ -195,13 +211,10 @@ export default function MatchLobby() {
         {timeFilter !== 'live' && currentError && (
           <div className="flex flex-col items-center justify-center py-20 space-y-4 px-4">
             <AlertCircle className="w-12 h-12 text-destructive" />
-            <p className="text-foreground text-center">Erro ao buscar jogos.</p>
-            <p className="text-muted-foreground text-sm text-center max-w-md">
-              {currentErrorObj instanceof Error ? currentErrorObj.message : 'Verifique sua conexão.'}
-            </p>
+            <p className="text-white text-center font-bold">Erro ao carregar jogos.</p>
             <button
               onClick={handleForceRefresh}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-black text-sm font-bold hover:brightness-110 transition-all"
             >
               <RefreshCw className="w-4 h-4" /> Tentar novamente
             </button>
@@ -210,36 +223,43 @@ export default function MatchLobby() {
 
         {/* Empty state */}
         {timeFilter !== 'live' && !currentLoading && !currentError && !hasResults && (
-          <div className="flex flex-col items-center justify-center py-20 space-y-4 px-4">
-            <p className="text-2xl font-extrabold text-muted-foreground tracking-wider">
-              {searchQuery ? 'NENHUM RESULTADO' : 'NENHUM JOGO'}
+          <div className="flex flex-col items-center justify-center py-20 space-y-4 px-4 text-center">
+            <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-2">
+              <Clock className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <p className="text-xl font-black text-white uppercase tracking-tighter">
+              {searchQuery ? 'Nenhum resultado' : 'Fim da rodada'}
             </p>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-muted-foreground text-sm max-w-xs">
               {searchQuery
-                ? `Nenhum jogo encontrado para "${searchQuery}".`
-                : timeFilter === 'today' ? 'Não há jogos programados para hoje.'
-                : timeFilter === 'tomorrow' ? 'Não há jogos programados para amanhã.'
-                : 'Não há jogos programados para esta semana.'}
+                ? `Não encontramos jogos para "${searchQuery}".`
+                : timeFilter === 'today' ? 'Não há mais jogos pendentes para hoje. Confira a aba "Amanhã".'
+                : 'Nenhum jogo programado para este período.'}
             </p>
-            {searchQuery && (
+            {!searchQuery && timeFilter === 'today' && (
               <button
-                onClick={() => setSearchQuery('')}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border text-foreground text-sm hover:border-primary/50 transition-colors"
+                onClick={() => setTimeFilter('tomorrow')}
+                className="mt-2 px-6 py-2 rounded-full bg-[#C9A84C]/10 border border-[#C9A84C]/30 text-[#C9A84C] text-xs font-bold uppercase hover:bg-[#C9A84C]/20 transition-all"
               >
-                Limpar busca
+                Ver jogos de amanhã
               </button>
             )}
           </div>
         )}
 
-        {/* Match list (non-live tabs) */}
+        {/* Match list */}
         {timeFilter !== 'live' && !currentLoading && !currentError && hasResults && (
           <section className="mt-6 px-4 space-y-4">
-            <MatchFilters
-              filters={matchFilters}
-              onChange={setMatchFilters}
-              availableLeagues={availableLeagues}
-            />
+            <div className="flex items-center justify-between">
+              <MatchFilters
+                filters={matchFilters}
+                onChange={setMatchFilters}
+                availableLeagues={availableLeagues}
+              />
+              <span className="text-[10px] font-bold text-muted-foreground uppercase">
+                {totalMatches} {totalMatches === 1 ? 'Jogo' : 'Jogos'}
+              </span>
+            </div>
             <MatchListPaginated
               grouped={filteredGrouped}
               bestValueIds={bestValueIds}
