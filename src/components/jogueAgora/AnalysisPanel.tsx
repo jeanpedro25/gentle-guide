@@ -18,6 +18,41 @@ import { useBankroll } from '@/hooks/usePredictions';
 import { AnaliseJogo, PICK_LABELS, PICK_LABELS_FULL } from '@/lib/jogueAgora';
 import { ApiFixture } from '@/types/fixture';
 
+const MANUAL_BET_STORAGE_KEY = 'profeta-bet:manual-bets';
+
+type ManualBetSnapshot = {
+  fixtureId: number;
+  homeTeam: string;
+  awayTeam: string;
+  league: string;
+  prediction: string;
+  stake: number;
+  odd: number;
+  potentialProfit: number;
+  totalReturn: number;
+  createdAt: string;
+};
+
+function formatCurrency(value: number) {
+  return value.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  });
+}
+
+function saveManualBetSnapshot(snapshot: ManualBetSnapshot) {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const stored = window.localStorage.getItem(MANUAL_BET_STORAGE_KEY);
+    const parsed = stored ? (JSON.parse(stored) as ManualBetSnapshot[]) : [];
+    const next = [snapshot, ...parsed].slice(0, 20);
+    window.localStorage.setItem(MANUAL_BET_STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // keep UI flow even if local storage is unavailable
+  }
+}
+
 interface Props {
   fixture: ApiFixture | null;
   analysis: AnaliseJogo | null;
@@ -104,6 +139,16 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
     setBetAmount('');
   };
 
+  const handleBetAmountChange = (value: string) => {
+    const normalized = value.replace(',', '.');
+
+    if (!/^\d*(\.\d{0,2})?$/.test(normalized)) {
+      return;
+    }
+
+    setBetAmount(normalized);
+  };
+
   const handleConfirmBet = async () => {
     if (!analysis || betValue <= 0 || exceedsBankroll) return;
 
@@ -119,7 +164,22 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
         odd: analysis.melhor_odd,
       });
 
-      toast.success('Aposta registrada no historico.');
+      saveManualBetSnapshot({
+        fixtureId: analysis.fixture.fixture.id,
+        homeTeam: analysis.fixture.teams.home.name,
+        awayTeam: analysis.fixture.teams.away.name,
+        league: analysis.fixture.league.name,
+        prediction: analysis.melhor_resultado,
+        stake: betValue,
+        odd: analysis.melhor_odd,
+        potentialProfit,
+        totalReturn,
+        createdAt: new Date().toISOString(),
+      });
+
+      toast.success('Aposta registrada com sucesso.', {
+        description: `${formatCurrency(betValue)} -> lucro estimado de ${formatCurrency(potentialProfit)}.`,
+      });
       handleClose();
     } catch {
       toast.error('Erro ao registrar aposta.');
@@ -241,12 +301,10 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
                         <div className="flex h-12 items-center rounded-xl border border-white/10 bg-black/25 px-3 shadow-inner shadow-black/20">
                           <input
                             id="bet-amount"
-                            type="number"
-                            min="0"
-                            step="0.01"
+                            type="text"
                             inputMode="decimal"
                             value={betAmount}
-                            onChange={(e) => setBetAmount(e.target.value)}
+                            onChange={(e) => handleBetAmountChange(e.target.value)}
                             placeholder="Ex: 50.00"
                             autoFocus={betMode}
                             className="h-full w-full bg-transparent text-sm font-semibold text-foreground outline-none placeholder:text-muted-foreground/70"
@@ -260,7 +318,7 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
                         </label>
                         <div className="flex h-12 items-center rounded-xl border border-white/10 bg-black/25 px-3 shadow-inner shadow-black/20">
                           <span className={`text-sm font-bold ${betValue > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
-                            {betValue > 0 ? `R$ ${potentialProfit.toFixed(2)}` : 'Calculado automaticamente'}
+                            {betValue > 0 ? formatCurrency(potentialProfit) : 'Calculado automaticamente'}
                           </span>
                         </div>
                       </div>
@@ -312,26 +370,26 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
                       </div>
                       <div className="rounded-xl border border-white/10 bg-black/20 p-3">
                         <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Lucro</p>
-                        <p className="text-sm font-bold text-primary">R$ {potentialProfit.toFixed(2)}</p>
+                        <p className="text-sm font-bold text-primary">{formatCurrency(potentialProfit)}</p>
                       </div>
                       <div className="rounded-xl border border-white/10 bg-black/20 p-3">
                         <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Retorno</p>
-                        <p className="text-sm font-bold text-foreground">R$ {totalReturn.toFixed(2)}</p>
+                        <p className="text-sm font-bold text-foreground">{formatCurrency(totalReturn)}</p>
                       </div>
                     </div>
 
                     <div className="space-y-2 rounded-lg border border-border bg-background p-3 text-[11px]">
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Banca atual</span>
-                        <span className="font-bold text-foreground">R$ {bankrollAmount.toFixed(2)}</span>
+                        <span className="font-bold text-foreground">{formatCurrency(bankrollAmount)}</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Stake segura (2%)</span>
-                        <span className="font-bold text-foreground">R$ {safeBet.toFixed(2)}</span>
+                        <span className="font-bold text-foreground">{formatCurrency(safeBet)}</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Stake sugerida por Kelly</span>
-                        <span className="font-bold text-foreground">R$ {kellyBet.toFixed(2)}</span>
+                        <span className="font-bold text-foreground">{formatCurrency(kellyBet)}</span>
                       </div>
                     </div>
 
@@ -356,7 +414,7 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
                         <TrendingUp className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                         <div>
                           <p className="text-xs font-bold text-primary">Aposta dentro do controle</p>
-                          <p className="text-[10px] text-muted-foreground">Se acertar, o lucro estimado sera de R$ {potentialProfit.toFixed(2)}.</p>
+                          <p className="text-[10px] text-muted-foreground">Se acertar, o lucro estimado sera de {formatCurrency(potentialProfit)}.</p>
                         </div>
                       </div>
                     ) : null}
@@ -379,7 +437,7 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
 
                     <p className="text-center text-[10px] text-muted-foreground">
                       {betValue > 0
-                        ? `Aposta de R$ ${betValue.toFixed(2)} pode retornar R$ ${totalReturn.toFixed(2)} se bater.`
+                        ? `Aposta de ${formatCurrency(betValue)} pode retornar ${formatCurrency(totalReturn)} se bater.`
                         : 'Preencha o valor para calcular lucro'}
                     </p>
                   </div>
