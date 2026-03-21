@@ -67,6 +67,7 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
   const selected = isSelected(fixture.fixture.id);
   const currentSelection = getSelection(fixture.fixture.id);
   const matchAdvice = advice[String(fixture.fixture.id)] ?? null;
+  const isAdvisorLoading = advisorLoading[String(fixture.fixture.id)] ?? false;
 
   useEffect(() => {
     registerDynamicLeague({
@@ -242,7 +243,7 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
               {isLive && verdict && <MatchHeatBadge {...verdict} />}
             </div>
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${isLive ? 'bg-destructive/10 text-destructive' : 'bg-secondary text-muted-foreground'}`}>
-              {statusDisplay}
+              {statusDisplay.label}
             </span>
           </div>
 
@@ -272,7 +273,7 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
                   <span className="text-2xl font-black text-foreground">
                     {fixture.goals.home ?? 0} - {fixture.goals.away ?? 0}
                   </span>
-                  <span className="text-[10px] font-semibold text-muted-foreground">{statusDisplay}</span>
+                  <span className="text-[10px] font-semibold text-muted-foreground">{statusDisplay.label}</span>
                 </>
               ) : (
                 <>
@@ -311,10 +312,10 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
           {isLive ? (
             <button
               onClick={handleLiveReanalyze}
-              disabled={advisorLoading}
+              disabled={isAdvisorLoading}
               className="flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${advisorLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${isAdvisorLoading ? 'animate-spin' : ''}`} />
               Reanalise ao vivo
             </button>
           ) : (
@@ -344,7 +345,7 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
         isOpen={showLiveModal}
         onClose={() => setShowLiveModal(false)}
         advice={matchAdvice}
-        isLoading={advisorLoading}
+        isLoading={isAdvisorLoading}
         homeTeam={fixture.teams.home.name}
         awayTeam={fixture.teams.away.name}
         score={`${fixture.goals.home ?? 0} x ${fixture.goals.away ?? 0}`}
