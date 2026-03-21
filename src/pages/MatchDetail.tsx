@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ApiFixture } from '@/types/fixture';
 import { useTeamLogos } from '@/hooks/useTeamLogos';
 import { MatchAnalysis, OracleAnalysis, oracleToLegacy, normalizeProbabilities } from '@/types/prediction';
-import { fetchMatchContext } from '@/services/footballApi';
+import { fetchMatchContext, fetchTodayMatches } from '@/services/footballApi';
 import { analyzeMatch } from '@/services/oracleService';
 import { AnalysisSummary } from '@/components/oracle/AnalysisSummary';
 import { VerdictCard } from '@/components/oracle/VerdictCard';
@@ -26,7 +26,7 @@ import { LoadingState } from '@/components/oracle/LoadingState';
 import { BetCard } from '@/components/oracle/BetCard';
 import { H2HFixture } from '@/types/fixture';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Zap } from 'lucide-react';
+import { ArrowLeft, Zap, Loader2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -41,16 +41,42 @@ export default function MatchDetail() {
   const [oracle, setOracle] = useState<OracleAnalysis | null>(null);
   const [h2h, setH2h] = useState<H2HFixture[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isLoadingFixture, setIsLoadingFixture] = useState(true);
   const { addPrediction } = usePredictionHistory();
   const { getTeamLogoLive } = useTeamLogos();
 
   useEffect(() => {
-    const stored = sessionStorage.getItem('selected-fixture');
-    if (stored) {
-      setFixture(JSON.parse(stored));
-    } else {
-      navigate('/');
+    async function loadFixture() {
+      setIsLoadingFixture(true);
+      const stored = sessionStorage.getItem('selected-fixture');
+      
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (String(parsed.fixture.id) === id) {
+          setFixture(parsed);
+          setIsLoadingFixture(false);
+          return;
+        }
+      }
+
+      // Se não estiver no storage ou o ID for diferente, busca nos jogos de hoje
+      try {
+        const matches = await fetchTodayMatches();
+        const found = matches.find(m => String(m.fixture.id) === id);
+        if (found) {
+          setFixture(found);
+        } else {
+          toast.error('Jogo não encontrado ou já encerrado.');
+          navigate('/');
+        }
+      } catch (err) {
+        navigate('/');
+      } finally {
+        setIsLoadingFixture(false);
+      }
     }
+
+    loadFixture();
   }, [id, navigate]);
 
   const handleAnalyze = async () => {
@@ -103,6 +129,15 @@ export default function MatchDetail() {
       setIsAnalyzing(false);
     }
   };
+
+  if (isLoadingFixture) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center space-y-4">
+        <Loader2 className="w-10 h-10 text-primary animate-spin" />
+        <p className="text-muted-foreground font-bold">Carregando dados do jogo...</p>
+      </div>
+    );
+  }
 
   if (!fixture) return null;
 
@@ -213,14 +248,12 @@ export default function MatchDetail() {
               awayTeam={analysis.awayTeam}
             />
 
-            {/* NOVO: Card de Aposta Premium aqui nos detalhes */}
             <BetCard
               homeTeam={fixture.teams.home.name}
               awayTeam={fixture.teams.away.name}
               league={fixture.league.name}
               fixtureId={fixture.fixture.id}
               prediction={oracle.primaryBet.market.includes(fixture.teams.home.name) ? '1' : oracle.primaryBet.market.includes(fixture.teams.away.name) ? '2' : 'X'}
-              odd={oracle.primaryBet.ev > 0 ? 1.85 : 2.10}
             />
 
             <VerdictCard
