@@ -9,7 +9,7 @@ export function LiveAlertBanner() {
   const { data: liveMatches = [] } = useLiveMatches();
   const navigate = useNavigate();
 
-  // Find predictions that have a live match
+  // Encontra previsões que agora estão com jogo ao vivo
   const liveAlerts = useMemo(() => {
     const pendingPredictions = predictions.filter(p => p.status === 'pending');
     return pendingPredictions.filter(p =>
@@ -17,7 +17,14 @@ export function LiveAlertBanner() {
         m.homeTeam.toLowerCase().includes(p.home_team.toLowerCase().split(' ')[0]) ||
         m.awayTeam.toLowerCase().includes(p.away_team.toLowerCase().split(' ')[0])
       )
-    );
+    ).map(p => {
+      // Tenta encontrar o ID do jogo ao vivo correspondente
+      const match = liveMatches.find(m => 
+        m.homeTeam.toLowerCase().includes(p.home_team.toLowerCase().split(' ')[0]) ||
+        m.awayTeam.toLowerCase().includes(p.away_team.toLowerCase().split(' ')[0])
+      );
+      return { ...p, liveMatchId: match?.id || p.fixture_id };
+    });
   }, [predictions, liveMatches]);
 
   if (liveAlerts.length === 0) return null;
@@ -35,7 +42,10 @@ export function LiveAlertBanner() {
             key={alert.id}
             animate={{ opacity: [1, 0.7, 1] }}
             transition={{ duration: 1.5, repeat: Infinity }}
-            onClick={() => navigate('/')}
+            onClick={() => {
+              // Navega para a página de detalhes do jogo
+              navigate(`/match/${alert.liveMatchId}`);
+            }}
             className="w-full px-4 py-3 rounded-xl bg-destructive/10 border border-destructive/30 flex items-center gap-3 text-left hover:bg-destructive/15 transition-colors"
           >
             <span className="w-3 h-3 rounded-full bg-destructive animate-pulse shrink-0" />

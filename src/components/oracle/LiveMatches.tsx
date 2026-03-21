@@ -1,10 +1,12 @@
+América do Sul > Outros) e corrigindo filtros">
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Zap, Loader2, X } from 'lucide-react';
+import { Clock, Zap, Loader2, X, Trophy } from 'lucide-react';
 import { preloadTeamLogos } from '@/services/teamLogos';
 import { useTeamLogos } from '@/hooks/useTeamLogos';
 import { useLiveAdvisor, LiveAdvice } from '@/hooks/useLiveAdvisor';
 import { useEffect, useMemo } from 'react';
 import { useLeagueFilter } from '@/contexts/LeagueFilterContext';
+import { useNavigate } from 'react-router-dom';
 
 export interface LiveMatch {
   id: string;
@@ -51,24 +53,44 @@ const ACTION_CONFIG: Record<string, { bg: string; text: string; label: string }>
   HEDGE: { bg: 'bg-primary/20 border-primary/40', text: 'text-primary', label: '🛡️ PROTEGER' },
 };
 
+// Função para definir prioridade de exibição
+function getLeaguePriority(leagueName: string): number {
+  const name = leagueName.toLowerCase();
+  // 1. Brasil (Série A, B, Copa do Brasil, Estaduais)
+  if (name.includes('brazil') || name.includes('brasileir') || name.includes('paulista') || name.includes('carioca') || name.includes('mineiro') || name.includes('gaucho')) return 1;
+  // 2. América do Sul (Libertadores, Sul-Americana, Argentina, etc)
+  if (name.includes('libertadores') || name.includes('sudamericana') || name.includes('argentin') || name.includes('colombia') || name.includes('chile') || name.includes('uruguay')) return 2;
+  // 3. Resto do mundo
+  return 3;
+}
+
 export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
   const { advice, loading, getAdvice, clearAdvice } = useLiveAdvisor();
   const { isLeagueAllowed } = useLeagueFilter();
+  const navigate = useNavigate();
 
   const filteredMatches = useMemo(
     () => matches.filter((m) => isLeagueAllowed(m.league, 0)),
     [matches, isLeagueAllowed],
   );
 
-  const liveMatches = filteredMatches.filter((m) => isLive(m.status));
-  const finishedMatches = filteredMatches.filter((m) => !isLive(m.status) && m.homeScore !== null);
+  // Ordenação por prioridade regional e depois por nome da liga
+  const sortedMatches = useMemo(() => {
+    return [...filteredMatches].sort((a, b) => {
+      const prioA = getLeaguePriority(a.league);
+      const prioB = getLeaguePriority(b.league);
+      if (prioA !== prioB) return prioA - prioB;
+      return a.league.localeCompare(b.league);
+    });
+  }, [filteredMatches]);
+
+  const liveMatches = sortedMatches.filter((m) => isLive(m.status));
+  const finishedMatches = sortedMatches.filter((m) => !isLive(m.status) && m.homeScore !== null);
 
   const teamNames = useMemo(
-    () => filteredMatches.flatMap((m) => [m.homeTeam, m.awayTeam]),
-    [filteredMatches],
+    () => sortedMatches.flatMap((m) => [m.homeTeam, m.awayTeam]),
+    [sortedMatches],
   );
-
-  // League names registered via MatchCard's useEffect
 
   useEffect(() => {
     if (teamNames.length > 0) preloadTeamLogos(teamNames);
@@ -111,7 +133,7 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
           <div className="px-4 flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-              <h2 className="font-bold text-sm tracking-widest uppercase text-muted-foreground">Ao Vivo</h2>
+              <h2 className="font-bold text-sm tracking-widest uppercase text-muted-foreground">Ao Vivo Agora</h2>
             </div>
             <span className="text-xs text-muted-foreground">
               {liveMatches.length} {liveMatches.length === 1 ? 'jogo' : 'jogos'}
@@ -135,6 +157,12 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
                     minute: match.time,
                   })}
                   onClearAdvice={() => clearAdvice(match.id)}
+                  onClick={() => {
+                    // Salva no session storage para a página de detalhes conseguir carregar
+                    // Nota: Como o objeto LiveMatch é simplificado, a página de detalhes pode precisar buscar dados extras
+                    sessionStorage.setItem('selected-fixture-id', match.id);
+                    navigate(`/match/${match.id}`);
+                  }}
                 />
               ))}
             </AnimatePresence>
@@ -145,7 +173,7 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
       {finishedMatches.length > 0 && (
         <section className="opacity-75">
           <div className="px-4 flex items-center justify-between mb-4">
-            <h2 className="font-bold text-sm tracking-widest uppercase text-muted-foreground">Encerrados Hoje</h2>
+            <h2 className="font-bold text-sm tracking-widest uppercase text-muted-foreground">Encerrados Recentemente</h2>
             <span className="text-xs text-muted-foreground">
               {finishedMatches.length} {finishedMatches.length === 1 ? 'jogo' : 'jogos'}
             </span>
@@ -167,22 +195,30 @@ interface LiveMatchCardProps {
   isLoadingAdvice?: boolean;
   onRequestAdvice?: () => void;
   onClearAdvice?: () => void;
+  onClick?: () => void;
 }
 
-function LiveMatchCard({ match, advice, isLoadingAdvice, onRequestAdvice, onClearAdvice }: LiveMatchCardProps) {
+function LiveMatchCard({ match, advice, isLoadingAdvice, onRequestAdvice, onClearAdvice, onClick }: LiveMatchCardProps) {
   const { getTeamLogoLive } = useTeamLogos();
   const actionCfg = advice ? ACTION_CONFIG[advice.action] || ACTION_CONFIG.HOLD : null;
+  const isSouthAm = getLeaguePriority(match.league) <= 2;
 
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className="min-w-[280px] glass-card rounded-lg p-4 relative overflow-hidden"
+      onClick={onClick}
+      className={`min-w-[280px] glass-card rounded-lg p-4 relative overflow-hidden cursor-pointer border-l-4 ${isSouthAm ? 'border-l-primary' : 'border-l-transparent'}`}
     >
       <div className="flex justify-between items-start mb-4">
-        <span className="text-[10px] font-bold text-primary uppercase tracking-tighter">{match.league}</span>
-        <span className="px-2 py-0.5 bg-destructive/20 text-destructive text-[10px] font-bold rounded">
+        <div className="flex items-center gap-1.5">
+          {isSouthAm && <Trophy className="w-3 h-3 text-primary" />}
+          <span className={`text-[10px] font-bold uppercase tracking-tighter ${isSouthAm ? 'text-primary' : 'text-muted-foreground'}`}>
+            {match.league}
+          </span>
+        </div>
+        <span className="px-2 py-0.5 bg-destructive/20 text-destructive text-[10px] font-bold rounded animate-pulse">
           {statusLabel(match.status)}
           {match.time && ` ${match.time}'`}
         </span>
@@ -197,7 +233,7 @@ function LiveMatchCard({ match, advice, isLoadingAdvice, onRequestAdvice, onClea
               className="w-6 h-6 rounded-full object-contain"
               onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
             />
-            <span className="text-sm font-medium text-foreground">{match.homeTeam}</span>
+            <span className="text-sm font-medium text-foreground truncate max-w-[140px]">{match.homeTeam}</span>
           </div>
           <span className="text-lg font-bold text-foreground">{match.homeScore ?? 0}</span>
         </div>
@@ -209,14 +245,14 @@ function LiveMatchCard({ match, advice, isLoadingAdvice, onRequestAdvice, onClea
               className="w-6 h-6 rounded-full object-contain"
               onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
             />
-            <span className="text-sm font-medium text-foreground">{match.awayTeam}</span>
+            <span className="text-sm font-medium text-foreground truncate max-w-[140px]">{match.awayTeam}</span>
           </div>
           <span className="text-lg font-bold text-foreground">{match.awayScore ?? 0}</span>
         </div>
       </div>
 
       {/* Consult button / Advice */}
-      <div className="mt-4">
+      <div className="mt-4" onClick={(e) => e.stopPropagation()}>
         {!advice && !isLoadingAdvice && (
           <button
             onClick={onRequestAdvice}
