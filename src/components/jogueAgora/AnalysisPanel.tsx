@@ -10,6 +10,7 @@ import {
   Shield,
   Target,
   TrendingUp,
+  Trophy,
   X,
   Zap,
 } from 'lucide-react';
