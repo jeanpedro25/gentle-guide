@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MultiplaProvider } from "@/contexts/MultiplaContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { LeagueFilterProvider } from "@/contexts/LeagueFilterContext";
 import { clearFootballCache } from "@/services/footballApi";
 import MatchLobby from "./pages/MatchLobby";
 import MatchDetail from "./pages/MatchDetail";
@@ -67,13 +68,15 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
-        <MultiplaProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </MultiplaProvider>
+        <LeagueFilterProvider>
+          <MultiplaProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </MultiplaProvider>
+        </LeagueFilterProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
