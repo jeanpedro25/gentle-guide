@@ -272,7 +272,7 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
                   <span className="text-2xl font-black text-foreground">
                     {fixture.goals.home ?? 0} - {fixture.goals.away ?? 0}
                   </span>
-                  <span className="text-[10px] font-semibold text-muted-foreground">{statusDisplay}</span>
+                  <span className="text-[10px] font-semibold text-muted-foreground">{statusDisplay.label}</span>
                 </>
               ) : (
                 <>
