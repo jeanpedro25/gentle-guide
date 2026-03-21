@@ -345,7 +345,7 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
         isOpen={showLiveModal}
         onClose={() => setShowLiveModal(false)}
         advice={matchAdvice}
-        isLoading={advisorLoading}
+        isLoading={isAdvisorLoading}
         homeTeam={fixture.teams.home.name}
         awayTeam={fixture.teams.away.name}
         score={`${fixture.goals.home ?? 0} x ${fixture.goals.away ?? 0}`}
