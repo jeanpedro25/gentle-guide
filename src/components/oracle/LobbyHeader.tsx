@@ -12,9 +12,9 @@ export function LobbyHeader() {
     <header className="sticky top-0 z-50 px-4 py-3 bg-background/80 backdrop-blur-lg border-b border-border flex items-center justify-between">
       <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
         <img 
-          src="https://ai.gateway.lovable.dev/v1/storage/v1/object/public/project-assets/olt3f4olt3f4olt3.png" 
+          src="https://ai.gateway.lovable.dev/v1/storage/v1/object/public/project-assets/s65smus65smus65s.png" 
           alt="ProfetaBet" 
-          className="h-8 md:h-10 object-contain rounded shadow-md" 
+          className="h-10 md:h-12 object-contain drop-shadow-[0_0_8px_rgba(236,200,19,0.3)]" 
         />
         <h1 className="text-lg font-extrabold tracking-tight gold-gradient-text hidden xs:block">PROFETABET</h1>
       </div>

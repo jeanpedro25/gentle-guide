@@ -50,9 +50,9 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img 
-              src="https://ai.gateway.lovable.dev/v1/storage/v1/object/public/project-assets/olt3f4olt3f4olt3.png" 
+              src="https://ai.gateway.lovable.dev/v1/storage/v1/object/public/project-assets/s65smus65smus65s.png" 
               alt="ProfetaBet" 
-              className="h-8 rounded shadow-md" 
+              className="h-10 object-contain" 
             />
             <span className="text-lg font-extrabold tracking-tight gold-gradient-text hidden sm:block">PROFETABET</span>
           </div>
@@ -81,9 +81,9 @@ export default function LandingPage() {
             
             <div className="mb-12 max-w-3xl mx-auto">
               <img 
-                src="https://ai.gateway.lovable.dev/v1/storage/v1/object/public/project-assets/olt3f4olt3f4olt3.png" 
+                src="https://ai.gateway.lovable.dev/v1/storage/v1/object/public/project-assets/s65smus65smus65s.png" 
                 alt="Profeta Bet Banner" 
-                className="w-full rounded-3xl shadow-[0_20px_50px_rgba(236,200,19,0.2)] border border-primary/20" 
+                className="w-full max-h-[400px] object-contain drop-shadow-[0_0_30px_rgba(236,200,19,0.3)]" 
               />
             </div>
 
@@ -253,9 +253,9 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <img 
-              src="https://ai.gateway.lovable.dev/v1/storage/v1/object/public/project-assets/olt3f4olt3f4olt3.png" 
+              src="https://ai.gateway.lovable.dev/v1/storage/v1/object/public/project-assets/s65smus65smus65s.png" 
               alt="ProfetaBet" 
-              className="h-6 rounded shadow-sm" 
+              className="h-8 object-contain" 
             />
             <span className="text-sm font-bold gold-gradient-text">PROFETABET</span>
           </div>

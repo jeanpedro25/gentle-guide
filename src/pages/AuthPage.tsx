@@ -53,9 +53,9 @@ export default function AuthPage() {
         {/* Logo */}
         <div className="flex flex-col items-center gap-4">
           <img 
-            src="https://ai.gateway.lovable.dev/v1/storage/v1/object/public/project-assets/olt3f4olt3f4olt3.png" 
+            src="https://ai.gateway.lovable.dev/v1/storage/v1/object/public/project-assets/s65smus65smus65s.png" 
             alt="ProfetaBet" 
-            className="w-full rounded-2xl shadow-2xl border border-primary/20" 
+            className="w-full max-h-[200px] object-contain drop-shadow-[0_0_20px_rgba(236,200,19,0.4)]" 
           />
           <div className="text-center">
             <h1 className="text-2xl font-extrabold tracking-tight gold-gradient-text">PROFETABET</h1>
