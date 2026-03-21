@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { DollarSign, Zap, Loader2 } from 'lucide-react';
+import { DollarSign, Zap, Loader2, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCreateBet } from '@/hooks/useBets';
-import { useBankroll } from '@/hooks/usePredictions';
+import { useBankroll, useUpdateBankroll } from '@/hooks/usePredictions';
 
 interface BetCardProps {
   homeTeam: string;
@@ -11,35 +11,32 @@ interface BetCardProps {
   league: string;
   fixtureId: number;
   prediction: string;
-  odd: number;
+  odd?: number; // Agora opcional, pois o foco é o retorno manual
 }
 
-export function BetCard({ homeTeam, awayTeam, league, fixtureId, prediction, odd }: BetCardProps) {
+export function BetCard({ homeTeam, awayTeam, league, fixtureId, prediction }: BetCardProps) {
   const [betAmount, setBetAmount] = useState('');
+  const [totalReturnInput, setTotalReturnInput] = useState('');
   const createBet = useCreateBet();
   const { data: bankroll } = useBankroll();
 
   const bankrollAmount = bankroll?.amount ?? 200;
-  const betValue = parseFloat(betAmount.replace(',', '.')) || 0;
-  const potentialProfit = betValue * (odd - 1);
-  const totalReturn = betValue + potentialProfit;
-  const exceedsBankroll = betValue > bankrollAmount;
+  const stake = parseFloat(betAmount.replace(',', '.')) || 0;
+  const totalReturn = parseFloat(totalReturnInput.replace(',', '.')) || 0;
+  
+  // Lucro real = O que eu ganho além do que apostei
+  const potentialProfit = totalReturn > stake ? totalReturn - stake : 0;
+  const calculatedOdd = stake > 0 ? totalReturn / stake : 0;
+  
+  const exceedsBankroll = stake > bankrollAmount;
 
   const quickValues = [10, 20, 50, 100];
 
-  const handleBetAmountChange = (value: string) => {
-    const normalized = value.replace(',', '.');
-    if (!/^\d*(\.\d{0,2})?$/.test(normalized)) return;
-    setBetAmount(normalized);
-  };
-
-  const applyQuickDelta = (delta: number) => {
-    const nextValue = Math.max(0, betValue + delta);
-    setBetAmount(nextValue > 0 ? nextValue.toFixed(2) : '');
-  };
-
   const handleConfirmBet = async () => {
-    if (betValue <= 0 || exceedsBankroll) return;
+    if (stake <= 0 || totalReturn <= 0 || exceedsBankroll) {
+      toast.error('Verifique os valores da aposta.');
+      return;
+    }
 
     try {
       await createBet.mutateAsync({
@@ -48,15 +45,17 @@ export function BetCard({ homeTeam, awayTeam, league, fixtureId, prediction, odd
         league: league,
         fixture_id: fixtureId,
         prediction: prediction as any,
-        stake: betValue,
+        stake: stake,
         potential_profit: potentialProfit,
-        odd: odd,
+        odd: calculatedOdd,
       });
 
-      toast.success('Aposta registrada com sucesso!', {
-        description: `R$ ${betValue.toFixed(2)} -> Retorno de R$ ${totalReturn.toFixed(2)}`,
+      toast.success('Aposta registrada!', {
+        description: `Apostou R$ ${stake.toFixed(2)} para ganhar R$ ${potentialProfit.toFixed(2)} de lucro.`,
       });
+      
       setBetAmount('');
+      setTotalReturnInput('');
     } catch {
       toast.error('Erro ao registrar aposta.');
     }
@@ -64,71 +63,90 @@ export function BetCard({ homeTeam, awayTeam, league, fixtureId, prediction, odd
 
   return (
     <div className="space-y-4 rounded-2xl border border-primary/20 bg-[linear-gradient(135deg,rgba(22,22,22,0.9),rgba(30,30,30,0.95))] p-5 shadow-[0_16px_44px_rgba(0,0,0,0.38)]">
-      <div className="flex items-center gap-2">
-        <DollarSign className="h-4 w-4 text-primary" />
-        <p className="text-sm font-extrabold uppercase tracking-[0.12em] text-foreground">Sua Aposta</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <DollarSign className="h-4 w-4 text-primary" />
+          <p className="text-sm font-extrabold uppercase tracking-[0.12em] text-foreground">Sua Aposta Manual</p>
+        </div>
+        {calculatedOdd > 0 && (
+          <span className="text-[10px] font-bold text-primary/60">ODD ESTIMADA: @{calculatedOdd.toFixed(2)}</span>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            Valor apostado (R$)
+            Quanto vou apostar?
           </label>
-          <input
-            type="text"
-            inputMode="decimal"
-            value={betAmount}
-            onChange={(e) => handleBetAmountChange(e.target.value)}
-            placeholder="0,00"
-            className="h-11 w-full rounded-lg border border-white/10 bg-black/40 px-3 text-sm font-bold text-foreground outline-none focus:border-primary/50 transition-colors"
-          />
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">R$</span>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={betAmount}
+              onChange={(e) => setBetAmount(e.target.value)}
+              placeholder="0,00"
+              className="h-11 w-full rounded-lg border border-white/10 bg-black/40 pl-8 pr-3 text-sm font-bold text-foreground outline-none focus:border-primary/50 transition-colors"
+            />
+          </div>
         </div>
 
         <div className="space-y-1.5">
           <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            Lucro se ganhar (R$)
+            Quanto vou receber?
           </label>
-          <div className="flex h-11 items-center rounded-lg border border-white/5 bg-white/5 px-3">
-            <span className={`text-sm font-bold ${betValue > 0 ? 'text-primary' : 'text-muted-foreground/50'}`}>
-              {betValue > 0 ? potentialProfit.toFixed(2) : '0.00'}
-            </span>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-primary">R$</span>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={totalReturnInput}
+              onChange={(e) => setTotalReturnInput(e.target.value)}
+              placeholder="0,00"
+              className="h-11 w-full rounded-lg border border-white/10 bg-black/40 pl-8 pr-3 text-sm font-bold text-primary outline-none focus:border-primary/50 transition-colors"
+            />
           </div>
         </div>
       </div>
+
+      {stake > 0 && totalReturn > 0 && (
+        <div className="flex items-center justify-between rounded-lg bg-white/5 p-3 border border-white/5">
+          <div className="flex items-center gap-2">
+            <Calculator className="h-4 w-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Lucro Líquido:</span>
+          </div>
+          <span className="text-sm font-black text-oracle-win">
+            + R$ {potentialProfit.toFixed(2)}
+          </span>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {quickValues.map((value) => (
           <button
             key={value}
             type="button"
-            onClick={() => applyQuickDelta(value)}
+            onClick={() => setBetAmount(value.toFixed(2))}
             className="flex-1 min-w-[50px] rounded-lg border border-white/10 bg-white/5 py-2 text-[11px] font-bold text-foreground transition-all hover:border-primary/40 hover:bg-white/10"
           >
-            +{value}
+            R$ {value}
           </button>
         ))}
-        <button
-          type="button"
-          onClick={() => setBetAmount('')}
-          className="flex-1 min-w-[70px] rounded-lg border border-white/10 bg-white/5 py-2 text-[11px] font-bold uppercase text-muted-foreground transition-all hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
-        >
-          Limpar
-        </button>
       </div>
 
       <button
         type="button"
         onClick={handleConfirmBet}
-        disabled={betValue <= 0 || exceedsBankroll || createBet.isPending}
+        disabled={stake <= 0 || totalReturn <= 0 || exceedsBankroll || createBet.isPending}
         className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,#ff4d4f,#ff2f2f)] text-sm font-extrabold uppercase tracking-[0.08em] text-white shadow-[0_10px_20px_rgba(255,58,58,0.2)] transition-all hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {createBet.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4 fill-current" />}
-        Registrar Aposta
+        Confirmar Aposta
       </button>
 
-      {betValue > 0 && (
-        <p className="text-center text-[10px] text-muted-foreground">
-          Aposta de R$ {betValue.toFixed(2)} pode retornar R$ {totalReturn.toFixed(2)}
+      {exceedsBankroll && (
+        <p className="text-center text-[10px] font-bold text-destructive animate-pulse">
+          VALOR ACIMA DO SALDO DISPONÍVEL!
         </p>
       )}
     </div>

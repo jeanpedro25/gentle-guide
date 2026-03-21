@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, DollarSign, TrendingUp, TrendingDown, Target, BarChart3,
-  Edit2, Check, Trophy, XCircle, Clock, Shield, AlertTriangle, Plus, Loader2
+  Edit2, Check, Trophy, XCircle, Clock, Shield, AlertTriangle, Plus, Loader2, Zap
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useBankroll, useUpdateBankroll } from '@/hooks/usePredictions';
@@ -10,9 +10,12 @@ import { useBets, useCreateBet, useResolveBet, BetRow } from '@/hooks/useBets';
 import { BottomNav } from '@/components/oracle/BottomNav';
 import { fetchTodayMatches } from '@/services/footballApi';
 import { ApiFixture } from '@/types/fixture';
+import { AnalyzeModal } from '@/components/oracle/AnalyzeModal';
+import { analyzeMatch } from '@/services/oracleService';
+import { OracleAnalysis } from '@/types/prediction';
 import profetaLogo from '@/assets/profeta-bet-logo.png';
+import { toast } from 'sonner';
 
-// Determine 1X2 result from a score string "H x A"
 function scoreToResult(score: string): '1' | 'X' | '2' | null {
   const m = score.match(/(\d+)\s*[x×\-:]\s*(\d+)/i);
   if (!m) return null;
@@ -27,28 +30,21 @@ export default function BankrollPage() {
   const { data: bankroll } = useBankroll();
   const updateBankroll = useUpdateBankroll();
   const { data: bets = [], refetch: refetchBets } = useBets();
-  const createBet = useCreateBet();
   const resolveBet = useResolveBet();
 
   const [editingBankroll, setEditingBankroll] = useState(false);
   const [bankrollInput, setBankrollInput] = useState('');
-  const [showForm, setShowForm] = useState(false);
   const [resolving, setResolving] = useState(false);
-  const [riskPct, setRiskPct] = useState(2);
-  const [dailyLimit, setDailyLimit] = useState(3);
-  const [editingRisk, setEditingRisk] = useState(false);
-
-  // Form state
-  const [formHome, setFormHome] = useState('');
-  const [formAway, setFormAway] = useState('');
-  const [formPrediction, setFormPrediction] = useState<'1' | 'X' | '2'>('1');
-  const [formStake, setFormStake] = useState('');
-  const [formOdd, setFormOdd] = useState('1.50');
+  
+  // Modal de Análise
+  const [showAnalyzeModal, setShowAnalyzeModal] = useState(false);
+  const [selectedBetForAnalysis, setSelectedBetForAnalysis] = useState<BetRow | null>(null);
+  const [oracleResult, setOracleResult] = useState<OracleAnalysis | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const bankrollAmount = bankroll?.amount ?? 100;
-  const initialBankroll = 100; // reference for health
+  const initialBankroll = 100;
 
-  // Computed metrics
   const resolved = bets.filter(b => b.status !== 'pending');
   const wins = resolved.filter(b => b.status === 'won');
   const losses = resolved.filter(b => b.status === 'lost');
@@ -56,17 +52,11 @@ export default function BankrollPage() {
   const totalProfitLoss = resolved.reduce((s, b) => s + (b.profit_loss ?? 0), 0);
   const hitRate = resolved.length > 0 ? (wins.length / resolved.length) * 100 : 0;
 
-  // Health bar based on bankroll vs initial
   const healthPct = Math.min(100, Math.max(0, (bankrollAmount / Math.max(initialBankroll, 1)) * 100));
   const healthLabel = healthPct >= 70 ? 'SAUDÁVEL' : healthPct >= 40 ? 'ATENÇÃO' : 'CRÍTICO';
   const healthBarColor = healthPct >= 70 ? 'bg-primary' : healthPct >= 40 ? 'bg-yellow-500' : 'bg-destructive';
   const healthTextColor = healthPct >= 70 ? 'text-primary' : healthPct >= 40 ? 'text-yellow-500' : 'text-destructive';
 
-  const potentialProfit = parseFloat(formStake || '0') * (parseFloat(formOdd || '1') - 1);
-  const stakeNum = parseFloat(formStake || '0');
-  const stakeExceedsBankroll = stakeNum > bankrollAmount;
-
-  // Save bankroll
   const handleSaveBankroll = async () => {
     const amount = parseFloat(bankrollInput);
     if (isNaN(amount) || amount < 0) return;
@@ -74,47 +64,55 @@ export default function BankrollPage() {
     setEditingBankroll(false);
   };
 
-  // Register bet
-  const handleCreateBet = async () => {
-    if (!formHome.trim() || !formAway.trim() || stakeNum <= 0) return;
-    if (stakeExceedsBankroll) return;
-    await createBet.mutateAsync({
-      home_team: formHome.trim(),
-      away_team: formAway.trim(),
-      league: '',
-      fixture_id: null as any,
-      prediction: formPrediction,
-      stake: stakeNum,
-      potential_profit: potentialProfit,
-      odd: parseFloat(formOdd || '1.5'),
-    });
-    setFormHome('');
-    setFormAway('');
-    setFormStake('');
-    setFormOdd('1.50');
-    setShowForm(false);
+  const handleOpenAnalysis = async (bet: BetRow) => {
+    if (!bet.fixture_id) {
+      toast.error('Esta aposta manual não possui dados de análise.');
+      return;
+    }
+    
+    setSelectedBetForAnalysis(bet);
+    setShowAnalyzeModal(true);
+    setIsAnalyzing(true);
+    setOracleResult(null);
+
+    try {
+      // Simulando a busca do fixture para análise
+      const matches = await fetchTodayMatches();
+      const fixture = matches.find(m => m.fixture.id === bet.fixture_id);
+      
+      if (fixture) {
+        const result = await analyzeMatch(fixture, null, null, []);
+        setOracleResult(result);
+      } else {
+        toast.error('Dados do jogo não encontrados para análise.');
+        setShowAnalyzeModal(false);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar análise:', err);
+      toast.error('Erro ao carregar análise.');
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
-  // Auto-resolve pending bets by checking finished matches
   const autoResolve = useCallback(async () => {
     if (pending.length === 0) return;
     setResolving(true);
     try {
-      // Fetch today's finished matches
       const allMatches = await fetchTodayMatches().catch(() => [] as ApiFixture[]);
-      const finished = allMatches.filter(m => m.fixture.status.short === 'FT' || m.fixture.status.short === 'AET' || m.fixture.status.short === 'PEN');
+      const finished = allMatches.filter(m => ['FT', 'AET', 'PEN'].includes(m.fixture.status.short));
 
       let bankrollDelta = 0;
 
       for (const bet of pending) {
-        // Try to find a matching finished game
-        const match = finished.find(m => {
-          const hNorm = m.teams.home.name.toLowerCase();
-          const aNorm = m.teams.away.name.toLowerCase();
-          const bH = bet.home_team.toLowerCase();
-          const bA = bet.away_team.toLowerCase();
-          return (hNorm.includes(bH) || bH.includes(hNorm)) && (aNorm.includes(bA) || bA.includes(aNorm));
-        });
+        const match = finished.find(m => m.fixture.id === bet.fixture_id) || 
+                      finished.find(m => {
+                        const hNorm = m.teams.home.name.toLowerCase();
+                        const aNorm = m.teams.away.name.toLowerCase();
+                        const bH = bet.home_team.toLowerCase();
+                        const bA = bet.away_team.toLowerCase();
+                        return (hNorm.includes(bH) || bH.includes(hNorm)) && (aNorm.includes(bA) || bA.includes(aNorm));
+                      });
 
         if (!match || match.goals.home === null || match.goals.away === null) continue;
 
@@ -137,6 +135,7 @@ export default function BankrollPage() {
 
       if (bankrollDelta !== 0) {
         await updateBankroll.mutateAsync(bankrollAmount + bankrollDelta);
+        toast.success(`Banca atualizada! ${bankrollDelta >= 0 ? '+' : ''}R$ ${bankrollDelta.toFixed(2)}`);
       }
       refetchBets();
     } catch (err) {
@@ -144,18 +143,16 @@ export default function BankrollPage() {
     } finally {
       setResolving(false);
     }
-  }, [pending, bankrollAmount]);
+  }, [pending, bankrollAmount, resolveBet, updateBankroll, refetchBets]);
 
-  // Auto-resolve on mount
   useEffect(() => {
     if (pending.length > 0) {
       autoResolve();
     }
-  }, [bets.length]); // only when bets load
+  }, [bets.length]);
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      {/* Header */}
       <header className="sticky top-0 z-40 px-4 py-4 bg-background/80 backdrop-blur-lg border-b border-border flex items-center gap-3">
         <button onClick={() => navigate('/')} className="text-muted-foreground hover:text-foreground">
           <ArrowLeft className="w-5 h-5" />
@@ -165,7 +162,6 @@ export default function BankrollPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-5 space-y-5">
-        {/* Bankroll Card */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-5 space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground font-semibold uppercase">Minha Banca</span>
@@ -197,7 +193,6 @@ export default function BankrollPage() {
             )}
           </div>
 
-          {/* Health Bar */}
           <div>
             <div className="flex justify-between items-center mb-1">
               <span className="text-[10px] text-muted-foreground">Saúde da Banca</span>
@@ -212,129 +207,6 @@ export default function BankrollPage() {
               />
             </div>
           </div>
-
-          {/* Alerts */}
-          <AnimatePresence>
-            {healthPct < 40 && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="flex items-start gap-2 p-3 rounded-lg border border-destructive/30 bg-destructive/10"
-              >
-                <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-xs font-bold text-destructive">🚨 BANCA CRÍTICA!</p>
-                  <p className="text-[10px] text-muted-foreground">Pause as apostas e reavalie sua estratégia. Risco de quebra iminente.</p>
-                </div>
-              </motion.div>
-            )}
-            {healthPct >= 40 && healthPct < 70 && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="flex items-start gap-2 p-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10"
-              >
-                <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-xs font-bold text-yellow-500">⚠️ ATENÇÃO</p>
-                  <p className="text-[10px] text-muted-foreground">Banca em zona de atenção. Reduza os stakes e seja conservador.</p>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
-
-        {/* Risk Management */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="glass-card p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-primary" />
-              <h2 className="font-extrabold text-sm tracking-wider text-foreground uppercase">Gestão de Risco</h2>
-            </div>
-            <button onClick={() => setEditingRisk(!editingRisk)} className="p-1.5 bg-secondary rounded text-muted-foreground hover:text-foreground">
-              <Edit2 className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Risk profile buttons */}
-          <div className="grid grid-cols-4 gap-2">
-            {[
-              { label: 'Conservador', pct: 1 },
-              { label: 'Moderado', pct: 2 },
-              { label: 'Agressivo', pct: 3 },
-              { label: 'Ultra', pct: 5 },
-            ].map(p => (
-              <button
-                key={p.pct}
-                onClick={() => setRiskPct(p.pct)}
-                className={`py-2 rounded-lg text-[10px] font-bold border transition-all ${
-                  riskPct === p.pct
-                    ? 'border-primary bg-primary/20 text-primary'
-                    : 'border-border bg-card text-muted-foreground hover:border-primary/50'
-                }`}
-              >
-                {p.label}<br />{p.pct}%
-              </button>
-            ))}
-          </div>
-
-          {/* Slider */}
-          <AnimatePresence>
-            {editingRisk && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-3 overflow-hidden">
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-muted-foreground">Risco por aposta</span>
-                    <span className={`font-bold ${riskPct > 5 ? 'text-destructive' : 'text-primary'}`}>{riskPct.toFixed(1)}%</span>
-                  </div>
-                  <input
-                    type="range" min="0.5" max="10" step="0.5" value={riskPct}
-                    onChange={e => setRiskPct(parseFloat(e.target.value))}
-                    className="w-full accent-primary"
-                  />
-                  <div className="flex justify-between text-[9px] text-muted-foreground">
-                    <span>0.5%</span><span>10%</span>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-muted-foreground">Limite diário de apostas</span>
-                    <span className="font-bold text-primary">{dailyLimit}</span>
-                  </div>
-                  <input
-                    type="range" min="1" max="10" step="1" value={dailyLimit}
-                    onChange={e => setDailyLimit(parseInt(e.target.value))}
-                    className="w-full accent-primary"
-                  />
-                  <div className="flex justify-between text-[9px] text-muted-foreground">
-                    <span>1</span><span>10</span>
-                  </div>
-                </div>
-
-                {riskPct > 5 && (
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-destructive/10 border border-destructive/20">
-                    <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0" />
-                    <p className="text-[10px] text-destructive font-bold">⚠️ Risco alto! Sua banca pode quebrar em ~{Math.round(100 / riskPct)} apostas erradas consecutivas.</p>
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Summary */}
-          <div className="grid grid-cols-3 gap-2">
-            <div className="bg-secondary/50 rounded-lg p-2 text-center">
-              <p className="text-[9px] text-muted-foreground">Stake/Aposta</p>
-              <p className="text-sm font-bold text-primary">R$ {(bankrollAmount * riskPct / 100).toFixed(2)}</p>
-            </div>
-            <div className="bg-secondary/50 rounded-lg p-2 text-center">
-              <p className="text-[9px] text-muted-foreground">Exposição/Dia</p>
-              <p className="text-sm font-bold text-foreground">R$ {(bankrollAmount * riskPct / 100 * dailyLimit).toFixed(2)}</p>
-            </div>
-            <div className="bg-secondary/50 rounded-lg p-2 text-center">
-              <p className="text-[9px] text-muted-foreground">ROI atual</p>
-              <p className={`text-sm font-bold ${totalProfitLoss >= 0 ? 'text-primary' : 'text-destructive'}`}>
-                {bankrollAmount > 0 ? ((totalProfitLoss / bankrollAmount) * 100).toFixed(1) : '0'}%
-              </p>
-            </div>
-          </div>
         </motion.div>
 
         <div className="grid grid-cols-4 gap-2">
@@ -344,109 +216,6 @@ export default function BankrollPage() {
           <StatCard label="Red ❌" value={losses.length} color="text-destructive" />
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
-          <StatCard label="Taxa Acerto" value={`${hitRate.toFixed(0)}%`} color={hitRate >= 50 ? 'text-primary' : 'text-destructive'} />
-          <StatCard label="Lucro/Prejuízo" value={`${totalProfitLoss >= 0 ? '+' : ''}R$ ${totalProfitLoss.toFixed(2)}`} color={totalProfitLoss >= 0 ? 'text-primary' : 'text-destructive'} />
-          <StatCard label="ROI" value={`${bankrollAmount > 0 ? ((totalProfitLoss / bankrollAmount) * 100).toFixed(1) : '0'}%`} color={totalProfitLoss >= 0 ? 'text-primary' : 'text-destructive'} />
-        </div>
-
-        {/* Register Bet */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-primary" />
-              <h2 className="font-extrabold text-sm tracking-wider text-foreground uppercase">Registrar Aposta</h2>
-            </div>
-            <button onClick={() => setShowForm(!showForm)} className="p-2 bg-primary rounded-lg text-primary-foreground">
-              <Plus className={`w-4 h-4 transition-transform ${showForm ? 'rotate-45' : ''}`} />
-            </button>
-          </div>
-
-          <AnimatePresence>
-            {showForm && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="space-y-3 overflow-hidden"
-              >
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[10px] text-muted-foreground uppercase font-semibold">Time Casa</label>
-                    <input value={formHome} onChange={e => setFormHome(e.target.value)}
-                      className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Ex: Flamengo" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-muted-foreground uppercase font-semibold">Time Fora</label>
-                    <input value={formAway} onChange={e => setFormAway(e.target.value)}
-                      className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Ex: Palmeiras" />
-                  </div>
-                </div>
-
-                {/* Prediction 1X2 */}
-                <div>
-                  <label className="text-[10px] text-muted-foreground uppercase font-semibold">Sua Previsão (1X2)</label>
-                  <div className="grid grid-cols-3 gap-2 mt-1">
-                    {(['1', 'X', '2'] as const).map(p => (
-                      <button
-                        key={p}
-                        onClick={() => setFormPrediction(p)}
-                        className={`py-2.5 rounded-lg border text-sm font-bold transition-all ${
-                          formPrediction === p
-                            ? 'border-primary bg-primary/20 text-primary'
-                            : 'border-border bg-card text-muted-foreground hover:border-primary/50'
-                        }`}
-                      >
-                        {p === '1' ? '1 Casa' : p === 'X' ? 'X Empate' : '2 Fora'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[10px] text-muted-foreground uppercase font-semibold">Valor Apostado (R$)</label>
-                    <input type="number" value={formStake} onChange={e => setFormStake(e.target.value)}
-                      className={`w-full bg-secondary border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 ${
-                        stakeExceedsBankroll ? 'border-destructive focus:ring-destructive' : 'border-border focus:ring-primary'
-                      }`} placeholder="0.00" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-muted-foreground uppercase font-semibold">Odd</label>
-                    <input type="number" step="0.01" value={formOdd} onChange={e => setFormOdd(e.target.value)}
-                      className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
-                  </div>
-                </div>
-
-                {stakeNum > 0 && (
-                  <div className="flex items-center justify-between p-3 rounded-lg border border-primary/20 bg-primary/5">
-                    <span className="text-xs text-muted-foreground">Lucro possível:</span>
-                    <span className="text-sm font-bold text-primary">+R$ {potentialProfit.toFixed(2)}</span>
-                  </div>
-                )}
-
-                {stakeExceedsBankroll && (
-                  <div className="flex items-start gap-2 p-2 rounded-lg bg-destructive/10 border border-destructive/20">
-                    <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
-                    <p className="text-[10px] text-destructive font-semibold">
-                      🚫 Valor maior que sua banca! Não é possível registrar.
-                    </p>
-                  </div>
-                )}
-
-                <button
-                  onClick={handleCreateBet}
-                  disabled={!formHome.trim() || !formAway.trim() || stakeNum <= 0 || stakeExceedsBankroll || createBet.isPending}
-                  className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-bold text-sm disabled:opacity-40 transition-all hover:brightness-110"
-                >
-                  {createBet.isPending ? 'Registrando...' : '✅ REGISTRAR APOSTA'}
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
-
-        {/* Auto-resolve button */}
         {pending.length > 0 && (
           <button
             onClick={autoResolve}
@@ -458,7 +227,6 @@ export default function BankrollPage() {
           </button>
         )}
 
-        {/* History */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="glass-card p-5">
           <h2 className="font-extrabold text-sm tracking-wider text-foreground uppercase mb-4 flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-primary" />
@@ -467,17 +235,33 @@ export default function BankrollPage() {
 
           {bets.length === 0 ? (
             <p className="text-center text-muted-foreground text-sm py-8">
-              Nenhuma aposta registrada. Use o botão + acima para começar.
+              Nenhuma aposta registrada.
             </p>
           ) : (
             <div className="space-y-2">
               {bets.map((bet, i) => (
-                <BetHistoryRow key={bet.id} bet={bet} index={i} />
+                <button 
+                  key={bet.id} 
+                  onClick={() => handleOpenAnalysis(bet)}
+                  className="w-full text-left transition-transform active:scale-[0.98]"
+                >
+                  <BetHistoryRow bet={bet} index={i} />
+                </button>
               ))}
             </div>
           )}
         </motion.div>
       </main>
+
+      <AnalyzeModal
+        isOpen={showAnalyzeModal}
+        onClose={() => setShowAnalyzeModal(false)}
+        oracle={oracleResult}
+        homeTeam={selectedBetForAnalysis?.home_team ?? ''}
+        awayTeam={selectedBetForAnalysis?.away_team ?? ''}
+        isLoading={isAnalyzing}
+        bankrollAmount={bankrollAmount}
+      />
 
       <BottomNav />
     </div>
@@ -506,12 +290,12 @@ function BetHistoryRow({ bet, index }: { bet: BetRow; index: number }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.02 }}
-      className={`p-3 rounded-lg border ${statusConfig.border} ${statusConfig.bg} space-y-2`}
+      className={`p-3 rounded-lg border ${statusConfig.border} ${statusConfig.bg} space-y-2 hover:border-primary/40 transition-colors`}
     >
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-bold text-foreground">{bet.home_team} vs {bet.away_team}</p>
-          <p className="text-[10px] text-muted-foreground">{new Date(bet.created_at).toLocaleDateString('pt-BR')} • Odd {bet.odd}</p>
+          <p className="text-[10px] text-muted-foreground">{new Date(bet.created_at).toLocaleDateString('pt-BR')} • Clique para ver análise</p>
         </div>
         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${statusConfig.color} ${statusConfig.bg} border ${statusConfig.border}`}>
           {statusConfig.icon} {statusConfig.text}
@@ -524,7 +308,7 @@ function BetHistoryRow({ bet, index }: { bet: BetRow; index: number }) {
           <p className="text-xs font-bold text-primary">{bet.prediction} ({predLabel})</p>
         </div>
         <div>
-          <p className="text-[9px] text-muted-foreground">Stake</p>
+          <p className="text-[9px] text-muted-foreground">Aposta</p>
           <p className="text-xs font-bold text-foreground">R$ {bet.stake.toFixed(2)}</p>
         </div>
         <div>
@@ -532,7 +316,7 @@ function BetHistoryRow({ bet, index }: { bet: BetRow; index: number }) {
           <p className="text-xs font-bold text-foreground">{bet.actual_score ?? '—'}</p>
         </div>
         <div>
-          <p className="text-[9px] text-muted-foreground">Lucro/Perda</p>
+          <p className="text-[9px] text-muted-foreground">Lucro Real</p>
           <p className={`text-xs font-bold ${bet.profit_loss >= 0 ? 'text-primary' : 'text-destructive'}`}>
             {bet.status === 'pending' ? '—' : `${bet.profit_loss >= 0 ? '+' : ''}R$ ${bet.profit_loss.toFixed(2)}`}
           </p>
