@@ -23,8 +23,16 @@ export interface PredictionRow {
 export interface BankrollRow {
   id: string;
   amount: number;
-  user_id: string;
   updated_at: string;
+}
+
+export interface BetResultRow {
+  id: string;
+  prediction_id: string;
+  won: boolean | null;
+  actual_score: string | null;
+  profit_loss: number | null;
+  resolved_at: string;
 }
 
 export function usePredictions() {
