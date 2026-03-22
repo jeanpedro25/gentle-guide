@@ -23,8 +23,16 @@ export interface PredictionRow {
 export interface BankrollRow {
   id: string;
   amount: number;
-  user_id: string;
   updated_at: string;
+}
+
+export interface BetResultRow {
+  id: string;
+  prediction_id: string;
+  won: boolean | null;
+  actual_score: string | null;
+  profit_loss: number | null;
+  resolved_at: string;
 }
 
 export function usePredictions() {
@@ -105,7 +113,7 @@ export function useBankroll() {
       const { data, error } = await supabase
         .from('bankroll')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .maybeSingle();
       
       if (error) throw error;
@@ -126,19 +134,19 @@ export function useUpdateBankroll() {
       const { data: existing } = await supabase
         .from('bankroll')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .maybeSingle();
 
       if (existing) {
         const { error } = await supabase
           .from('bankroll')
-          .update({ amount, updated_at: new Date().toISOString() } as any)
+          .update({ amount, updated_at: new Date().toISOString() })
           .eq('id', existing.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('bankroll')
-          .insert({ amount, user_id: user.id } as any);
+          .insert({ id: user.id, amount } as any);
         if (error) throw error;
       }
     },
