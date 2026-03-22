@@ -1,12 +1,49 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Shield, TrendingUp, Zap, BarChart3, CheckCircle, ArrowRight } from 'lucide-react';
+import {
+  Shield,
+  TrendingUp,
+  Zap,
+  BarChart3,
+  CheckCircle,
+  ArrowRight,
+  Clock3,
+  Target,
+  Sparkles,
+  BadgeDollarSign,
+  TimerReset,
+} from 'lucide-react';
+import profetaLogo from '@/assets/profeta-bet-logo.png';
 
 const FEATURES = [
   { icon: TrendingUp, title: 'EV Positivo', desc: 'Modelo Poisson calcula probabilidades reais e identifica apostas com valor esperado acima de +5%.' },
   { icon: Shield, title: 'Stop Loss 3 Camadas', desc: 'Proteção automática: stop diário, semanal e total. Sua banca nunca vai a zero.' },
   { icon: Zap, title: 'Kelly Criterion', desc: 'Gestão de banca automática — nunca mais de 2% por aposta. Disciplina matemática.' },
   { icon: BarChart3, title: 'Resolução Automática', desc: 'Apostas resolvidas automaticamente via API quando o jogo termina.' },
+];
+
+const HOW_IT_WORKS = [
+  {
+    icon: Sparkles,
+    title: 'Leitura instantânea do mercado',
+    desc: 'Odds, contexto e estatísticas são consolidados antes de cada recomendação aparecer.',
+  },
+  {
+    icon: Target,
+    title: 'Filtro por valor esperado',
+    desc: 'O sistema destaca somente cenários com assimetria favorável e risco controlado.',
+  },
+  {
+    icon: TimerReset,
+    title: 'Execução com disciplina',
+    desc: 'Stake recomendada, limites de perda e resolução automática mantêm a banca protegida.',
+  },
+];
+
+const TRUST_PILLARS = [
+  { label: 'Recomendação por jogo', value: '1 tese objetiva' },
+  { label: 'Tempo de leitura', value: '< 30 segundos' },
+  { label: 'Stake sugerida', value: 'ate 2% da banca' },
 ];
 
 const PLANS = [
@@ -40,21 +77,78 @@ const STATS = [
   { value: '3 camadas', label: 'de proteção automática' },
 ];
 
+const OUTCOMES = [
+  {
+    title: 'Sem Profeta Bet',
+    accent: 'text-destructive',
+    border: 'border-destructive/30',
+    items: [
+      'Aposta por feeling sem processo repetivel',
+      'Stake muda conforme a emocao do dia',
+      'Mercados ruins parecem oportunidades',
+      'Nao existe historico claro do que funcionou',
+    ],
+  },
+  {
+    title: 'Com Profeta Bet',
+    accent: 'text-primary',
+    border: 'border-primary/30',
+    items: [
+      'Entrada baseada em probabilidade real e EV',
+      'Stake automatizada com Kelly limitada',
+      'Bloqueios de perda evitam tilt e overbet',
+      'Historico ajuda a repetir padroes lucrativos',
+    ],
+  },
+];
+
+const FAQS = [
+  {
+    q: 'Preciso entender estatistica para usar?',
+    a: 'Nao. O sistema traduz os modelos em recomendacoes simples, com nivel de confianca, stake e leitura de risco.',
+  },
+  {
+    q: 'As apostas sao executadas automaticamente?',
+    a: 'Nao. A plataforma entrega a tese e a gestao recomendada para voce decidir com clareza e disciplina.',
+  },
+  {
+    q: 'Serve para quem esta comecando?',
+    a: 'Sim. A experiencia foi desenhada para reduzir impulsividade, limitar exposicao e ensinar consistencia desde o inicio.',
+  },
+];
+
+const fadeUp = {
+  initial: { opacity: 0, y: 24 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, amount: 0.25 },
+  transition: { duration: 0.55 },
+};
+
 export default function LandingPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+    <div className="min-h-screen overflow-x-hidden bg-background text-foreground">
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute left-1/2 top-0 h-[30rem] w-[30rem] -translate-x-1/2 rounded-full bg-primary/12 blur-3xl" />
+        <div className="absolute -left-24 top-72 h-72 w-72 rounded-full bg-orange-500/10 blur-3xl" />
+        <div className="absolute bottom-0 right-0 h-80 w-80 rounded-full bg-primary/8 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_38%),linear-gradient(180deg,rgba(10,10,10,0.35),rgba(10,10,10,0.96))]" />
+      </div>
+
       {/* Nav */}
-      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img 
-              src="https://ai.gateway.lovable.dev/v1/storage/v1/object/public/project-assets/s65smus65smus65s.png" 
-              alt="ProfetaBet" 
-              className="h-10 object-contain" 
-            />
-            <span className="text-lg font-extrabold tracking-tight gold-gradient-text hidden sm:block">PROFETABET</span>
+      <nav className="sticky top-0 z-50 border-b border-white/10 bg-background/70 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-2">
+            <img src={profetaLogo} alt="ProfetaBet" className="w-8 h-8 rounded-lg" />
+            <span className="text-lg font-extrabold tracking-tight gold-gradient-text">PROFETABET</span>
+          </div>
+          <div className="hidden items-center gap-6 md:flex">
+            <span className="text-sm text-muted-foreground">Metodo orientado por dados</span>
+            <span className="text-sm text-muted-foreground">Banca protegida</span>
+            <span className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
+              Teste gratis por 7 dias
+            </span>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={() => navigate('/login')} className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">
@@ -62,7 +156,7 @@ export default function LandingPage() {
             </button>
             <button
               onClick={() => navigate('/login')}
-              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors"
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
             >
               Começar grátis
             </button>
@@ -71,52 +165,119 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="relative py-16 md:py-24 px-4">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
-        <div className="max-w-5xl mx-auto text-center relative z-10">
+      <section className="relative px-4 pb-16 pt-14 md:pb-24 md:pt-24">
+        <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <span className="inline-block px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold mb-8">
-              🇧🇷 1º Sistema de Inteligência Esportiva do Brasil
+            <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.2em] text-primary">
+              <Sparkles className="h-3.5 w-3.5" /> Inteligencia esportiva aplicada
             </span>
-            
-            <div className="mb-12 max-w-3xl mx-auto">
-              <img 
-                src="https://ai.gateway.lovable.dev/v1/storage/v1/object/public/project-assets/s65smus65smus65s.png" 
-                alt="Profeta Bet Banner" 
-                className="w-full max-h-[400px] object-contain drop-shadow-[0_0_30px_rgba(236,200,19,0.3)]" 
-              />
-            </div>
-
-            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-tight mb-6">
-              Pare de perder.{' '}
-              <span className="gold-gradient-text">Comece a ganhar.</span>
+            <h1 className="max-w-3xl text-4xl font-extrabold leading-tight tracking-tight md:text-6xl">
+              A pagina agora vende
+              <span className="gold-gradient-text"> disciplina, clareza e vantagem</span>
+              {' '}em vez de promessa vazia.
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-              Matemática e dados reais para proteger sua banca e maximizar seus lucros. Modelo Poisson + Kelly Criterion + Stop Loss automático.
+            <p className="mt-6 max-w-2xl text-base leading-8 text-zinc-300 md:text-xl md:leading-9">
+              O Profeta Bet combina leitura de mercado, modelo probabilistico e gestao automatizada para transformar apostas em decisoes racionais e repetiveis.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+
+            <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
               <button
                 onClick={() => navigate('/login')}
-                className="px-8 py-3 rounded-lg bg-primary text-primary-foreground font-bold text-lg hover:bg-primary/90 transition-colors flex items-center gap-2 neon-glow-amber"
+                className="flex items-center justify-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-base font-bold text-primary-foreground transition-all hover:-translate-y-0.5 hover:bg-primary/90 neon-glow-amber"
               >
-                Teste 7 dias grátis <ArrowRight className="w-5 h-5" />
+                Ativar teste gratis <ArrowRight className="h-5 w-5" />
               </button>
-              <p className="text-sm text-muted-foreground">Sem cartão necessário</p>
+              <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-300 backdrop-blur">
+                <Clock3 className="h-4 w-4 text-primary" />
+                Setup imediato, sem cartao e sem configuracao complexa
+              </div>
+            </div>
+
+            <div className="mt-8 grid gap-3 sm:grid-cols-3">
+              {TRUST_PILLARS.map((item) => (
+                <div key={item.label} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-sm">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{item.label}</p>
+                  <p className="mt-2 text-sm font-semibold text-foreground">{item.value}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="relative"
+          >
+            <div className="absolute inset-0 rounded-[2rem] bg-primary/10 blur-2xl" />
+            <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#111111]/90 p-5 shadow-[0_20px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl md:p-6">
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-primary">Painel em tempo real</p>
+                  <h2 className="mt-2 text-2xl font-extrabold">Operacao guiada por EV</h2>
+                </div>
+                <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-bold text-emerald-300">
+                  Online
+                </div>
+              </div>
+
+              <div className="mt-5 space-y-4">
+                <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.2em] text-primary/80">Melhor oportunidade</p>
+                      <p className="mt-2 text-lg font-bold">Over 1.5 gols</p>
+                      <p className="mt-1 text-sm text-zinc-300">EV positivo, tendencia ofensiva e risco controlado.</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Confianca</p>
+                      <p className="text-2xl font-extrabold text-primary">82%</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                      <BadgeDollarSign className="h-4 w-4 text-primary" /> Stake sugerida
+                    </div>
+                    <p className="mt-3 text-3xl font-extrabold gold-gradient-text">1.8%</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Limitada para preservar crescimento consistente.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                      <Shield className="h-4 w-4 text-primary" /> Stop loss
+                    </div>
+                    <p className="mt-3 text-3xl font-extrabold text-foreground">3 niveis</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Bloqueio diario, semanal e total para evitar escalada de risco.</p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                  <div className="mb-3 flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Checklist antes da entrada</span>
+                    <span className="font-semibold text-primary">3/3 validado</span>
+                  </div>
+                  <div className="space-y-2 text-sm text-zinc-300">
+                    <div className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-emerald-400" /> Probabilidade acima da odd implicita</div>
+                    <div className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-emerald-400" /> Exposicao dentro do limite da banca</div>
+                    <div className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-emerald-400" /> Cenario confirmado por dados recentes</div>
+                  </div>
+                </div>
+              </div>
             </div>
           </motion.div>
         </div>
       </section>
 
       {/* Stats */}
-      <section className="py-12 border-y border-border bg-card/50">
-        <div className="max-w-5xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-6">
+      <section className="border-y border-white/10 bg-white/[0.03] py-12">
+        <div className="mx-auto grid max-w-5xl grid-cols-2 gap-6 px-4 md:grid-cols-4">
           {STATS.map((stat, i) => (
             <motion.div
               key={i}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
+              {...fadeUp}
+              transition={{ duration: 0.55, delay: i * 0.08 }}
               className="text-center"
             >
               <p className="text-2xl md:text-3xl font-extrabold gold-gradient-text">{stat.value}</p>
@@ -126,24 +287,55 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* How it works */}
+      <section className="px-4 py-20">
+        <div className="mx-auto max-w-6xl">
+          <motion.div {...fadeUp} className="mx-auto max-w-3xl text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Fluxo claro</p>
+            <h2 className="mt-4 text-3xl font-extrabold md:text-5xl">Da leitura do jogo ate a execucao da aposta</h2>
+            <p className="mt-4 text-base leading-8 text-zinc-300 md:text-lg">
+              A estrutura agora mostra como a plataforma pensa, decide e protege a banca em cada partida.
+            </p>
+          </motion.div>
+
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+            {HOW_IT_WORKS.map((item, i) => (
+              <motion.div
+                key={item.title}
+                {...fadeUp}
+                transition={{ duration: 0.55, delay: i * 0.1 }}
+                className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-6 backdrop-blur-sm"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/12 text-primary">
+                  <item.icon className="h-5 w-5" />
+                </div>
+                <div className="mt-5 flex items-center gap-3">
+                  <span className="text-sm font-bold text-primary">0{i + 1}</span>
+                  <h3 className="text-xl font-bold">{item.title}</h3>
+                </div>
+                <p className="mt-4 text-sm leading-7 text-zinc-300">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Features */}
-      <section className="py-20 px-4">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-extrabold text-center mb-12">
+      <section className="px-4 py-20">
+        <div className="mx-auto max-w-5xl">
+          <h2 className="mb-12 text-center text-3xl font-extrabold">
             Por que o <span className="gold-gradient-text">Profeta Bet</span> é diferente
           </h2>
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid gap-6 md:grid-cols-2">
             {FEATURES.map((feat, i) => (
               <motion.div
                 key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="glass-card p-6 rounded-xl"
+                {...fadeUp}
+                transition={{ duration: 0.55, delay: i * 0.08 }}
+                className="glass-card rounded-[1.5rem] p-6"
               >
-                <feat.icon className="w-8 h-8 text-primary mb-3" />
-                <h3 className="font-bold text-lg mb-2">{feat.title}</h3>
+                <feat.icon className="mb-3 h-8 w-8 text-primary" />
+                <h3 className="mb-2 text-lg font-bold">{feat.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{feat.desc}</p>
               </motion.div>
             ))}
@@ -152,62 +344,57 @@ export default function LandingPage() {
       </section>
 
       {/* Comparativo */}
-      <section className="py-16 px-4 bg-card/50 border-y border-border">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-extrabold text-center mb-10">
+      <section className="border-y border-white/10 bg-card/40 px-4 py-16">
+        <div className="mx-auto max-w-4xl">
+          <h2 className="mb-10 text-center text-3xl font-extrabold">
             Antes vs <span className="gold-gradient-text">Depois</span>
           </h2>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="glass-card p-6 rounded-xl border-destructive/30">
-              <h3 className="font-bold text-destructive mb-4">❌ Sem Profeta Bet</h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>• Aposta por feeling sem análise</li>
-                <li>• Sem gestão de banca — aposta valores aleatórios</li>
-                <li>• Dobra apostas para recuperar prejuízo</li>
-                <li>• Perde 90%+ do investimento</li>
-                <li>• Zero controle emocional</li>
-              </ul>
-            </div>
-            <div className="glass-card p-6 rounded-xl border-primary/30 neon-glow-amber">
-              <h3 className="font-bold text-primary mb-4">✅ Com Profeta Bet</h3>
-              <ul className="space-y-2 text-sm text-foreground">
-                <li>• Análise matemática com Poisson + EV</li>
-                <li>• Kelly Criterion — max 2% por aposta</li>
-                <li>• Stop Loss automático em 3 camadas</li>
-                <li>• Banca cresce de forma consistente</li>
-                <li>• Disciplina forçada pelo sistema</li>
-              </ul>
-            </div>
+          <div className="grid gap-6 md:grid-cols-2">
+            {OUTCOMES.map((column) => (
+              <motion.div
+                key={column.title}
+                {...fadeUp}
+                className={`glass-card rounded-[1.5rem] border p-6 ${column.border} ${column.title.includes('Com') ? 'neon-glow-amber' : ''}`}
+              >
+                <h3 className={`mb-4 text-lg font-bold ${column.accent}`}>{column.title}</h3>
+                <ul className="space-y-3 text-sm leading-7 text-zinc-300">
+                  {column.items.map((item) => (
+                    <li key={item} className="flex gap-3">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-80" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Plans */}
-      <section className="py-20 px-4">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-extrabold text-center mb-4">Escolha seu plano</h2>
-          <p className="text-muted-foreground text-center mb-10">7 dias grátis em qualquer plano — sem cartão</p>
-          <div className="grid md:grid-cols-3 gap-6">
+      <section className="px-4 py-20">
+        <div className="mx-auto max-w-5xl">
+          <h2 className="mb-4 text-center text-3xl font-extrabold">Escolha seu plano</h2>
+          <p className="mb-10 text-center text-muted-foreground">7 dias grátis em qualquer plano — sem cartão</p>
+          <div className="grid gap-6 md:grid-cols-3">
             {PLANS.map((plan, i) => (
               <motion.div
                 key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className={`glass-card p-6 rounded-xl relative ${plan.popular ? 'border-primary/40 neon-glow-amber' : ''}`}
+                {...fadeUp}
+                transition={{ duration: 0.55, delay: i * 0.08 }}
+                className={`relative rounded-[1.5rem] p-6 glass-card ${plan.popular ? 'border-primary/40 neon-glow-amber' : ''}`}
               >
                 {plan.popular && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-bold">
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">
                     MAIS POPULAR
                   </span>
                 )}
-                <h3 className="font-bold text-lg mb-1">{plan.name}</h3>
-                <div className="flex items-baseline gap-1 mb-4">
+                <h3 className="mb-1 text-lg font-bold">{plan.name}</h3>
+                <div className="mb-4 flex items-baseline gap-1">
                   <span className="text-3xl font-extrabold gold-gradient-text">{plan.price}</span>
                   <span className="text-sm text-muted-foreground">{plan.period}</span>
                 </div>
-                <ul className="space-y-2 mb-6">
+                <ul className="mb-6 space-y-2">
                   {plan.features.map((f, j) => (
                     <li key={j} className="flex items-center gap-2 text-sm text-foreground">
                       <CheckCircle className="w-4 h-4 text-primary shrink-0" /> {f}
@@ -230,33 +417,64 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* FAQ */}
+      <section className="px-4 pb-20">
+        <div className="mx-auto max-w-4xl">
+          <motion.div {...fadeUp} className="text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Perguntas frequentes</p>
+            <h2 className="mt-4 text-3xl font-extrabold">Objeções respondidas antes do cadastro</h2>
+          </motion.div>
+          <div className="mt-10 grid gap-4">
+            {FAQS.map((item, i) => (
+              <motion.div
+                key={item.q}
+                {...fadeUp}
+                transition={{ duration: 0.55, delay: i * 0.08 }}
+                className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-6 backdrop-blur-sm"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="mt-1 rounded-xl bg-primary/12 p-2 text-primary">
+                    <Zap className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold">{item.q}</h3>
+                    <p className="mt-2 text-sm leading-7 text-zinc-300">{item.a}</p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA Final */}
-      <section className="py-20 px-4 bg-gradient-to-t from-primary/5 to-transparent">
-        <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-3xl font-extrabold mb-4">
+      <section className="px-4 py-20">
+        <div className="mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-primary/20 bg-[linear-gradient(135deg,rgba(236,200,19,0.14),rgba(255,255,255,0.04))] px-6 py-12 text-center shadow-[0_10px_60px_rgba(236,200,19,0.08)] md:px-12">
+          <h2 className="mb-4 text-3xl font-extrabold">
             Pronto para <span className="gold-gradient-text">parar de perder?</span>
           </h2>
-          <p className="text-muted-foreground mb-8">
-            Junte-se aos apostadores que usam matemática, não sorte.
+          <p className="mb-8 text-muted-foreground">
+            Junte-se aos apostadores que usam matemática, processo e controle de risco em vez de sorte.
           </p>
           <button
             onClick={() => navigate('/login')}
-            className="px-8 py-3 rounded-lg bg-primary text-primary-foreground font-bold text-lg hover:bg-primary/90 transition-colors neon-glow-amber"
+            className="rounded-lg bg-primary px-8 py-3 text-lg font-bold text-primary-foreground transition-colors hover:bg-primary/90 neon-glow-amber"
           >
             Começar agora — 7 dias grátis
           </button>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-6 text-sm text-zinc-300">
+            <span className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary" /> Sem cartao</span>
+            <span className="flex items-center gap-2"><Shield className="h-4 w-4 text-primary" /> Gestao protegida</span>
+            <span className="flex items-center gap-2"><Target className="h-4 w-4 text-primary" /> Foco em EV positivo</span>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border py-8 px-4">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <img 
-              src="https://ai.gateway.lovable.dev/v1/storage/v1/object/public/project-assets/s65smus65smus65s.png" 
-              alt="ProfetaBet" 
-              className="h-8 object-contain" 
-            />
+      <footer className="border-t border-border px-4 py-8">
+        <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 md:flex-row">
+          <div className="flex items-center gap-2">
+            <img src={profetaLogo} alt="ProfetaBet" className="w-6 h-6 rounded" />
             <span className="text-sm font-bold gold-gradient-text">PROFETABET</span>
           </div>
           <p className="text-xs text-muted-foreground text-center max-w-md">
