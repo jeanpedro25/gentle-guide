@@ -77,6 +77,25 @@ export function useSavePrediction() {
   });
 }
 
+export function useUpdatePredictionStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { data, error } = await supabase
+        .from('predictions')
+        .update({ status } as any)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['predictions'] });
+    },
+  });
+}
+
 export function useBankroll() {
   const { user } = useAuth();
   return useQuery({
