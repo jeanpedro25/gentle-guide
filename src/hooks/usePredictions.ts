@@ -134,19 +134,19 @@ export function useUpdateBankroll() {
       const { data: existing } = await supabase
         .from('bankroll')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .maybeSingle();
 
       if (existing) {
         const { error } = await supabase
           .from('bankroll')
-          .update({ amount, updated_at: new Date().toISOString() } as any)
+          .update({ amount, updated_at: new Date().toISOString() })
           .eq('id', existing.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('bankroll')
-          .insert({ amount, user_id: user.id } as any);
+          .insert({ id: user.id, amount } as any);
         if (error) throw error;
       }
     },
