@@ -74,7 +74,24 @@ export function readStoredLeagueOptions(): StoredLeagueOption[] {
 
 export function persistLeagueFilterStorage(next: LeagueFilterStorage) {
   if (!isBrowser()) return;
-  localStorage.setItem(LEAGUE_FILTER_STORAGE_KEY, JSON.stringify(next));
+  // Only persist leagues that are actually selected to avoid quota issues
+  const selectedSet = new Set(next.selectedLeagueIds);
+  const trimmed: LeagueFilterStorage = {
+    selectedLeagueIds: next.selectedLeagueIds,
+    leagues: next.leagues.filter((l) => selectedSet.has(l.id)),
+  };
+  try {
+    localStorage.setItem(LEAGUE_FILTER_STORAGE_KEY, JSON.stringify(trimmed));
+  } catch {
+    // QuotaExceededError — clear old data and retry with minimal payload
+    try {
+      localStorage.removeItem(LEAGUE_FILTER_STORAGE_KEY);
+      localStorage.removeItem("selectedLeagues");
+      localStorage.setItem(LEAGUE_FILTER_STORAGE_KEY, JSON.stringify({ selectedLeagueIds: next.selectedLeagueIds, leagues: [] }));
+    } catch {
+      // Storage completely full — silently ignore
+    }
+  }
 }
 
 function leagueMatchesOption(option: StoredLeagueOption, leagueName: string, leagueApiId?: number): boolean {
