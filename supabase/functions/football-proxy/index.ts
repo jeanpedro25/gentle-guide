@@ -6,8 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const BASE_URL = "http://api.isportsapi.com";
-const FALLBACK_URL = "http://api2.isportsapi.com";
+const API_FOOTBALL_URL = "https://v3.football.api-sports.io";
 const THESPORTSDB_URL = "https://www.thesportsdb.com/api/v1/json/3";
 
 serve(async (req) => {
@@ -24,8 +23,8 @@ serve(async (req) => {
       return await handleLogoRequest(body.teamName);
     }
 
-    // ── Default: iSports proxy ──
-    return await handleISportsRequest(body);
+    // ── Default: API-Football v3 proxy ──
+    return await handleApiFootballRequest(body);
   } catch (e) {
     console.error("[football-proxy] Error:", e);
     return new Response(
@@ -44,7 +43,6 @@ async function handleLogoRequest(teamName: string): Promise<Response> {
   }
 
   try {
-    // Search TheSportsDB for team
     const searchUrl = `${THESPORTSDB_URL}/searchteams.php?t=${encodeURIComponent(teamName)}`;
     const res = await fetch(searchUrl);
     const json = await res.json();
@@ -52,7 +50,6 @@ async function handleLogoRequest(teamName: string): Promise<Response> {
     if (json.teams && json.teams.length > 0) {
       const team = json.teams[0];
       const logoUrl = team.strBadge || team.strTeamBadge || team.strTeamLogo || null;
-
       if (logoUrl) {
         console.log(`[football-proxy] Logo found for "${teamName}": ${logoUrl}`);
         return new Response(
@@ -62,12 +59,12 @@ async function handleLogoRequest(teamName: string): Promise<Response> {
       }
     }
 
-    // Try alternative search with simplified name
+    // Try simplified name
     const simplified = teamName
       .replace(/FC|SC|CF|AC|RC|CD|SD|SE|EC|CR|CA|CE|AA|AD/gi, '')
       .trim();
 
-    if (simplified !== teamName) {
+    if (simplified !== teamName && simplified.length >= 3) {
       const altUrl = `${THESPORTSDB_URL}/searchteams.php?t=${encodeURIComponent(simplified)}`;
       const altRes = await fetch(altUrl);
       const altJson = await altRes.json();
@@ -99,39 +96,49 @@ async function handleLogoRequest(teamName: string): Promise<Response> {
   }
 }
 
-async function handleISportsRequest(body: { path?: string; params?: Record<string, string> }): Promise<Response> {
-  const apiKey = Deno.env.get("ISPORTS_API_KEY");
+async function handleApiFootballRequest(body: {
+  endpoint?: string;
+  params?: Record<string, string>;
+  // Legacy support: path field maps to endpoint
+  path?: string;
+}): Promise<Response> {
+  const apiKey = Deno.env.get("FOOTBALL_API_KEY");
   if (!apiKey) {
     return new Response(
-      JSON.stringify({ error: "ISPORTS_API_KEY not configured" }),
+      JSON.stringify({ error: "FOOTBALL_API_KEY not configured" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
-  const { path, params } = body;
-
-  if (!path) {
+  const endpoint = body.endpoint || body.path;
+  if (!endpoint) {
     return new Response(
-      JSON.stringify({ error: "Missing path parameter" }),
+      JSON.stringify({ error: "Missing endpoint parameter" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
-  const queryParams = new URLSearchParams({ api_key: apiKey, ...(params || {}) });
-  const url = `${BASE_URL}${path}?${queryParams.toString()}`;
-  console.log(`[football-proxy] iSports → ${path}`);
+  // Clean endpoint: remove leading slash if present
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+  const queryParams = new URLSearchParams(body.params || {});
+  const url = `${API_FOOTBALL_URL}/${cleanEndpoint}?${queryParams.toString()}`;
 
-  let res: Response;
-  try {
-    res = await fetch(url);
-  } catch {
-    const fallbackUrl = `${FALLBACK_URL}${path}?${queryParams.toString()}`;
-    console.log(`[football-proxy] Fallback → ${fallbackUrl}`);
-    res = await fetch(fallbackUrl);
-  }
+  console.log(`[football-proxy] API-Football → ${cleanEndpoint} params:`, body.params || {});
+
+  const res = await fetch(url, {
+    headers: {
+      "x-apisports-key": apiKey,
+    },
+  });
 
   const json = await res.json();
-  console.log(`[football-proxy] ✅ ${path} → code: ${json.code}, items: ${json.data?.length ?? 0}`);
+
+  // Check for API errors
+  if (json.errors && Object.keys(json.errors).length > 0) {
+    console.error(`[football-proxy] API errors:`, json.errors);
+  }
+
+  console.log(`[football-proxy] ✅ ${cleanEndpoint} → results: ${json.results ?? 0}`);
 
   return new Response(JSON.stringify(json), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },

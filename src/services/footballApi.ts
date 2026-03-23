@@ -1,149 +1,138 @@
-import { ApiFixture, LeagueConfig, LEAGUES, ESTRELABET_LEAGUES, TeamStats, H2HFixture } from '@/types/fixture';
+import { ApiFixture, LeagueConfig, LEAGUES } from '@/types/fixture';
 import { supabase } from '@/integrations/supabase/client';
 import { cachedFetch, clearApiCache, type CacheDataType } from '@/services/apiService';
 
 // ── Legacy exports for compat ──
-let usingRealData = false;
 let lastApiError = '';
 
-export function isUsingRealData(): boolean { return usingRealData; }
+export function isUsingRealData(): boolean { return true; }
 export function getLastApiError(): string { return lastApiError; }
+
+// ── API-Football v3 response types ──
+
+interface ApiFootballResponse<T = unknown> {
+  get: string;
+  parameters: Record<string, string>;
+  errors: Record<string, string> | string[];
+  results: number;
+  paging: { current: number; total: number };
+  response: T[];
+}
+
+// API-Football returns fixtures in this exact format (matches our ApiFixture type)
+type ApiFootballFixture = ApiFixture;
+
+interface ApiFootballOddsValue {
+  value: string;
+  odd: string;
+}
+
+interface ApiFootballOddsBet {
+  id: number;
+  name: string;
+  values: ApiFootballOddsValue[];
+}
+
+interface ApiFootballBookmaker {
+  id: number;
+  name: string;
+  bets: ApiFootballOddsBet[];
+}
+
+interface ApiFootballOddsResponse {
+  league: { id: number; name: string };
+  fixture: { id: number; date: string };
+  update: string;
+  bookmakers: ApiFootballBookmaker[];
+}
+
+function hasApiErrors(response: ApiFootballResponse): boolean {
+  if (Array.isArray(response.errors)) return response.errors.length > 0;
+  return Object.keys(response.errors || {}).length > 0;
+}
+
+function getApiErrorMessage(response: ApiFootballResponse): string {
+  if (Array.isArray(response.errors) && response.errors.length > 0) return response.errors[0];
+  const errors = response.errors as Record<string, string>;
+  const firstKey = Object.keys(errors)[0];
+  return firstKey ? errors[firstKey] : 'Unknown API error';
+}
+
+// ── Core API fetch — ALL calls go through cachedFetch via Edge Function ──
+
+async function rawApiFootballFetch<T = unknown>(
+  endpoint: string,
+  params?: Record<string, string>
+): Promise<ApiFootballResponse<T>> {
+  console.log('[Oracle] API-Football →', endpoint, params || '');
+
+  const { data, error } = await supabase.functions.invoke('football-proxy', {
+    body: { endpoint, params },
+  });
+
+  if (error) throw new Error(error.message || 'Proxy error');
+
+  const response = data as ApiFootballResponse<T>;
+
+  if (hasApiErrors(response)) {
+    const msg = getApiErrorMessage(response);
+    lastApiError = msg;
+    // Rate limit check
+    if (/limit|too many|quota/i.test(msg)) {
+      throw new ApiLimitError(msg);
+    }
+    console.warn('[Oracle] API error:', msg);
+  }
+
+  lastApiError = '';
+  return response;
+}
 
 class ApiLimitError extends Error {
   constructor(message: string) { super(message); this.name = 'ApiLimitError'; }
-}
-
-// ── iSports API types ──
-
-interface ISportsMatch {
-  matchId: string;
-  leagueType: number;
-  leagueId: string;
-  leagueName: string;
-  leagueShortName: string;
-  leagueColor: string;
-  subLeagueId: string;
-  subLeagueName?: string;
-  matchTime: number;
-  status: number;
-  homeName: string;
-  homeId: string;
-  awayName: string;
-  awayId: string;
-  homeScore: number;
-  awayScore: number;
-  homeHalfScore?: number;
-  awayHalfScore?: number;
-  homeRed?: number;
-  awayRed?: number;
-  homeYellow?: number;
-  awayYellow?: number;
-  homeCorner?: number;
-  awayCorner?: number;
-  explain?: string;
-  round?: string;
-  location?: string;
-  season?: string;
-  weather?: string;
-  temperature?: string;
-  hasLineup?: boolean;
-  injuryTime?: number;
-  halfStartTime?: number;
-  extraExplain?: {
-    minute?: number;
-    extraTime?: number;
-    winner?: number;
-  };
-}
-
-interface ISportsResponse {
-  code: number;
-  message: string;
-  data: ISportsMatch[] | null;
-}
-
-function isRateLimitedResponse(response: ISportsResponse): boolean {
-  if (response.code === 2) return true;
-  return /trials|try again tomorrow|rate limit|too many/i.test(response.message || '');
-}
-
-function getRateLimitMessage(rawMessage?: string): string {
-  return rawMessage?.trim()
-    ? `Limite diário da API de jogos atingido: ${rawMessage}`
-    : 'Limite diário da API de jogos atingido. Tente novamente mais tarde.';
 }
 
 function isApiLimitError(error: unknown): boolean {
   return error instanceof ApiLimitError;
 }
 
-// ── Core API fetch — ALL calls go through cachedFetch ──
-
-async function rawISportsFetch(path: string, params?: Record<string, string>): Promise<ISportsResponse> {
-  console.log('[Oracle] iSports →', path, params || '');
-
-  const { data, error } = await supabase.functions.invoke('football-proxy', {
-    body: { path, params },
-  });
-
-  if (error) throw new Error(error.message || 'Proxy error');
-
-  const response = data as ISportsResponse;
-
-  if (response.code === 0) {
-    lastApiError = '';
-    return response;
-  }
-
-  if (isRateLimitedResponse(response)) {
-    lastApiError = getRateLimitMessage(response.message);
-    throw new ApiLimitError(lastApiError);
-  }
-
-  return response;
-}
-
 /**
- * Fetch from iSports API with full caching pipeline:
+ * Fetch from API-Football with full caching pipeline:
  * Memory → Supabase DB → API call → save everywhere
  */
-async function iSportsFetch(
-  path: string,
+async function apiFootballFetch<T = unknown>(
+  endpoint: string,
   params?: Record<string, string>,
   tipo: CacheDataType = 'jogos',
   priority: 'high' | 'medium' | 'low' | 'minimum' = 'medium',
-): Promise<ISportsResponse> {
-  const cacheKey = `isports|${path}|${JSON.stringify(params || {})}`;
+): Promise<ApiFootballResponse<T>> {
+  const cacheKey = `apifootball|${endpoint}|${JSON.stringify(params || {})}`;
 
-  return cachedFetch<ISportsResponse>({
+  return cachedFetch<ApiFootballResponse<T>>({
     cacheKey,
     tipo,
     priority,
-    fetchFn: () => rawISportsFetch(path, params),
+    fetchFn: () => rawApiFootballFetch<T>(endpoint, params),
   });
 }
 
 export function clearFootballCache(pathIncludes?: string): void {
-  clearApiCache(pathIncludes ? `isports|${pathIncludes}` : undefined);
+  clearApiCache(pathIncludes ? `apifootball|${pathIncludes}` : undefined);
 }
 
 export function hasApiKey(): boolean { return true; }
 
-const LEAGUE_BATCH_SIZE = 4;
-
 // ── Date helpers ──
 
-/** Get today's date string in Brazil timezone (YYYY-MM-DD) */
 function getBrazilDateString(offset = 0): string {
   const now = new Date();
   now.setDate(now.getDate() + offset);
   return now.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 }
 
-/** Format a UTC date string + time to Brazil timezone */
-export function formatBrazilTime(dateStr: string, timeStr?: string): string {
+export function formatBrazilTime(dateStr: string, _timeStr?: string): string {
   if (!dateStr) return '';
-  const dt = new Date(`${dateStr}T${timeStr || '00:00:00'}Z`);
+  const dt = new Date(dateStr);
   if (Number.isNaN(dt.getTime())) return '';
   return dt.toLocaleString('pt-BR', {
     timeZone: 'America/Sao_Paulo',
@@ -155,7 +144,6 @@ export function formatBrazilTime(dateStr: string, timeStr?: string): string {
   });
 }
 
-/** Get relative day label in Brazil timezone */
 export function getRelativeDayLabel(dateStr: string): 'HOJE' | 'ONTEM' | 'AMANHÃ' | null {
   if (!dateStr) return null;
   const today = getBrazilDateString(0);
@@ -169,28 +157,8 @@ export function getRelativeDayLabel(dateStr: string): 'HOJE' | 'ONTEM' | 'AMANH�
   return null;
 }
 
-// ── Status mapping (iSports status codes) ──
-// -1=not started, 0=first half, 1=half time, 2=second half, 3=finished,
-// 4=postponed, 5=cancelled, 6=interrupted, 7=abandoned, 8=coverage lost,
-// 9=extra time first half, 10=extra time halftime, 11=extra time second half, 12=penalties
+// ── Status display ──
 
-function iSportsStatusToShort(status: number): string {
-  switch (status) {
-    case -1: return 'NS';
-    case 0: return '1H';
-    case 1: return 'HT';
-    case 2: return '2H';
-    case 3: return 'FT';
-    case 4: return 'PST';
-    case 5: return 'CAN';
-    case 6: case 7: case 8: return 'INT';
-    case 9: case 10: case 11: return 'LIVE';
-    case 12: return 'PEN';
-    default: return 'NS';
-  }
-}
-
-// Keep for backward compat with components
 export function toStatusShort(status: string, hasScore: boolean): string {
   const normalized = status.toUpperCase().trim();
   if (['MATCH FINISHED', 'FT', 'AET', 'AP', 'PEN'].includes(normalized)) return 'FT';
@@ -198,7 +166,8 @@ export function toStatusShort(status: string, hasScore: boolean): string {
   if (['HT'].includes(normalized)) return 'HT';
   if (['2H'].includes(normalized)) return '2H';
   if (['ET', 'LIVE', 'IN PLAY'].includes(normalized)) return 'LIVE';
-  if (['POSTPONED', 'PST'].includes(normalized)) return 'PST';
+  if (['POSTPONED', 'PST', 'POST'].includes(normalized)) return 'PST';
+  if (['CANCELLED', 'CANC'].includes(normalized)) return 'CAN';
   return hasScore ? 'FT' : 'NS';
 }
 
@@ -209,67 +178,12 @@ export function getStatusDisplay(statusShort: string): { label: string; color: s
     case '2H': return { label: '2º TEMPO 🔴', color: 'text-red-500', pulse: true };
     case 'LIVE': return { label: 'AO VIVO 🔴', color: 'text-red-500', pulse: true };
     case 'FT': return { label: 'ENCERRADO', color: 'text-muted-foreground', pulse: false };
-    case 'PST': return { label: 'ADIADO', color: 'text-orange-500', pulse: false };
+    case 'AET': return { label: 'APÓS PRORROG.', color: 'text-muted-foreground', pulse: false };
     case 'PEN': return { label: 'PÊNALTIS 🔴', color: 'text-red-500', pulse: true };
+    case 'PST': return { label: 'ADIADO', color: 'text-orange-500', pulse: false };
+    case 'CAN': return { label: 'CANCELADO', color: 'text-orange-500', pulse: false };
     default: return { label: 'EM BREVE', color: 'text-oracle-win', pulse: true };
   }
-}
-
-// ── iSports → ApiFixture conversion ──
-
-function findLeagueByISportsId(iSportsLeagueId: string): LeagueConfig | null {
-  return LEAGUES.find(l => l.iSportsId === iSportsLeagueId) || null;
-}
-
-function iSportsMatchToFixture(match: ISportsMatch): ApiFixture {
-  const league = findLeagueByISportsId(match.leagueId);
-
-  let statusShort = iSportsStatusToShort(match.status);
-  
-  // schedule/basic returns status -1 for all matches. Determine if it's finished:
-  // If matchTime is in the past and scores > 0, it's a finished match
-  const now = Math.floor(Date.now() / 1000);
-  const isPast = match.matchTime < now - 7200; // 2h buffer for match duration
-  if (statusShort === 'NS' && isPast && (match.homeScore > 0 || match.awayScore > 0)) {
-    statusShort = 'FT';
-  }
-
-  const isLiveOrFinished = statusShort !== 'NS';
-  const homeScore = isLiveOrFinished ? match.homeScore : null;
-  const awayScore = isLiveOrFinished ? match.awayScore : null;
-
-  const homeWinner = homeScore !== null && awayScore !== null
-    ? (homeScore > awayScore ? true : homeScore < awayScore ? false : null)
-    : null;
-  const awayWinner = homeScore !== null && awayScore !== null
-    ? (awayScore > homeScore ? true : awayScore < homeScore ? false : null)
-    : null;
-
-  const matchDate = new Date(match.matchTime * 1000);
-
-  return {
-    fixture: {
-      id: parseInt(match.matchId),
-      date: matchDate.toISOString(),
-      timestamp: match.matchTime,
-      status: {
-        short: statusShort,
-        long: statusShort === 'FT' ? 'Match Finished' : statusShort === 'NS' ? 'Not Started' : statusShort,
-      },
-    },
-    league: {
-      id: league?.id ?? parseInt(match.leagueId),
-      name: league?.name ?? match.leagueName,
-      country: league?.country ?? '',
-      logo: '',
-      round: match.round ? `Rodada ${match.round}` : '',
-    },
-    teams: {
-      home: { id: parseInt(match.homeId), name: match.homeName, logo: '/placeholder.svg', winner: homeWinner },
-      away: { id: parseInt(match.awayId), name: match.awayName, logo: '/placeholder.svg', winner: awayWinner },
-    },
-    goals: { home: homeScore, away: awayScore },
-  };
 }
 
 // ── Live matches ──
@@ -292,34 +206,35 @@ export interface LiveMatchData {
 
 export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
   try {
-    const response = await iSportsFetch('/sport/football/livescores', undefined, 'livescores', 'medium');
+    const response = await apiFootballFetch<ApiFootballFixture>(
+      'fixtures',
+      { live: 'all' },
+      'livescores',
+      'medium'
+    );
 
-    if (response.code !== 0 || !response.data) {
-      if (response.message) {
-        lastApiError = response.message;
-      }
-      console.warn('[Oracle] livescores failed:', response.message);
+    if (hasApiErrors(response) || !response.response) {
+      console.warn('[Oracle] livescores failed');
       return [];
     }
 
-    // Show all leagues
-    return response.data
-      .map(match => {
-        const statusShort = iSportsStatusToShort(match.status);
+    return response.response
+      .map(fixture => {
+        const statusShort = fixture.fixture.status.short;
         return {
-          id: match.matchId,
-          homeTeam: match.homeName,
-          awayTeam: match.awayName,
-          homeBadge: '/placeholder.svg',
-          awayBadge: '/placeholder.svg',
-          homeScore: match.status >= 0 ? String(match.homeScore) : null,
-          awayScore: match.status >= 0 ? String(match.awayScore) : null,
+          id: String(fixture.fixture.id),
+          homeTeam: fixture.teams.home.name,
+          awayTeam: fixture.teams.away.name,
+          homeBadge: fixture.teams.home.logo || '/placeholder.svg',
+          awayBadge: fixture.teams.away.logo || '/placeholder.svg',
+          homeScore: fixture.goals.home !== null ? String(fixture.goals.home) : null,
+          awayScore: fixture.goals.away !== null ? String(fixture.goals.away) : null,
           status: statusShort,
-          league: match.leagueName,
-          leagueId: Number.isNaN(Number(match.leagueId)) ? undefined : Number(match.leagueId),
-          leagueBadge: '',
-          time: match.extraExplain?.minute ? String(match.extraExplain.minute) : '',
-          venue: match.location || '',
+          league: fixture.league.name,
+          leagueId: fixture.league.id,
+          leagueBadge: fixture.league.logo || '',
+          time: '',
+          venue: '',
         } satisfies LiveMatchData;
       })
       .sort((a, b) => {
@@ -336,7 +251,7 @@ export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
   }
 }
 
-// ── Today's matches ──
+// ── Fixtures by date ──
 
 export async function fetchTodayMatches(): Promise<ApiFixture[]> {
   return fetchMatchesByDate(getBrazilDateString(0));
@@ -374,64 +289,86 @@ export async function fetchWeekMatches(): Promise<ApiFixture[]> {
 
 async function fetchMatchesByDate(date: string): Promise<ApiFixture[]> {
   try {
-    const allFixtures: ApiFixture[] = [];
-    const seenIds = new Set<number>();
-    let rateLimited = false;
+    const response = await apiFootballFetch<ApiFootballFixture>(
+      'fixtures',
+      { date },
+      'jogos',
+      'medium'
+    );
 
-    const addFixture = (f: ApiFixture) => {
-      if (!seenIds.has(f.fixture.id)) {
-        seenIds.add(f.fixture.id);
-        allFixtures.push(f);
-      }
-    };
-
-    const res = await iSportsFetch('/sport/football/schedule/basic', { date }, 'jogos', 'medium').catch(err => {
-      if (isApiLimitError(err)) { rateLimited = true; throw err; }
-      return null;
-    });
-
-    if (res?.code === 0 && res.data) {
-      for (const match of res.data) {
-        const fixture = iSportsMatchToFixture(match);
-        addFixture(fixture);
-      }
+    if (hasApiErrors(response)) {
+      const msg = getApiErrorMessage(response);
+      if (/limit|quota/i.test(msg)) throw new ApiLimitError(msg);
+      console.warn(`[Oracle] fixtures(${date}) failed:`, msg);
+      return [];
     }
 
-    // Also try livescores for today's date
-    const today = getBrazilDateString(0);
-    if (date === today) {
-      try {
-        const liveRes = await iSportsFetch('/sport/football/livescores', undefined, 'livescores', 'low');
-        if (liveRes.code === 0 && liveRes.data) {
-          for (const match of liveRes.data) {
-            const fixture = iSportsMatchToFixture(match);
-            addFixture(fixture);
-          }
-        }
-      } catch (err) {
-        if (isApiLimitError(err)) rateLimited = true;
-      }
-    }
+    const fixtures = (response.response || [])
+      .filter(f => {
+        // Only include relevant statuses
+        const status = f.fixture.status.short;
+        return !['CANC', 'ABD', 'AWD', 'WO'].includes(status);
+      })
+      .map(f => normalizeFixture(f))
+      .sort((a, b) => {
+        const liveStatuses = ['1H', '2H', 'HT', 'LIVE', 'PEN', 'ET'];
+        const aLive = liveStatuses.includes(a.fixture.status.short) ? 0 : 1;
+        const bLive = liveStatuses.includes(b.fixture.status.short) ? 0 : 1;
+        if (aLive !== bLive) return aLive - bLive;
+        return a.fixture.timestamp - b.fixture.timestamp;
+      });
 
-    allFixtures.sort((a, b) => {
-      const liveStatuses = ['1H', '2H', 'HT', 'LIVE', 'PEN'];
-      const aLive = liveStatuses.includes(a.fixture.status.short) ? 0 : 1;
-      const bLive = liveStatuses.includes(b.fixture.status.short) ? 0 : 1;
-      if (aLive !== bLive) return aLive - bLive;
-      return a.fixture.timestamp - b.fixture.timestamp;
-    });
-
-    if (allFixtures.length === 0 && rateLimited) {
-      throw new ApiLimitError(lastApiError || 'Limite diário da API de jogos atingido.');
-    }
-
-    console.log(`[Oracle] fetchMatchesByDate(${date}): found ${allFixtures.length} matches`);
-    return allFixtures;
+    console.log(`[Oracle] fetchMatchesByDate(${date}): found ${fixtures.length} matches`);
+    return fixtures;
   } catch (err) {
     console.error(`[Oracle] fetchMatchesByDate(${date}) error:`, err);
     if (isApiLimitError(err)) throw err;
     return [];
   }
+}
+
+/**
+ * Normalize API-Football fixture to ensure consistent format.
+ * API-Football already returns data matching our ApiFixture type,
+ * but we ensure defaults for missing fields.
+ */
+function normalizeFixture(f: ApiFootballFixture): ApiFixture {
+  return {
+    fixture: {
+      id: f.fixture.id,
+      date: f.fixture.date,
+      timestamp: f.fixture.timestamp,
+      status: {
+        short: f.fixture.status.short || 'NS',
+        long: f.fixture.status.long || 'Not Started',
+      },
+    },
+    league: {
+      id: f.league.id,
+      name: f.league.name,
+      country: f.league.country || '',
+      logo: f.league.logo || '',
+      round: f.league.round || '',
+    },
+    teams: {
+      home: {
+        id: f.teams.home.id,
+        name: f.teams.home.name,
+        logo: f.teams.home.logo || '/placeholder.svg',
+        winner: f.teams.home.winner ?? null,
+      },
+      away: {
+        id: f.teams.away.id,
+        name: f.teams.away.name,
+        logo: f.teams.away.logo || '/placeholder.svg',
+        winner: f.teams.away.winner ?? null,
+      },
+    },
+    goals: {
+      home: f.goals.home ?? null,
+      away: f.goals.away ?? null,
+    },
+  };
 }
 
 // ── League fixtures ──
@@ -441,36 +378,35 @@ export async function fetchFixturesByLeague(
   options: { forceRefresh?: boolean } = {}
 ): Promise<ApiFixture[]> {
   if (options.forceRefresh) {
-    clearFootballCache(`/sport/football/schedule/basic`);
+    clearFootballCache('fixtures');
   }
 
   try {
-    const response = await iSportsFetch('/sport/football/schedule/basic', {
-      leagueId: league.iSportsId,
-    }, 'jogos', 'low');
+    const response = await apiFootballFetch<ApiFootballFixture>(
+      'fixtures',
+      {
+        league: String(league.id),
+        season: String(league.season),
+      },
+      'jogos',
+      'low'
+    );
 
-    if (response.code !== 0 || !response.data) {
-      console.warn(`[Oracle] ${league.name} schedule failed:`, response.message);
+    if (hasApiErrors(response) || !response.response) {
+      console.warn(`[Oracle] ${league.name} fixtures failed`);
       return [];
     }
 
     const now = Date.now();
     const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-    const minDate = now - thirtyDaysMs;
-    const maxDate = now + thirtyDaysMs;
 
-    return response.data
-      .filter(match => {
-        // Strict league ID check
-        if (match.leagueId !== league.iSportsId) return false;
-        const ts = match.matchTime * 1000;
-        return ts >= minDate && ts <= maxDate;
+    return response.response
+      .filter(f => {
+        const ts = f.fixture.timestamp * 1000;
+        return ts >= now - thirtyDaysMs && ts <= now + thirtyDaysMs;
       })
-      .sort((a, b) => a.matchTime - b.matchTime)
-      .flatMap(match => {
-        const fixture = iSportsMatchToFixture(match);
-        return fixture ? [fixture] : [];
-      });
+      .sort((a, b) => a.fixture.timestamp - b.fixture.timestamp)
+      .map(f => normalizeFixture(f));
   } catch (err) {
     console.warn(`[Oracle] ${league.name} failed:`, err);
     if (isApiLimitError(err)) throw err;
@@ -480,6 +416,8 @@ export async function fetchFixturesByLeague(
 
 // ── All fixtures ──
 
+const LEAGUE_BATCH_SIZE = 4;
+
 export async function fetchAllFixtures(
   options: { forceRefresh?: boolean } = {}
 ): Promise<{ league: LeagueConfig; fixtures: ApiFixture[] }[]> {
@@ -487,7 +425,6 @@ export async function fetchAllFixtures(
 
   try {
     const successful: { league: LeagueConfig; fixtures: ApiFixture[] }[] = [];
-    let rateLimited = false;
 
     for (let i = 0; i < LEAGUES.length; i += LEAGUE_BATCH_SIZE) {
       const batch = LEAGUES.slice(i, i + LEAGUE_BATCH_SIZE);
@@ -498,64 +435,100 @@ export async function fetchAllFixtures(
         }))
       );
 
-      results.forEach((result, index) => {
-        const league = batch[index];
-        if (result.status === 'rejected') {
-          if (isApiLimitError(result.reason)) rateLimited = true;
-          console.warn(`[Oracle] ${league.name} failed:`, result.reason?.message || result.reason);
-          return;
-        }
-        if (result.value.fixtures.length > 0) {
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value.fixtures.length > 0) {
           successful.push(result.value);
         }
-      });
+      }
     }
 
-    if (successful.length > 0) {
-      usingRealData = true;
-      return successful;
-    }
-
-    if (rateLimited) {
-      throw new ApiLimitError(lastApiError || 'Limite diário da API de jogos atingido.');
-    }
-
-    console.warn('[Oracle] No real fixtures found from any league');
-    usingRealData = false;
-    return [];
+    return successful;
   } catch (err) {
     console.error('[Oracle] fetchAllFixtures error:', err);
-    lastApiError = err instanceof Error ? err.message : 'Unknown error';
-    usingRealData = false;
-    if (isApiLimitError(err)) throw err;
     return [];
   }
 }
 
-// ── Team stats & H2H ──
+// ── Odds ──
 
-export async function fetchTeamStats(_teamId: number, _leagueId: number, _season: number): Promise<TeamStats | null> {
-  // iSports doesn't have a direct standings/stats endpoint in the basic plan
-  // Return null for now — can be enhanced with Stats plan
-  return null;
+export interface MatchOdds {
+  home: number;
+  draw: number;
+  away: number;
+  bookmaker: string;
+  updated: string;
 }
 
-export async function fetchH2H(_homeId: number, _awayId: number): Promise<H2HFixture[]> {
-  // iSports H2H requires Stats plan — return empty for now
-  return [];
+/**
+ * Fetch real odds for a specific fixture from API-Football.
+ * Returns null if odds are not available (requires paid plan).
+ */
+export async function fetchMatchOdds(fixtureId: number): Promise<MatchOdds | null> {
+  try {
+    const response = await apiFootballFetch<ApiFootballOddsResponse>(
+      'odds',
+      { fixture: String(fixtureId) },
+      'odds',
+      'high'
+    );
+
+    if (hasApiErrors(response) || !response.response || response.response.length === 0) {
+      return null;
+    }
+
+    const oddsData = response.response[0];
+    if (!oddsData.bookmakers || oddsData.bookmakers.length === 0) return null;
+
+    // Find Match Winner (1X2) market from first bookmaker
+    for (const bookmaker of oddsData.bookmakers) {
+      const matchWinner = bookmaker.bets.find(
+        b => b.name === 'Match Winner' || b.id === 1
+      );
+
+      if (matchWinner && matchWinner.values.length >= 3) {
+        const home = matchWinner.values.find(v => v.value === 'Home');
+        const draw = matchWinner.values.find(v => v.value === 'Draw');
+        const away = matchWinner.values.find(v => v.value === 'Away');
+
+        if (home && draw && away) {
+          return {
+            home: parseFloat(home.odd),
+            draw: parseFloat(draw.odd),
+            away: parseFloat(away.odd),
+            bookmaker: bookmaker.name,
+            updated: oddsData.update,
+          };
+        }
+      }
+    }
+
+    return null;
+  } catch (err) {
+    console.warn('[Oracle] fetchMatchOdds error:', err);
+    return null;
+  }
 }
 
-export async function fetchMatchContext(fixture: ApiFixture): Promise<{
-  homeStats: TeamStats | null;
-  awayStats: TeamStats | null;
-  h2h: H2HFixture[];
-}> {
-  const season = fixture.league.id <= 72 ? 2026 : 2025;
-  const [homeStats, awayStats, h2h] = await Promise.all([
-    fetchTeamStats(fixture.teams.home.id, fixture.league.id, season),
-    fetchTeamStats(fixture.teams.away.id, fixture.league.id, season),
-    fetchH2H(fixture.teams.home.id, fixture.teams.away.id),
-  ]);
+// ── Team stats (simplified for API-Football) ──
 
-  return { homeStats, awayStats, h2h };
+export interface TeamStats {
+  form: string;
+  fixtures: {
+    wins: { total: number };
+    draws: { total: number };
+    loses: { total: number };
+  };
+  goals: {
+    for: { total: { total: number } };
+    against: { total: { total: number } };
+  };
+}
+
+export interface H2HFixture {
+  fixture: { date: string };
+  teams: {
+    home: { id: number; name: string; winner: boolean | null };
+    away: { id: number; name: string; winner: boolean | null };
+  };
+  goals: { home: number | null; away: number | null };
 }
