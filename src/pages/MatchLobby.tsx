@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Clock } from 'lucide-react';
 import { preloadTeamLogos } from '@/services/teamLogos';
 import { useTodayFixtures, useTomorrowFixtures, useWeekFixtures } from '@/hooks/useFixtures';
 import { useLiveMatches } from '@/hooks/useLiveMatches';
@@ -18,24 +17,41 @@ import { ApiFixture } from '@/types/fixture';
 import { clearFootballCache } from '@/services/footballApi';
 import { motion } from 'framer-motion';
 import { Loader2, AlertCircle, RefreshCw, Search, X } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { MultiplaBar } from '@/components/oracle/MultiplaBar';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { useLeagueFilter } from '@/contexts/LeagueFilterContext';
 
 const LIVE_STATUSES = new Set(['1H', '2H', 'HT', 'LIVE', 'PEN']);
 
+const normalizeText = (value: string) => {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const matchesTeamQuery = (query: string, homeName: string, awayName: string) => {
+  const normalizedQuery = normalizeText(query);
+  if (!normalizedQuery) return true;
+
+  const tokens = normalizedQuery.split(' ').filter(Boolean);
+  const home = normalizeText(homeName);
+  const away = normalizeText(awayName);
+
+  const tokenMatch = (name: string) => tokens.every(token => name.includes(token));
+  return home.includes(normalizedQuery) || away.includes(normalizedQuery) || tokenMatch(home) || tokenMatch(away);
+};
+
 export default function MatchLobby() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const queryClient = useQueryClient();
-  const { isLeagueAllowed } = useLeagueFilter();
-  
-  const initialFilter = location.pathname === '/aovivo' ? 'live' : 'today';
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>(initialFilter);
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('today');
   const [searchQuery, setSearchQuery] = useState('');
   const [matchFilters, setMatchFilters] = useState<MatchFiltersState>({ league: '', timeOfDay: 'all', sortBy: 'time' });
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const todayQuery = useTodayFixtures();
   const tomorrowQuery = useTomorrowFixtures();
@@ -44,14 +60,6 @@ export default function MatchLobby() {
   const { data: bets = [] } = useBets();
   const { data: bankroll } = useBankroll();
   const stopLoss = useStopLoss(bets, bankroll?.amount ?? 100, 100);
-
-  useEffect(() => {
-    if (location.pathname === '/aovivo') {
-      setTimeFilter('live');
-    } else if (location.pathname === '/proximos' && timeFilter === 'live') {
-      setTimeFilter('today');
-    }
-  }, [location.pathname]);
 
   const handleMatchClick = (fixture: ApiFixture) => {
     sessionStorage.setItem('selected-fixture', JSON.stringify(fixture));
@@ -67,35 +75,38 @@ export default function MatchLobby() {
       weekQuery.refetch(),
       liveQuery.refetch(),
     ]);
-    toast.success('Dados atualizados!');
+    toast.success('Atualizado!');
   }, [todayQuery, tomorrowQuery, weekQuery, liveQuery, queryClient]);
 
+  // Preload logos
   useEffect(() => {
     const allFixtures = todayQuery.data ?? [];
     const names = allFixtures.flatMap(f => [f.teams.home.name, f.teams.away.name]);
     if (names.length > 0) preloadTeamLogos(names);
   }, [todayQuery.data]);
 
+  // Get active data source based on tab
   const activeQuery = timeFilter === 'today' ? todayQuery
     : timeFilter === 'tomorrow' ? tomorrowQuery
     : timeFilter === 'week' ? weekQuery
-    : todayQuery;
+    : todayQuery; // 'live' uses liveQuery separately
 
   const fixtures: ApiFixture[] = (activeQuery.data as ApiFixture[] | undefined) ?? [];
 
+  // Group fixtures by league, apply search filter
   const grouped = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
+    const q = searchQuery;
     const filtered = fixtures.filter(f => {
+      // For 'live' tab, only show live matches
       if (timeFilter === 'live') {
         if (!LIVE_STATUSES.has(f.fixture.status.short)) return false;
       }
-      
+      // Exclude finished in today/tomorrow/week
       if (timeFilter !== 'live') {
         const s = f.fixture.status.short;
         if (s === 'FT' || s === 'AET' || s === 'PEN') return false;
       }
-
-      if (q && !f.teams.home.name.toLowerCase().includes(q) && !f.teams.away.name.toLowerCase().includes(q)) return false;
+      if (!matchesTeamQuery(q, f.teams.home.name, f.teams.away.name)) return false;
       return true;
     });
 
@@ -117,51 +128,38 @@ export default function MatchLobby() {
     });
   }, [fixtures, searchQuery, timeFilter]);
 
-  useEffect(() => {
-    if (timeFilter === 'today' && !activeQuery.isLoading && grouped.length === 0 && !searchQuery) {
-      if (tomorrowQuery.data && tomorrowQuery.data.length > 0) {
-        setTimeFilter('tomorrow');
-      }
-    }
-  }, [timeFilter, grouped.length, activeQuery.isLoading, tomorrowQuery.data, searchQuery]);
-
+  // Determine "best value" matches - pick top 3 with highest simulated odds
   const bestValueIds = useMemo(() => {
     const allFixtures = grouped.flatMap(g => g.fixtures);
     if (allFixtures.length === 0) return new Set<number>();
+    // Simulate value: prioritize matches not started yet, randomize with fixture id for variety
     const scored = allFixtures
       .filter(f => f.fixture.status.short === 'NS')
       .map(f => ({
         id: f.fixture.id,
+        // Higher score = "better odds" - use a hash-like approach for variety
         score: ((f.fixture.id * 7 + 13) % 100) / 100,
       }))
       .sort((a, b) => b.score - a.score);
     return new Set(scored.slice(0, 3).map(s => s.id));
   }, [grouped]);
 
+  // Available leagues for filter dropdown
   const availableLeagues = useMemo(() => {
     return grouped.map(g => g.leagueName).sort();
   }, [grouped]);
 
+  // Apply filters
   const filteredGrouped = useMemo(() => {
     return applyMatchFilters(grouped, matchFilters) as typeof grouped;
   }, [grouped, matchFilters]);
 
-  // Contagem real de jogos ao vivo filtrados
-  const liveMatchesFiltered = useMemo(() => {
-    return (liveQuery.data ?? []).filter(m => isLeagueAllowed(m.league, 0));
-  }, [liveQuery.data, isLeagueAllowed]);
-
-  const liveCount = liveMatchesFiltered.length;
+  const liveCount = (liveQuery.data ?? []).length;
   const currentLoading = timeFilter === 'live' ? liveQuery.isLoading : activeQuery.isLoading;
   const currentError = timeFilter === 'live' ? false : activeQuery.isError;
-  
-  // Total de jogos exibidos na aba atual
-  const totalMatchesShown = useMemo(() => {
-    if (timeFilter === 'live') return liveCount;
-    return filteredGrouped.reduce((sum, g) => sum + g.fixtures.length, 0);
-  }, [timeFilter, liveCount, filteredGrouped]);
-
-  const hasResults = totalMatchesShown > 0;
+  const currentErrorObj = activeQuery.error;
+  const totalMatches = grouped.reduce((sum, g) => sum + g.fixtures.length, 0);
+  const hasResults = timeFilter === 'live' ? liveCount > 0 : totalMatches > 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -170,6 +168,7 @@ export default function MatchLobby() {
       <StopLossBanner status={stopLoss} />
 
       <main className="pb-24">
+        {/* Search */}
         <section className="px-4 mt-6">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -177,13 +176,13 @@ export default function MatchLobby() {
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Buscar time ou liga..."
-              className="w-full bg-card border border-border focus:ring-primary focus:border-primary rounded-lg pl-12 pr-10 py-3 text-sm font-body text-white placeholder:text-muted-foreground focus:outline-none transition-colors"
+              placeholder="Buscar time..."
+              className="w-full bg-card border border-border focus:ring-primary focus:border-primary rounded-lg pl-12 pr-10 py-3 text-sm font-body text-foreground placeholder:text-muted-foreground focus:outline-none transition-colors"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -191,70 +190,78 @@ export default function MatchLobby() {
           </div>
         </section>
 
+        {/* Time tabs */}
         <section className="px-4 mt-4">
           <TimeTabs selected={timeFilter} onSelect={setTimeFilter} liveBadge={liveCount} />
         </section>
 
+        {/* Live tab → use LiveMatches horizontal cards */}
         {timeFilter === 'live' && (
           <section className="mt-6">
-            <div className="px-4 mb-2 flex justify-between items-center">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase">
-                {totalMatchesShown} {totalMatchesShown === 1 ? 'Jogo' : 'Jogos'} ao vivo
-              </span>
-            </div>
             <LiveMatches matches={liveQuery.data ?? []} isLoading={liveQuery.isLoading} />
           </section>
         )}
 
+        {/* Loading */}
         {timeFilter !== 'live' && currentLoading && (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <Loader2 className="w-10 h-10 text-primary animate-spin" />
-            <p className="text-sm text-muted-foreground">Buscando partidas...</p>
+            <p className="text-sm text-muted-foreground">
+              Buscando jogos
+              <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>...</motion.span>
+            </p>
           </div>
         )}
 
+        {/* Error */}
         {timeFilter !== 'live' && currentError && (
           <div className="flex flex-col items-center justify-center py-20 space-y-4 px-4">
             <AlertCircle className="w-12 h-12 text-destructive" />
-            <p className="text-white text-center font-bold">Erro ao carregar jogos.</p>
+            <p className="text-foreground text-center">Erro ao buscar jogos.</p>
+            <p className="text-muted-foreground text-sm text-center max-w-md">
+              {currentErrorObj instanceof Error ? currentErrorObj.message : 'Verifique sua conexão.'}
+            </p>
             <button
               onClick={handleForceRefresh}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-black text-sm font-bold hover:brightness-110 transition-all"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors"
             >
               <RefreshCw className="w-4 h-4" /> Tentar novamente
             </button>
           </div>
         )}
 
+        {/* Empty state */}
         {timeFilter !== 'live' && !currentLoading && !currentError && !hasResults && (
-          <div className="flex flex-col items-center justify-center py-20 space-y-4 px-4 text-center">
-            <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-2">
-              <Clock className="w-8 h-8 text-muted-foreground" />
-            </div>
-            <p className="text-xl font-black text-white uppercase tracking-tighter">
-              {searchQuery ? 'Nenhum resultado' : 'Fim da rodada'}
+          <div className="flex flex-col items-center justify-center py-20 space-y-4 px-4">
+            <p className="text-2xl font-extrabold text-muted-foreground tracking-wider">
+              {searchQuery ? 'NENHUM RESULTADO' : 'NENHUM JOGO'}
             </p>
-            <p className="text-muted-foreground text-sm max-w-xs">
+            <p className="text-muted-foreground text-sm">
               {searchQuery
-                ? `Não encontramos jogos para "${searchQuery}".`
-                : timeFilter === 'today' ? 'Não há mais jogos pendentes para hoje. Confira a aba "Amanhã".'
-                : 'Nenhum jogo programado para este período.'}
+                ? `Nenhum jogo encontrado para "${searchQuery}".`
+                : timeFilter === 'today' ? 'Não há jogos programados para hoje.'
+                : timeFilter === 'tomorrow' ? 'Não há jogos programados para amanhã.'
+                : 'Não há jogos programados para esta semana.'}
             </p>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border text-foreground text-sm hover:border-primary/50 transition-colors"
+              >
+                Limpar busca
+              </button>
+            )}
           </div>
         )}
 
+        {/* Match list (non-live tabs) */}
         {timeFilter !== 'live' && !currentLoading && !currentError && hasResults && (
           <section className="mt-6 px-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <MatchFilters
-                filters={matchFilters}
-                onChange={setMatchFilters}
-                availableLeagues={availableLeagues}
-              />
-              <span className="text-[10px] font-bold text-muted-foreground uppercase">
-                {totalMatchesShown} {totalMatchesShown === 1 ? 'Jogo' : 'Jogos'}
-              </span>
-            </div>
+            <MatchFilters
+              filters={matchFilters}
+              onChange={setMatchFilters}
+              availableLeagues={availableLeagues}
+            />
             <MatchListPaginated
               grouped={filteredGrouped}
               bestValueIds={bestValueIds}

@@ -19,13 +19,16 @@ const OUTCOME_LABEL: Record<BetOutcome, string> = {
 export function BetInputWidget({ bankrollAmount, odd, maxPct = 5 }: BetInputWidgetProps) {
   const [betAmount, setBetAmount] = useState('');
   const [betOutcome, setBetOutcome] = useState<BetOutcome>('GANHA');
+  const [manualProfit, setManualProfit] = useState('');
 
   const maxBet = (bankrollAmount * maxPct) / 100;
   const safeBet = (bankrollAmount * 2) / 100; // 2% = safe recommendation
   const numAmount = parseFloat(betAmount) || 0;
+  const numManualProfit = parseFloat(manualProfit) || 0;
+  const hasManualProfit = manualProfit.trim().length > 0;
   const isExcessive = numAmount > maxBet;
 
-  const potentialProfit = numAmount * (odd - 1);
+  const potentialProfit = hasManualProfit ? numManualProfit : numAmount * (odd - 1);
   const totalReturn = numAmount + potentialProfit;
 
   const settledProfit =
@@ -38,9 +41,19 @@ export function BetInputWidget({ bankrollAmount, odd, maxPct = 5 }: BetInputWidg
     betOutcome === 'PERDE' ? 0 :
     numAmount;
 
+  const handleManualProfitChange = (value: string) => {
+    const normalized = value.replace(',', '.');
+
+    if (!/^\d*(\.\d{0,2})?$/.test(normalized)) {
+      return;
+    }
+
+    setManualProfit(normalized);
+  };
+
   return (
     <div className="space-y-2 mt-3">
-      <div className="flex items-center gap-2">
+      <div className="grid gap-2 sm:grid-cols-[1.1fr_1fr]">
         <div className="relative flex-1">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-bold">R$</span>
           <input
@@ -56,15 +69,21 @@ export function BetInputWidget({ bankrollAmount, odd, maxPct = 5 }: BetInputWidg
           />
         </div>
 
-        {numAmount > 0 && (
-          <div className="text-right shrink-0">
-            <p className="text-[10px] text-muted-foreground">Lucro se ganhar</p>
-            <div className="flex items-center gap-1 text-xs justify-end">
-              <TrendingUp className="w-3 h-3 text-primary" />
-              <span className="text-primary font-bold">+R$ {potentialProfit.toFixed(2)}</span>
-            </div>
+        <div className="text-right">
+          <p className="text-[10px] text-muted-foreground">Lucro se ganhar</p>
+          <div className="flex items-center gap-1 text-xs justify-end">
+            <TrendingUp className="w-3 h-3 text-primary" />
+            <span className="text-primary font-bold">+R$ {potentialProfit.toFixed(2)}</span>
           </div>
-        )}
+          <input
+            type="text"
+            inputMode="decimal"
+            value={manualProfit}
+            onChange={(e) => handleManualProfitChange(e.target.value)}
+            placeholder="Editar lucro"
+            className="mt-1 w-full rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+          />
+        </div>
       </div>
 
       {numAmount > 0 && (

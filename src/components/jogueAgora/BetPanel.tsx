@@ -22,16 +22,23 @@ const OUTCOME_LABEL: Record<BetOutcome, string> = {
 export function BetPanel({ analise, bankrollAmount, onClose }: Props) {
   const createBet = useCreateBet();
   const [betAmount, setBetAmount] = useState('');
+  const [manualProfit, setManualProfit] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
   const [betOutcome, setBetOutcome] = useState<BetOutcome>('GANHA');
 
   const safeBet = bankrollAmount * 0.02;
   const betValue = parseFloat(betAmount.replace(',', '.')) || 0;
+  const manualProfitValue = parseFloat(manualProfit.replace(',', '.')) || 0;
+  const hasManualProfit = manualProfit.trim().length > 0;
   const isExcessive = betValue > safeBet;
   const isDangerous = betValue > bankrollAmount * 0.05;
   const exceedsBankroll = betValue > bankrollAmount;
 
-  const potentialProfit = analise ? Math.max(0, betValue * (analise.melhor_odd - 1)) : 0;
+  const potentialProfit = hasManualProfit
+    ? Math.max(0, manualProfitValue)
+    : analise
+      ? Math.max(0, betValue * (analise.melhor_odd - 1))
+      : 0;
   const totalReturn = betValue + potentialProfit;
 
   const settledProfit =
@@ -46,15 +53,27 @@ export function BetPanel({ analise, bankrollAmount, onClose }: Props) {
 
   const handleOpen = () => {
     setBetAmount(safeBet.toFixed(2));
+    setManualProfit('');
     setBetOutcome('GANHA');
     setShowConfirm(false);
   };
 
   const handleClose = () => {
     setBetAmount('');
+    setManualProfit('');
     setBetOutcome('GANHA');
     setShowConfirm(false);
     onClose();
+  };
+
+  const handleProfitChange = (value: string) => {
+    const normalized = value.replace(',', '.');
+
+    if (!/^\d*(\.\d{0,2})?$/.test(normalized)) {
+      return;
+    }
+
+    setManualProfit(normalized);
   };
 
   const handleConfirm = async () => {
@@ -133,6 +152,23 @@ export function BetPanel({ analise, bankrollAmount, onClose }: Props) {
                   />
                 </div>
                 <p className="text-[10px] text-muted-foreground">Sugestão: R$ {safeBet.toFixed(2)} (2% da banca)</p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground font-semibold">LUCRO SE GANHAR (R$)</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={manualProfit}
+                    onChange={(e) => handleProfitChange(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border border-border bg-background text-sm font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    placeholder={betValue > 0 ? `Calculado: R$ ${potentialProfit.toFixed(2)}` : 'Editar lucro manual'}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Se preencher, o lucro manual substitui o calculo automatico pela odd.
+                </p>
               </div>
 
               <div className="space-y-2">
