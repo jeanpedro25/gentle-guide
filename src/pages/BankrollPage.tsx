@@ -29,7 +29,9 @@ export default function BankrollPage() {
   const wins = resolved.filter(b => b.status === 'won');
   const pending = bets.filter(b => b.status === 'pending');
   
-  const healthPct = bankrollAmount > 0 ? 100 : 0; // Simplificado para o lançamento
+  const safeStake = bankrollAmount * 0.02;
+  const maxStake = bankrollAmount * 0.05;
+  const weeklyStop = bankrollAmount * 0.2;
 
   const handleSaveBankroll = async () => {
     const amount = parseFloat(bankrollInput.replace(',', '.'));
@@ -161,6 +163,36 @@ export default function BankrollPage() {
         <div className="glass-card p-4 text-center border border-border/50">
           <p className="font-black text-2xl text-destructive">{bets.filter(b => b.status === 'lost').length}</p>
           <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Reds</p>
+        </div>
+      </div>
+
+      <div className="glass-card p-5 space-y-4 border border-border/50">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Visão de risco</span>
+            <p className="text-sm text-foreground">Quanto posso perder e porcentagem de risco</p>
+          </div>
+          <ShieldCheck className="w-5 h-5 text-[#C9A84C]" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="rounded-xl bg-secondary/40 border border-border p-4 text-center">
+            <Target className="w-5 h-5 text-primary mx-auto mb-1" />
+            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Stake segura</p>
+            <p className="font-black text-xl text-white">R$ {safeStake.toFixed(2)}</p>
+            <p className="text-[10px] text-muted-foreground">2% da banca</p>
+          </div>
+          <div className="rounded-xl bg-secondary/40 border border-border p-4 text-center">
+            <TrendingUp className="w-5 h-5 text-amber-500 mx-auto mb-1" />
+            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Risco máximo</p>
+            <p className="font-black text-xl text-white">R$ {maxStake.toFixed(2)}</p>
+            <p className="text-[10px] text-muted-foreground">5% da banca</p>
+          </div>
+          <div className="rounded-xl bg-secondary/40 border border-border p-4 text-center">
+            <DollarSign className="w-5 h-5 text-destructive mx-auto mb-1" />
+            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Stop semanal</p>
+            <p className="font-black text-xl text-white">R$ {weeklyStop.toFixed(2)}</p>
+            <p className="text-[10px] text-muted-foreground">20% da banca</p>
+          </div>
         </div>
       </div>
 
