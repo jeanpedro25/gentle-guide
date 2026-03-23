@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface BetRow {
   id: string;
@@ -51,16 +52,41 @@ export function useCreateBet() {
 
 export function useResolveBet() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   return useMutation({
     mutationFn: async ({ id, status, actual_result, actual_score, profit_loss }: {
       id: string; status: 'won' | 'lost'; actual_result: string; actual_score: string; profit_loss: number;
     }) => {
-      const { error } = await supabase
+      const { data: updatedBet, error } = await supabase
         .from('bets')
         .update({ status, actual_result, actual_score, profit_loss, resolved_at: new Date().toISOString() } as any)
-        .eq('id', id);
+        .eq('id', id)
+        .eq('status', 'pending')
+        .select('id, status')
+        .maybeSingle();
       if (error) throw error;
+
+      if (!updatedBet || !user) return;
+
+      const { data: bankrollRow, error: bankrollError } = await supabase
+        .from('bankroll')
+        .select('amount')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (bankrollError) throw bankrollError;
+      if (!bankrollRow) return;
+
+      const newAmount = Number(bankrollRow.amount) + Number(profit_loss);
+
+      const { error: updateBankrollError } = await supabase
+        .from('bankroll')
+        .update({ amount: newAmount, updated_at: new Date().toISOString() })
+        .eq('id', user.id);
+      if (updateBankrollError) throw updateBankrollError;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['bets'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['bets'] });
+      qc.invalidateQueries({ queryKey: ['bankroll'] });
+    },
   });
 }
