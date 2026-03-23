@@ -14,7 +14,7 @@ import { useStopLoss } from '@/hooks/useStopLoss';
 import { useBets } from '@/hooks/useBets';
 import { useBankroll } from '@/hooks/usePredictions';
 import { ApiFixture } from '@/types/fixture';
-import { clearFootballCache } from '@/services/footballApi';
+import { clearFootballCache, getLastApiError } from '@/services/footballApi';
 import { motion } from 'framer-motion';
 import { Loader2, AlertCircle, RefreshCw, Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -155,6 +155,9 @@ export default function MatchLobby() {
   }, [grouped, matchFilters]);
 
   const liveCount = (liveQuery.data ?? []).length;
+  const liveErrorMessage = liveQuery.isError
+    ? (liveQuery.error instanceof Error ? liveQuery.error.message : 'Erro ao buscar jogos ao vivo.')
+    : getLastApiError();
   const currentLoading = timeFilter === 'live' ? liveQuery.isLoading : activeQuery.isLoading;
   const currentError = timeFilter === 'live' ? false : activeQuery.isError;
   const currentErrorObj = activeQuery.error;
@@ -199,6 +202,21 @@ export default function MatchLobby() {
         {timeFilter === 'live' && (
           <section className="mt-6">
             <LiveMatches matches={liveQuery.data ?? []} isLoading={liveQuery.isLoading} />
+            {!liveQuery.isLoading && liveCount === 0 && liveErrorMessage && (
+              <div className="mt-6 px-4">
+                <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-6 text-center">
+                  <AlertCircle className="w-8 h-8 text-destructive" />
+                  <p className="text-sm text-foreground">Não foi possível carregar os jogos ao vivo.</p>
+                  <p className="text-xs text-muted-foreground">{liveErrorMessage}</p>
+                  <button
+                    onClick={handleForceRefresh}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors"
+                  >
+                    <RefreshCw className="w-4 h-4" /> Tentar novamente
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
         )}
 

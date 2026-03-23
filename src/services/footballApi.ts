@@ -284,6 +284,7 @@ export interface LiveMatchData {
   awayScore: string | null;
   status: string;
   league: string;
+  leagueId?: number;
   leagueBadge: string;
   time: string;
   venue: string;
@@ -294,6 +295,9 @@ export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
     const response = await iSportsFetch('/sport/football/livescores', undefined, 'livescores', 'medium');
 
     if (response.code !== 0 || !response.data) {
+      if (response.message) {
+        lastApiError = response.message;
+      }
       console.warn('[Oracle] livescores failed:', response.message);
       return [];
     }
@@ -312,6 +316,7 @@ export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
           awayScore: match.status >= 0 ? String(match.awayScore) : null,
           status: statusShort,
           league: match.leagueName,
+          leagueId: Number.isNaN(Number(match.leagueId)) ? undefined : Number(match.leagueId),
           leagueBadge: '',
           time: match.extraExplain?.minute ? String(match.extraExplain.minute) : '',
           venue: match.location || '',
@@ -325,6 +330,7 @@ export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
         return a.league.localeCompare(b.league);
       });
   } catch (err) {
+    lastApiError = err instanceof Error ? err.message : 'Erro ao buscar jogos ao vivo.';
     console.error('[Oracle] fetchLiveMatches error:', err);
     return [];
   }
