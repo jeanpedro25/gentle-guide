@@ -5,6 +5,7 @@ import { Bell, Menu, UserCircle2, X, LayoutDashboard, Zap, Calendar, Wallet, His
 import { useBankroll } from "@/hooks/usePredictions";
 import { FIXED_LEAGUES, useLeagueFilter } from "@/contexts/LeagueFilterContext";
 import { normalizeLeagueName } from "@/lib/leagueFilter";
+import { useAutoResolveBets } from "@/hooks/useAutoResolveBets";
 
 const MENU_ITEMS = [
   { icon: "🔴", label: "Ao Vivo", rota: "/aovivo", badge: "LIVE" },
@@ -141,6 +142,8 @@ export function LeagueFilterLayout() {
   const { data: bankroll } = useBankroll();
   const location = useLocation();
   const navigate = useNavigate();
+
+  useAutoResolveBets();
 
   useEffect(() => {
     setMobileOpen(false);

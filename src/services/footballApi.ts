@@ -287,6 +287,26 @@ export async function fetchWeekMatches(): Promise<ApiFixture[]> {
   return allFixtures.sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
 }
 
+export async function fetchFixtureById(fixtureId: number): Promise<ApiFixture | null> {
+  try {
+    const response = await apiFootballFetch<ApiFootballFixture>(
+      'fixtures',
+      { id: String(fixtureId) },
+      'resultado',
+      'high'
+    );
+
+    if (hasApiErrors(response) || !response.response || response.response.length === 0) {
+      return null;
+    }
+
+    return normalizeFixture(response.response[0]);
+  } catch (err) {
+    console.warn('[Oracle] fetchFixtureById failed:', err);
+    return null;
+  }
+}
+
 async function fetchMatchesByDate(date: string): Promise<ApiFixture[]> {
   try {
     const response = await apiFootballFetch<ApiFootballFixture>(
