@@ -47,7 +47,7 @@ export const FIXED_LEAGUES: LeagueOption[] = [
   { id: "serie-a-it", nome: "Serie A", bandeira: "🇮🇹", source: "fixed", aliases: ["italy serie a"] },
   { id: "bundesliga", nome: "Bundesliga", bandeira: "🇩🇪", source: "fixed", aliases: ["germany bundesliga"] },
   { id: "ligue-1", nome: "Ligue 1", bandeira: "🇫🇷", source: "fixed", aliases: ["france ligue 1"] },
-  { id: "liga-argentina", nome: "Liga Argentina", bandeira: "🇦🇷", source: "fixed", aliases: ["argentina primera division", "liga profesional argentina"] },
+  { id: "liga-argentina", nome: "Super Liga Argentina", bandeira: "🇦🇷", source: "fixed", aliases: ["liga argentina", "superliga argentina", "argentina primera division", "liga profesional argentina"] },
   { id: "mls", nome: "MLS", bandeira: "🇺🇸", source: "fixed", aliases: ["major league soccer"] },
   { id: "liga-mx", nome: "Liga MX", bandeira: "🇲🇽", source: "fixed", aliases: ["liga mexicana"] },
   { id: "liga-mx-fem", nome: "Liga MX Fem.", bandeira: "🇲🇽", source: "fixed", aliases: ["liga mx femenino", "liga mx feminina"] },
