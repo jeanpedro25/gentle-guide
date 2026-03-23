@@ -18,7 +18,7 @@ const MENU_ITEMS = [
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { leagueOptions, selectedLeagueIds, toggleLeague, clearSelectedLeagues } = useLeagueFilter();
   const [query, setQuery] = useState("");
-  const [showAllLeagues, setShowAllLeagues] = useState(false);
+  const [showAllLeagues, setShowAllLeagues] = useState(true);
   const { pathname } = useLocation();
 
   const fixedIds = useMemo(() => new Set(FIXED_LEAGUES.map((league) => league.id)), []);
