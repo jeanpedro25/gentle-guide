@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { useCreateBet } from '@/hooks/useBets';
 import { useBankroll } from '@/hooks/usePredictions';
 import { AnaliseJogo, PICK_LABELS, PICK_LABELS_FULL } from '@/lib/jogueAgora';
+import { gerarDecisaoFinal, getEvExplanation } from '@/lib/evDecision';
 import { ApiFixture } from '@/types/fixture';
 
 const MANUAL_BET_STORAGE_KEY = 'profeta-bet:manual-bets';
@@ -114,6 +115,7 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
   const bankrollAmount = bankroll?.amount ?? 100;
   const safeBet = bankrollAmount * 0.02;
   const kellyBet = analysis ? Math.min(bankrollAmount * analysis.kellyFraction, bankrollAmount) : 0;
+  const decisao = analysis ? gerarDecisaoFinal(analysis.melhor_ev, analysis.confianca) : null;
   const betValue = Number.parseFloat(betAmount.replace(',', '.')) || 0;
   const manualReturnValue = Number.parseFloat(manualReturn.replace(',', '.')) || 0;
   const hasManualReturn = manualReturn.trim().length > 0;
@@ -169,7 +171,7 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
   };
 
   const handleConfirmBet = async () => {
-    if (!analysis || betValue <= 0 || exceedsBankroll) return;
+    if (!analysis || !decisao?.botaoApostar || betValue <= 0 || exceedsBankroll) return;
 
     try {
       await createBet.mutateAsync({
@@ -283,6 +285,9 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
                         {analysis.melhor_ev > 0 ? '+' : ''}
                         {analysis.melhor_ev.toFixed(1)}%
                       </p>
+                      <p className="mt-1 text-[10px] text-muted-foreground">
+                        {getEvExplanation(analysis.melhor_ev)}
+                      </p>
                     </div>
                     <div className="rounded-lg border border-border bg-card p-3 text-center">
                       <p className="text-[10px] text-muted-foreground">Odd</p>
@@ -300,6 +305,17 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
                   </div>
 
                   <div className="space-y-3 rounded-2xl border border-destructive/40 bg-[linear-gradient(135deg,rgba(120,18,26,0.34),rgba(32,10,13,0.96))] p-4 shadow-[0_16px_44px_rgba(0,0,0,0.38)]">
+                    {decisao && (
+                      <div
+                        className="rounded-lg border px-3 py-2 text-[11px]"
+                        style={{ borderColor: decisao.cor, background: `${decisao.cor}20` }}
+                      >
+                        <p className="text-[12px] font-bold" style={{ color: decisao.corTexto }}>
+                          {decisao.texto}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">{decisao.subtexto}</p>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2">
                       <div className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/30 bg-black/30">
                         <DollarSign className="h-4 w-4 text-primary" />
@@ -453,11 +469,11 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
                     <button
                       type="button"
                       onClick={handleConfirmBet}
-                      disabled={betValue <= 0 || exceedsBankroll || createBet.isPending}
+                      disabled={!decisao?.botaoApostar || betValue <= 0 || exceedsBankroll || createBet.isPending}
                       className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,#ff4d4f,#ff2f2f)] text-sm font-extrabold uppercase tracking-[0.08em] text-white shadow-[0_14px_30px_rgba(255,58,58,0.28)] transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {createBet.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <DollarSign className="h-4 w-4" />}
-                      Registrar aposta
+                      {decisao?.botaoApostar ? 'Registrar aposta' : 'APOSTA NAO RECOMENDADA — EV INSUFICIENTE'}
                     </button>
 
                     <p className="text-center text-[10px] text-muted-foreground">

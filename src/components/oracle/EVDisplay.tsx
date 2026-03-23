@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { OracleAnalysis } from '@/types/prediction';
 import { Calculator, Percent } from 'lucide-react';
 import { CountUpNumber } from './CountUpNumber';
+import { getEvExplanation } from '@/lib/evDecision';
 
 interface EVDisplayProps {
   oracle: OracleAnalysis;
@@ -12,10 +13,10 @@ export function EVDisplay({ oracle }: EVDisplayProps) {
   const ev = primaryBet.ev;
 
   // Color rules based on EV
-  const evColor = ev > 10 ? 'text-oracle-win' : ev > 5 ? 'text-oracle-draw' : 'text-oracle-loss';
-  const evBg = ev > 10 ? 'bg-oracle-win/10 border-oracle-win/40' : ev > 5 ? 'bg-oracle-draw/10 border-oracle-draw/40' : 'bg-oracle-loss/10 border-oracle-loss/40';
-  const evGlow = ev > 10 ? 'neon-glow-green' : ev > 5 ? 'neon-glow-amber' : '';
-  const evLabel = ev > 10 ? 'Edge forte detectado' : ev > 5 ? 'Edge moderado — cautela' : ev > 0 ? 'Edge fraco — considere pular' : 'Sem edge — proteja sua banca';
+  const evColor = ev >= 8 ? 'text-oracle-win' : ev >= 5 ? 'text-oracle-draw' : 'text-oracle-loss';
+  const evBg = ev >= 8 ? 'bg-oracle-win/10 border-oracle-win/40' : ev >= 5 ? 'bg-oracle-draw/10 border-oracle-draw/40' : 'bg-oracle-loss/10 border-oracle-loss/40';
+  const evGlow = ev >= 8 ? 'neon-glow-green' : ev >= 5 ? 'neon-glow-amber' : '';
+  const evLabel = ev >= 8 ? 'Edge forte detectado' : ev >= 5 ? 'Edge moderado — cautela' : ev >= 2 ? 'Edge fraco — considere pular' : ev >= 0 ? 'Sem edge — proteja sua banca' : 'EV negativo — evite';
 
   return (
     <motion.div
@@ -37,6 +38,9 @@ export function EVDisplay({ oracle }: EVDisplayProps) {
         </div>
         <p className={`text-sm font-body mt-2 ${evColor}`}>
           {evLabel}
+        </p>
+        <p className="text-[11px] font-body mt-1 text-muted-foreground">
+          {getEvExplanation(ev)}
         </p>
         {ev === 0 && (
           <p className="text-xs font-body mt-3 text-oracle-draw flex items-center justify-center gap-1">

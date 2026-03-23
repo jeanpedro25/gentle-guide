@@ -138,17 +138,17 @@ export function classificarJogos(jogos: AnaliseJogo[]): RankingFinal {
   const positivos = jogos.filter(j => j.melhor_ev > 2);
   const ordenados = positivos.sort((a, b) => b.confianca - a.confianca);
 
-  // TOP: EV > 8% E confiança > 65 (Sem limite de quantidade)
+  // TOP: EV >= 8% E confiança > 65 (Sem limite de quantidade)
   const top = ordenados
-    .filter(j => j.melhor_ev > 8 && j.confianca > 65)
+    .filter(j => j.melhor_ev >= 8 && j.confianca > 65)
     .map(j => ({ ...j, categoria: 'top' as const }));
 
   const topIds = new Set(top.map(j => j.fixture.fixture.id));
   const remaining = ordenados.filter(j => !topIds.has(j.fixture.fixture.id));
 
-  // MEDIO: EV > 4% (Sem limite de quantidade)
+  // MEDIO: EV >= 5% (Sem limite de quantidade)
   const medio = remaining
-    .filter(j => j.melhor_ev > 4)
+    .filter(j => j.melhor_ev >= 5)
     .map(j => ({ ...j, categoria: 'medio' as const }));
 
   const medioIds = new Set(medio.map(j => j.fixture.fixture.id));

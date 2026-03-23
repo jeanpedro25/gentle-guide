@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Target, Check, Loader2, AlertTriangle } from 'lucide-react';
 import { AnaliseJogo, PICK_LABELS } from '@/lib/jogueAgora';
+import { gerarDecisaoFinal } from '@/lib/evDecision';
 import { useCreateBet } from '@/hooks/useBets';
 import { toast } from 'sonner';
 
@@ -27,6 +28,7 @@ export function BetPanel({ analise, bankrollAmount, onClose }: Props) {
   const [betOutcome, setBetOutcome] = useState<BetOutcome>('GANHA');
 
   const safeBet = bankrollAmount * 0.02;
+  const decisao = analise ? gerarDecisaoFinal(analise.melhor_ev, analise.confianca) : null;
   const betValue = parseFloat(betAmount.replace(',', '.')) || 0;
   const manualProfitValue = parseFloat(manualProfit.replace(',', '.')) || 0;
   const hasManualProfit = manualProfit.trim().length > 0;
@@ -77,7 +79,7 @@ export function BetPanel({ analise, bankrollAmount, onClose }: Props) {
   };
 
   const handleConfirm = async () => {
-    if (!analise || betValue <= 0 || exceedsBankroll) return;
+    if (!analise || !decisao?.botaoApostar || betValue <= 0 || exceedsBankroll) return;
 
     try {
       await createBet.mutateAsync({
@@ -221,6 +223,12 @@ export function BetPanel({ analise, bankrollAmount, onClose }: Props) {
                     <span className="text-muted-foreground">Valor apostado</span>
                     <span className="font-bold text-foreground">R$ {betValue.toFixed(2)}</span>
                   </div>
+                  {decisao && !decisao.botaoApostar && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Decisao</span>
+                      <span className="font-bold text-destructive">{decisao.texto}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Resultado marcado</span>
                     <span className="font-bold text-foreground">{OUTCOME_LABEL[betOutcome]}</span>
@@ -240,10 +248,10 @@ export function BetPanel({ analise, bankrollAmount, onClose }: Props) {
 
               <button
                 onClick={() => setShowConfirm(true)}
-                disabled={betValue <= 0 || exceedsBankroll}
+                disabled={!decisao?.botaoApostar || betValue <= 0 || exceedsBankroll}
                 className="w-full py-3 rounded-lg bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Continuar
+                {decisao?.botaoApostar ? 'Continuar' : 'APOSTA NAO RECOMENDADA — EV INSUFICIENTE'}
               </button>
             </>
           ) : (

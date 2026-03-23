@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Target, TrendingUp, Clock, Zap, BarChart3, Timer } from 'lucide-react';
 import { AnaliseJogo, PICK_LABELS_FULL } from '@/lib/jogueAgora';
+import { gerarDecisaoFinal, getBadgeJogo } from '@/lib/evDecision';
 import { FIXED_LEAGUES, useLeagueFilter } from '@/contexts/LeagueFilterContext';
 
 interface Props {
@@ -72,6 +73,8 @@ export function RankedMatchCard({ analise, rank, onAnalyze, onBet }: Props) {
   const { isLeagueAllowed, registerDynamicLeague, selectedLeagueIds } = useLeagueFilter();
   const leagueId = String(fixture.league.id);
   const hasOnlyFixedSelections = selectedLeagueIds.length > 0 && selectedLeagueIds.every((id) => FIXED_LEAGUE_IDS.has(id));
+  const decisao = gerarDecisaoFinal(analise.melhor_ev, analise.confianca);
+  const badge = getBadgeJogo(analise.melhor_ev);
 
   useEffect(() => {
     registerDynamicLeague({
@@ -128,6 +131,12 @@ export function RankedMatchCard({ analise, rank, onAnalyze, onBet }: Props) {
           <div>
             <p className="text-[8px] font-black text-oracle-win uppercase">Valor (EV)</p>
             <p className="text-[10px] font-black text-white">+{analise.melhor_ev.toFixed(1)}%</p>
+            <span
+              className="inline-flex items-center rounded-full px-2 py-0.5 text-[8px] font-black uppercase"
+              style={{ background: `${badge.cor}20`, color: badge.cor, border: `1px solid ${badge.cor}55` }}
+            >
+              {badge.texto}
+            </span>
           </div>
         </div>
       </div>
@@ -152,9 +161,10 @@ export function RankedMatchCard({ analise, rank, onAnalyze, onBet }: Props) {
         </button>
         <button
           onClick={onBet}
-          className="flex-1 py-3 rounded-xl bg-primary text-black text-xs font-black hover:brightness-110 transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-[0_0_20px_rgba(236,200,19,0.2)]"
+          disabled={!decisao.botaoApostar}
+          className="flex-1 py-3 rounded-xl bg-primary text-black text-xs font-black hover:brightness-110 transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-[0_0_20px_rgba(236,200,19,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Zap className="w-4 h-4 fill-current" /> Apostar
+          <Zap className="w-4 h-4 fill-current" /> {decisao.botaoApostar ? 'Apostar' : 'Nao recomendado'}
         </button>
       </div>
     </motion.div>

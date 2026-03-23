@@ -1,4 +1,5 @@
 import { TrendingUp, Minus, TrendingDown } from 'lucide-react';
+import { getBadgeJogo } from '@/lib/evDecision';
 
 interface EVBadgeProps {
   fixtureId: number;
@@ -41,7 +42,9 @@ export function EVBadge({ fixtureId }: EVBadgeProps) {
   const evA = (pA * oddA - 1) * 100;
   const bestEV = Math.max(evH, evD, evA);
 
-  if (bestEV >= 5) {
+  const badge = getBadgeJogo(bestEV);
+
+  if (badge.texto === 'APOSTAR') {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-oracle-win/15 text-oracle-win border border-oracle-win/30">
         <TrendingUp className="w-3 h-3" /> APOSTAR
@@ -49,10 +52,18 @@ export function EVBadge({ fixtureId }: EVBadgeProps) {
     );
   }
 
-  if (bestEV >= 0) {
+  if (badge.texto === 'NEUTRO') {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-500/15 text-yellow-400 border border-yellow-500/30">
         <Minus className="w-3 h-3" /> NEUTRO
+      </span>
+    );
+  }
+
+  if (badge.texto === 'EV FRACO') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+        <Minus className="w-3 h-3" /> EV FRACO
       </span>
     );
   }

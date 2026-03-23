@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Trophy, Target, Compass, TrendingUp } from 'lucide-react';
 import { AnaliseJogo, PICK_LABELS_FULL } from '@/lib/jogueAgora';
+import { gerarDecisaoFinal, getBadgeJogo } from '@/lib/evDecision';
 
 interface Props {
   analise: AnaliseJogo;
@@ -28,6 +29,8 @@ function ConfidenceBar({ value }: { value: number }) {
 }
 
 export function TopCard({ analise, index, onBet }: Props) {
+  const decisao = gerarDecisaoFinal(analise.melhor_ev, analise.confianca);
+  const badge = getBadgeJogo(analise.melhor_ev);
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -78,6 +81,12 @@ export function TopCard({ analise, index, onBet }: Props) {
         <div className="bg-secondary/50 rounded-lg p-2 text-center">
           <p className="text-[10px] text-muted-foreground">EV</p>
           <p className="text-sm font-bold text-primary">+{analise.melhor_ev.toFixed(1)}%</p>
+          <span
+            className="mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-[8px] font-black uppercase"
+            style={{ background: `${badge.cor}20`, color: badge.cor, border: `1px solid ${badge.cor}55` }}
+          >
+            {badge.texto}
+          </span>
         </div>
         <div className="bg-secondary/50 rounded-lg p-2 text-center">
           <p className="text-[10px] text-muted-foreground">Odd</p>
@@ -104,15 +113,18 @@ export function TopCard({ analise, index, onBet }: Props) {
 
       <button
         onClick={() => onBet(analise)}
-        className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-bold text-sm transition-all hover:bg-primary/90 active:scale-[0.98]"
+        disabled={!decisao.botaoApostar}
+        className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-bold text-sm transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        üéØ APOSTAR AGORA
+        {decisao.botaoApostar ? 'APOSTAR AGORA' : decisao.texto}
       </button>
     </motion.div>
   );
 }
 
 export function MedioCard({ analise, index, onBet }: Props) {
+  const decisao = gerarDecisaoFinal(analise.melhor_ev, analise.confianca);
+  const badge = getBadgeJogo(analise.melhor_ev);
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -151,6 +163,12 @@ export function MedioCard({ analise, index, onBet }: Props) {
           {PICK_LABELS_FULL[analise.melhor_resultado]}
         </span>
         <span className="text-xs font-bold text-primary">EV +{analise.melhor_ev.toFixed(1)}%</span>
+        <span
+          className="text-[9px] font-black uppercase rounded-full px-2 py-0.5"
+          style={{ background: `${badge.cor}20`, color: badge.cor, border: `1px solid ${badge.cor}55` }}
+        >
+          {badge.texto}
+        </span>
         <span className="text-xs text-muted-foreground">Odd {analise.melhor_odd.toFixed(2)}</span>
       </div>
 
@@ -158,15 +176,18 @@ export function MedioCard({ analise, index, onBet }: Props) {
 
       <button
         onClick={() => onBet(analise)}
-        className="w-full py-2.5 rounded-lg bg-oracle-blue/15 text-oracle-blue border border-oracle-blue/30 font-bold text-sm hover:bg-oracle-blue/25 transition-all active:scale-[0.98]"
+        disabled={!decisao.botaoApostar}
+        className="w-full py-2.5 rounded-lg bg-oracle-blue/15 text-oracle-blue border border-oracle-blue/30 font-bold text-sm hover:bg-oracle-blue/25 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        APOSTAR
+        {decisao.botaoApostar ? 'APOSTAR' : decisao.texto}
       </button>
     </motion.div>
   );
 }
 
 export function ExplorarCard({ analise, index, onBet }: Props) {
+  const decisao = gerarDecisaoFinal(analise.melhor_ev, analise.confianca);
+  const badge = getBadgeJogo(analise.melhor_ev);
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -195,6 +216,12 @@ export function ExplorarCard({ analise, index, onBet }: Props) {
           <span className={`text-[10px] font-bold ${analise.melhor_ev > 0 ? 'text-primary' : 'text-destructive'}`}>
             +{analise.melhor_ev.toFixed(1)}%
           </span>
+          <span
+            className="text-[9px] font-black uppercase rounded-full px-2 py-0.5"
+            style={{ background: `${badge.cor}20`, color: badge.cor, border: `1px solid ${badge.cor}55` }}
+          >
+            {badge.texto}
+          </span>
           <span className="text-[10px] text-muted-foreground">{analise.melhor_odd.toFixed(2)}</span>
         </div>
       </div>
@@ -203,9 +230,10 @@ export function ExplorarCard({ analise, index, onBet }: Props) {
         <ConfidenceBar value={analise.confianca} />
         <button
           onClick={() => onBet(analise)}
-          className="text-[10px] font-bold text-muted-foreground hover:text-foreground transition-colors underline"
+          disabled={!decisao.botaoApostar}
+          className="text-[10px] font-bold text-muted-foreground hover:text-foreground transition-colors underline disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          VER AN√ÅLISE ‚Üí
+          {decisao.botaoApostar ? 'VER ANALISE' : decisao.texto}
         </button>
       </div>
     </motion.div>

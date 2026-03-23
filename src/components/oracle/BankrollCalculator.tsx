@@ -18,7 +18,7 @@ export function BankrollCalculator({ oracle }: BankrollCalculatorProps) {
   const potentialProfit = betAmount * evPct;
   const maxLoss = betAmount;
 
-  const isRecommended = verdict === 'APOSTAR' && primaryBet.ev > 0;
+  const isRecommended = verdict === 'APOSTAR' && primaryBet.ev >= 5;
 
   return (
     <motion.div
