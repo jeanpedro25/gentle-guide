@@ -63,12 +63,11 @@ function generateInitialsAvatar(teamName: string): string {
 
 async function fetchLogoFromAPI(teamName: string): Promise<string | null> {
   try {
-    // Tenta variações do nome para aumentar chance de acerto
     const variations = [
       teamName,
       teamName.replace(/FC|SC|CF|AC|RC|CD|SD|SE|EC|CR|CA|CE|AA|AD/gi, '').trim(),
       teamName.split(' ')[0]
-    ];
+    ].filter(n => n.length >= 3);
 
     for (const name of variations) {
       const { data, error } = await supabase.functions.invoke('football-proxy', {
