@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useBets, useResolveBet, type BetRow } from '@/hooks/useBets';
 import { fetchFixtureById } from '@/services/footballApi';
+import { useAuth } from '@/contexts/AuthContext';
 
 const FINISHED_STATUSES = new Set(['FT', 'AET', 'PEN']);
 
@@ -13,6 +14,7 @@ function getResultFromScore(home: number, away: number): '1' | 'X' | '2' {
 export function useAutoResolveBets() {
   const { data: bets = [] } = useBets();
   const resolveBet = useResolveBet();
+  const { user } = useAuth();
   const latestBets = useRef<BetRow[]>(bets);
   const isRunning = useRef(false);
   const inFlight = useRef(new Set<string>());
@@ -25,6 +27,7 @@ export function useAutoResolveBets() {
     let active = true;
 
     const checkPending = async () => {
+      if (!user) return;
       if (isRunning.current) return;
       isRunning.current = true;
 
@@ -79,5 +82,5 @@ export function useAutoResolveBets() {
       active = false;
       window.clearInterval(interval);
     };
-  }, [resolveBet]);
+  }, [resolveBet, user]);
 }

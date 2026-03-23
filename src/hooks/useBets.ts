@@ -40,7 +40,7 @@ export function useCreateBet() {
     mutationFn: async (bet: Omit<BetRow, 'id' | 'created_at' | 'resolved_at' | 'status' | 'actual_result' | 'actual_score' | 'profit_loss'>) => {
       const { data, error } = await supabase
         .from('bets')
-        .insert(bet as any)
+        .insert({ ...bet, status: 'pending' } as any)
         .select()
         .single();
       if (error) throw error;
@@ -57,6 +57,7 @@ export function useResolveBet() {
     mutationFn: async ({ id, status, actual_result, actual_score, profit_loss }: {
       id: string; status: 'won' | 'lost'; actual_result: string; actual_score: string; profit_loss: number;
     }) => {
+      if (!user) throw new Error('Usuário não autenticado');
       const { data: updatedBet, error } = await supabase
         .from('bets')
         .update({ status, actual_result, actual_score, profit_loss, resolved_at: new Date().toISOString() } as any)
@@ -66,7 +67,7 @@ export function useResolveBet() {
         .maybeSingle();
       if (error) throw error;
 
-      if (!updatedBet || !user) return;
+      if (!updatedBet) return;
 
       const { data: bankrollRow, error: bankrollError } = await supabase
         .from('bankroll')
@@ -86,7 +87,7 @@ export function useResolveBet() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['bets'] });
-      qc.invalidateQueries({ queryKey: ['bankroll'] });
+      qc.invalidateQueries({ queryKey: ['bankroll', user?.id] });
     },
   });
 }

@@ -151,7 +151,7 @@ export function useUpdateBankroll() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bankroll'] });
+      queryClient.invalidateQueries({ queryKey: ['bankroll', user?.id] });
     },
   });
 }
