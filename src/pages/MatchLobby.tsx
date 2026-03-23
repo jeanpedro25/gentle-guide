@@ -6,7 +6,6 @@ import { TimeTabs, TimeFilter } from '@/components/oracle/TimeTabs';
 import { LobbyHeader } from '@/components/oracle/LobbyHeader';
 import { LiveMatches } from '@/components/oracle/LiveMatches';
 import { LiveAlertBanner } from '@/components/oracle/LiveAlertBanner';
-import { BottomNav } from '@/components/oracle/BottomNav';
 import { StopLossBanner } from '@/components/oracle/StopLossBanner';
 import { MatchFilters, MatchFiltersState, applyMatchFilters } from '@/components/oracle/MatchFilters';
 import { MatchListPaginated } from '@/components/oracle/MatchListPaginated';
@@ -170,7 +169,7 @@ export default function MatchLobby() {
       <LiveAlertBanner />
       <StopLossBanner status={stopLoss} />
 
-      <main className="pb-24">
+      <main className="pb-6">
         {/* Search */}
         <section className="px-4 mt-6">
           <div className="relative">
@@ -290,7 +289,6 @@ export default function MatchLobby() {
       </main>
 
       <MultiplaBar />
-      <BottomNav />
     </div>
   );
 }
