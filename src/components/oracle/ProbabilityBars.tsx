@@ -9,11 +9,38 @@ interface ProbabilityBarsProps {
 }
 
 export function ProbabilityBars({ result, homeTeam, awayTeam }: ProbabilityBarsProps) {
+  const values = [result.homeWinPercent, result.drawPercent, result.awayWinPercent];
+  const maxValue = Math.max(...values);
+  const minValue = Math.min(...values);
+  const hasTie = maxValue === minValue;
+  const pickTone = (value: number) => {
+    if (hasTie) return 'draw';
+    if (value === maxValue) return 'win';
+    if (value === minValue) return 'loss';
+    return 'draw';
+  };
+
   const bars = [
-    { label: homeTeam, value: result.homeWinPercent, color: 'bg-oracle-win', textColor: 'text-oracle-win' },
-    { label: 'Empate', value: result.drawPercent, color: 'bg-oracle-draw', textColor: 'text-oracle-draw' },
-    { label: awayTeam, value: result.awayWinPercent, color: 'bg-oracle-loss', textColor: 'text-oracle-loss' },
-  ];
+    {
+      label: homeTeam,
+      value: result.homeWinPercent,
+      tone: pickTone(result.homeWinPercent),
+    },
+    {
+      label: 'Empate',
+      value: result.drawPercent,
+      tone: pickTone(result.drawPercent),
+    },
+    {
+      label: awayTeam,
+      value: result.awayWinPercent,
+      tone: pickTone(result.awayWinPercent),
+    },
+  ].map((bar) => ({
+    ...bar,
+    color: bar.tone === 'win' ? 'bg-oracle-win' : bar.tone === 'loss' ? 'bg-oracle-loss' : 'bg-oracle-draw',
+    textColor: bar.tone === 'win' ? 'text-oracle-win' : bar.tone === 'loss' ? 'text-oracle-loss' : 'text-oracle-draw',
+  }));
 
   return (
     <motion.div

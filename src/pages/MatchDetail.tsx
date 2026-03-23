@@ -148,6 +148,37 @@ export default function MatchDetail() {
     return Math.min(100, Math.max(0, Math.round(val)));
   };
 
+  const homeProbability = oracle?.probabilities.homeWin ?? 0;
+  const drawProbability = oracle?.probabilities.draw ?? 0;
+  const awayProbability = oracle?.probabilities.awayWin ?? 0;
+  const probabilityValues = [
+    getGaugeValue(homeProbability),
+    getGaugeValue(drawProbability),
+    getGaugeValue(awayProbability),
+  ];
+  const maxProbability = Math.max(...probabilityValues);
+  const minProbability = Math.min(...probabilityValues);
+  const hasProbabilityTie = maxProbability === minProbability;
+  const pickProbabilityTone = (value: number) => {
+    if (hasProbabilityTie) return 'draw';
+    if (value === maxProbability) return 'win';
+    if (value === minProbability) return 'loss';
+    return 'draw';
+  };
+
+  const homeGaugeValue = getGaugeValue(homeProbability);
+  const drawGaugeValue = getGaugeValue(drawProbability);
+  const awayGaugeValue = getGaugeValue(awayProbability);
+  const homeGaugeTone = pickProbabilityTone(homeGaugeValue);
+  const drawGaugeTone = pickProbabilityTone(drawGaugeValue);
+  const awayGaugeTone = pickProbabilityTone(awayGaugeValue);
+  const gaugeColor = (tone: 'win' | 'draw' | 'loss') =>
+    tone === 'win'
+      ? 'hsl(var(--oracle-win))'
+      : tone === 'loss'
+        ? 'hsl(var(--oracle-loss))'
+        : 'hsl(var(--oracle-draw))';
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto p-3 md:p-6 space-y-4">
@@ -275,20 +306,20 @@ export default function MatchDetail() {
               <div className="flex items-center justify-around">
                 <CircularGauge
                   label={analysis.homeTeam}
-                  value={getGaugeValue(oracle.probabilities.homeWin)}
-                  color="hsl(var(--oracle-win))"
+                  value={homeGaugeValue}
+                  color={gaugeColor(homeGaugeTone)}
                   delay={0.4}
                 />
                 <CircularGauge
                   label="Empate"
-                  value={getGaugeValue(oracle.probabilities.draw)}
-                  color="hsl(var(--oracle-draw))"
+                  value={drawGaugeValue}
+                  color={gaugeColor(drawGaugeTone)}
                   delay={0.6}
                 />
                 <CircularGauge
                   label={analysis.awayTeam}
-                  value={getGaugeValue(oracle.probabilities.awayWin)}
-                  color="hsl(var(--oracle-loss))"
+                  value={awayGaugeValue}
+                  color={gaugeColor(awayGaugeTone)}
                   delay={0.8}
                 />
               </div>
