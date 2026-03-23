@@ -91,3 +91,62 @@ export function useResolveBet() {
     },
   });
 }
+
+export function useUpdateBetManual() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      status,
+      actual_result,
+      actual_score,
+      profit_loss,
+      previous_profit_loss,
+    }: {
+      id: string;
+      status: 'pending' | 'won' | 'lost';
+      actual_result: string | null;
+      actual_score: string | null;
+      profit_loss: number;
+      previous_profit_loss: number;
+    }) => {
+      if (!user) throw new Error('Usuário não autenticado');
+
+      const resolved_at = status === 'pending' ? null : new Date().toISOString();
+
+      const { data: updatedBet, error } = await supabase
+        .from('bets')
+        .update({ status, actual_result, actual_score, profit_loss, resolved_at } as any)
+        .eq('id', id)
+        .select('id, status, profit_loss')
+        .maybeSingle();
+      if (error) throw error;
+
+      if (!updatedBet) return;
+
+      const delta = Number(profit_loss) - Number(previous_profit_loss);
+      if (delta === 0) return;
+
+      const { data: bankrollRow, error: bankrollError } = await supabase
+        .from('bankroll')
+        .select('amount')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (bankrollError) throw bankrollError;
+      if (!bankrollRow) return;
+
+      const newAmount = Number(bankrollRow.amount) + delta;
+
+      const { error: updateBankrollError } = await supabase
+        .from('bankroll')
+        .update({ amount: newAmount, updated_at: new Date().toISOString() })
+        .eq('id', user.id);
+      if (updateBankrollError) throw updateBankrollError;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['bets'] });
+      qc.invalidateQueries({ queryKey: ['bankroll', user?.id] });
+    },
+  });
+}

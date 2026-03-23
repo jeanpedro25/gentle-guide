@@ -1,9 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState, type MouseEvent } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, CheckCircle, XCircle, Clock, Filter, Zap, Target, BarChart3 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { usePredictions, useBetResults, PredictionRow, BetResultRow } from '@/hooks/usePredictions';
-import { useBets, BetRow } from '@/hooks/useBets';
+import { Filter, Zap } from 'lucide-react';
+import { useBets, BetRow, useUpdateBetManual } from '@/hooks/useBets';
 import { AnalyzeModal } from '@/components/oracle/AnalyzeModal';
 import { analyzeMatch } from '@/services/oracleService';
 import { fetchTodayMatches } from '@/services/footballApi';
@@ -13,7 +11,6 @@ import { toast } from 'sonner';
 type FilterStatus = 'all' | 'pending' | 'won' | 'lost';
 
 export default function HistoryPage() {
-  const navigate = useNavigate();
   const { data: bets = [], isLoading } = useBets();
   const [filter, setFilter] = useState<FilterStatus>('all');
   
@@ -109,16 +106,14 @@ export default function HistoryPage() {
       ) : (
         <div className="space-y-3">
           {filtered.map((bet, i) => (
-            <motion.button
+            <motion.div
               key={bet.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.02 }}
-              onClick={() => handleOpenAnalysis(bet)}
-              className="w-full text-left"
             >
-              <BetHistoryCard bet={bet} />
-            </motion.button>
+              <BetHistoryCard bet={bet} onOpen={() => handleOpenAnalysis(bet)} />
+            </motion.div>
           ))}
         </div>
       )}
@@ -144,27 +139,118 @@ function StatCard({ label, value, color }: { label: string; value: number; color
   );
 }
 
-function BetHistoryCard({ bet }: { bet: BetRow }) {
+function parseScore(score: string | null) {
+  if (!score) return { home: '', away: '' };
+  const parts = score.split('-');
+  if (parts.length !== 2) return { home: '', away: '' };
+  return { home: parts[0].trim(), away: parts[1].trim() };
+}
+
+function BetHistoryCard({ bet, onOpen }: { bet: BetRow; onOpen: () => void }) {
   const status = bet.status;
   const predLabel = bet.prediction === '1' ? 'Casa' : bet.prediction === 'X' ? 'Empate' : 'Fora';
+  const updateBet = useUpdateBetManual();
+  const [isEditing, setIsEditing] = useState(false);
+  const [manualStatus, setManualStatus] = useState<BetRow['status']>(bet.status);
+  const [homeScore, setHomeScore] = useState('');
+  const [awayScore, setAwayScore] = useState('');
+
+  useEffect(() => {
+    setManualStatus(bet.status);
+    const parsed = parseScore(bet.actual_score);
+    setHomeScore(parsed.home);
+    setAwayScore(parsed.away);
+  }, [bet.id, bet.status, bet.actual_score]);
+
+  const handleSave = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    const homeValue = homeScore.trim();
+    const awayValue = awayScore.trim();
+
+    let actualScore: string | null = null;
+    let actualResult: string | null = null;
+
+    if (homeValue !== '' || awayValue !== '') {
+      if (homeValue === '' || awayValue === '') {
+        toast.error('Informe os dois placares para salvar o resultado.');
+        return;
+      }
+      const home = Number(homeValue);
+      const away = Number(awayValue);
+      if (!Number.isInteger(home) || home < 0 || !Number.isInteger(away) || away < 0) {
+        toast.error('Placar inválido. Use números inteiros positivos.');
+        return;
+      }
+      actualScore = `${home}-${away}`;
+      actualResult = home > away ? '1' : home < away ? '2' : 'X';
+    }
+
+    const profitLoss = manualStatus === 'won'
+      ? Number(bet.potential_profit)
+      : manualStatus === 'lost'
+        ? -Number(bet.stake)
+        : 0;
+
+    try {
+      await updateBet.mutateAsync({
+        id: bet.id,
+        status: manualStatus,
+        actual_result: actualResult,
+        actual_score: actualScore,
+        profit_loss: profitLoss,
+        previous_profit_loss: Number(bet.profit_loss),
+      });
+      setIsEditing(false);
+      toast.success('Aposta atualizada com sucesso.');
+    } catch (err) {
+      toast.error('Erro ao atualizar aposta manualmente.');
+    }
+  };
+
+  const handleCancel = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    setIsEditing(false);
+    setManualStatus(bet.status);
+    const parsed = parseScore(bet.actual_score);
+    setHomeScore(parsed.home);
+    setAwayScore(parsed.away);
+  };
 
   return (
-    <div className={`glass-card p-4 border transition-all hover:border-primary/40 ${
+    <div
+      onClick={() => {
+        if (isEditing) return;
+        onOpen();
+      }}
+      className={`glass-card p-4 border transition-all hover:border-primary/40 cursor-pointer ${
       status === 'won' ? 'border-oracle-win/30 bg-oracle-win/5' :
       status === 'lost' ? 'border-destructive/30 bg-destructive/5' :
       'border-border bg-card'
-    }`}>
+    }`}
+    >
       <div className="flex items-center justify-between mb-3">
         <div>
           <p className="font-bold text-sm text-foreground">{bet.home_team} vs {bet.away_team}</p>
           <p className="text-[10px] text-muted-foreground uppercase">{bet.league} • {new Date(bet.created_at).toLocaleDateString('pt-BR')}</p>
         </div>
-        <div className={`px-2 py-1 rounded text-[9px] font-black uppercase border ${
-          status === 'won' ? 'text-oracle-win border-oracle-win/40 bg-oracle-win/10' :
-          status === 'lost' ? 'text-destructive border-destructive/40 bg-destructive/10' :
-          'text-primary border-primary/40 bg-primary/10'
-        }`}>
-          {status === 'won' ? 'GREEN ✅' : status === 'lost' ? 'RED ❌' : 'PENDENTE ⏳'}
+        <div className="flex items-center gap-2">
+          <div className={`px-2 py-1 rounded text-[9px] font-black uppercase border ${
+            status === 'won' ? 'text-oracle-win border-oracle-win/40 bg-oracle-win/10' :
+            status === 'lost' ? 'text-destructive border-destructive/40 bg-destructive/10' :
+            'text-primary border-primary/40 bg-primary/10'
+          }`}>
+            {status === 'won' ? 'GREEN ✅' : status === 'lost' ? 'RED ❌' : 'PENDENTE ⏳'}
+          </div>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              setIsEditing(true);
+            }}
+            className="text-[10px] font-bold uppercase px-2 py-1 rounded border border-primary/30 text-primary hover:border-primary/60"
+          >
+            Editar
+          </button>
         </div>
       </div>
 
@@ -188,6 +274,78 @@ function BetHistoryCard({ bet }: { bet: BetRow }) {
           </p>
         </div>
       </div>
+
+      {isEditing && (
+        <div
+          className="mt-3 pt-3 border-t border-border/40 grid gap-3"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <p className="text-[9px] text-muted-foreground font-bold uppercase">Placar manual</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  value={homeScore}
+                  onChange={(event) => setHomeScore(event.target.value)}
+                  className="w-full rounded-md bg-black/40 border border-border px-2 py-1 text-xs"
+                  placeholder="Casa"
+                />
+                <span className="text-muted-foreground text-xs">x</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={awayScore}
+                  onChange={(event) => setAwayScore(event.target.value)}
+                  className="w-full rounded-md bg-black/40 border border-border px-2 py-1 text-xs"
+                  placeholder="Fora"
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[9px] text-muted-foreground font-bold uppercase">Status manual</p>
+              <select
+                value={manualStatus}
+                onChange={(event) => setManualStatus(event.target.value as BetRow['status'])}
+                className="w-full rounded-md bg-black/40 border border-border px-2 py-1 text-xs"
+              >
+                <option value="pending">Pendente</option>
+                <option value="won">Green</option>
+                <option value="lost">Red</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[9px] text-muted-foreground font-bold uppercase">Lucro calculado</p>
+              <div className="rounded-md border border-border bg-black/30 px-3 py-2 text-xs font-bold text-center">
+                {manualStatus === 'pending'
+                  ? '—'
+                  : `${manualStatus === 'won' ? '+' : '-'}R$ ${
+                      Math.abs(manualStatus === 'won' ? Number(bet.potential_profit) : Number(bet.stake))
+                    .toFixed(2)
+                  }`}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="text-[10px] font-bold uppercase px-3 py-2 rounded border border-border text-muted-foreground hover:border-primary/40"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={updateBet.isPending}
+              className="text-[10px] font-bold uppercase px-3 py-2 rounded border border-primary bg-primary text-primary-foreground disabled:opacity-60"
+            >
+              {updateBet.isPending ? 'Salvando...' : 'Salvar ajustes'}
+            </button>
+          </div>
+        </div>
+      )}
       
       <div className="mt-3 pt-2 border-t border-border/30 flex items-center justify-center gap-1 text-[9px] text-muted-foreground font-bold uppercase">
         <Zap className="w-3 h-3 text-primary" /> Clique para ver análise detalhada
