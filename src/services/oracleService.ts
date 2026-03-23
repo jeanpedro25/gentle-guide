@@ -88,6 +88,35 @@ export async function analyzeMatch(
   // Normalize probabilities from AI (handles both 0-1 and 0-100 formats)
   const raw = data as OracleAnalysis;
   raw.probabilities = normalizeProbabilities(raw.probabilities);
+
+  // Normalize EV/Kelly when AI returns decimal format (0-1)
+  const evCandidates = [
+    raw?.primaryBet?.ev,
+    ...(raw?.alternativeBets?.map((bet) => bet.ev) ?? []),
+  ].filter((value) => Number.isFinite(value)) as number[];
+  const maxAbsEv = evCandidates.length > 0 ? Math.max(...evCandidates.map((v) => Math.abs(v))) : 0;
+  const kellyAbs = Number.isFinite(raw?.primaryBet?.kellyFraction)
+    ? Math.abs(raw.primaryBet.kellyFraction)
+    : 0;
+
+  const isHighConfidence = ['A+', 'A', 'B'].includes(raw?.primaryBet?.confidence ?? '');
+  const shouldScaleEv = maxAbsEv > 0 && maxAbsEv <= 1 && (
+    kellyAbs > 0 ? kellyAbs <= 1 : (isHighConfidence || raw?.verdict === 'APOSTAR')
+  );
+
+  if (shouldScaleEv) {
+    raw.primaryBet = {
+      ...raw.primaryBet,
+      ev: raw.primaryBet.ev * 100,
+      kellyFraction: raw.primaryBet.kellyFraction * 100,
+    };
+    if (raw.alternativeBets) {
+      raw.alternativeBets = raw.alternativeBets.map((bet) => ({
+        ...bet,
+        ev: bet.ev * 100,
+      }));
+    }
+  }
   
   // Normalize score scenario probabilities too
   if (raw.scoreScenarios) {
