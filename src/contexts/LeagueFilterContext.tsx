@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import {
   createLeagueMatcher,
   normalizeLeagueName,
@@ -28,6 +28,7 @@ interface LeagueFilterContextType {
   selectedLeagueIds: string[];
   selectedLeague: string | null;
   setSelectedLeague: (league: string | null) => void;
+  setSelectedLeagues: (ids: string[]) => void;
   toggleLeague: (id: string) => void;
   clearSelectedLeagues: () => void;
   isLeagueAllowed: (leagueName: string, leagueApiId?: number) => boolean;
@@ -80,7 +81,7 @@ function sortLeagues(a: LeagueOption, b: LeagueOption): number {
   return a.nome.localeCompare(b.nome, "pt-BR");
 }
 
-export function LeagueFilterProvider({ children }: { children: React.ReactNode }) {
+export function LeagueFilterProvider({ children }: { children: ReactNode }) {
   const [leagueMap, setLeagueMap] = useState<Record<string, LeagueOption>>(() => {
     const map: Record<string, LeagueOption> = {};
 
@@ -128,6 +129,15 @@ export function LeagueFilterProvider({ children }: { children: React.ReactNode }
         persist(next, leagueMap);
         return next;
       });
+    },
+    [leagueMap, persist],
+  );
+
+  const setSelectedLeagues = useCallback(
+    (ids: string[]) => {
+      const next = Array.isArray(ids) ? ids.filter((id) => typeof id === "string") : [];
+      setSelectedLeagueIds(next);
+      persist(next, leagueMap);
     },
     [leagueMap, persist],
   );
@@ -216,6 +226,7 @@ export function LeagueFilterProvider({ children }: { children: React.ReactNode }
     selectedLeagueIds,
     selectedLeague,
     setSelectedLeague,
+    setSelectedLeagues,
     toggleLeague,
     clearSelectedLeagues,
     isLeagueAllowed,
@@ -225,6 +236,7 @@ export function LeagueFilterProvider({ children }: { children: React.ReactNode }
     selectedLeagueIds,
     selectedLeague,
     setSelectedLeague,
+    setSelectedLeagues,
     toggleLeague,
     clearSelectedLeagues,
     isLeagueAllowed,

@@ -16,9 +16,10 @@ const MENU_ITEMS = [
 ];
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
-  const { leagueOptions, selectedLeagueIds, toggleLeague, clearSelectedLeagues } = useLeagueFilter();
+  const { leagueOptions, selectedLeagueIds, setSelectedLeagues, clearSelectedLeagues } = useLeagueFilter();
   const [query, setQuery] = useState("");
   const [showAllLeagues, setShowAllLeagues] = useState(true);
+  const [pendingLeagueIds, setPendingLeagueIds] = useState<string[]>(selectedLeagueIds);
   const { pathname } = useLocation();
 
   const fixedIds = useMemo(() => new Set(FIXED_LEAGUES.map((league) => league.id)), []);
@@ -29,6 +30,32 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
     if (!normalizedQuery) return pool;
     return pool.filter((league) => normalizeLeagueName(league.nome).includes(normalizedQuery));
   }, [showAllLeagues, leagueOptions, query, fixedIds]);
+
+  useEffect(() => {
+    setPendingLeagueIds(selectedLeagueIds);
+  }, [selectedLeagueIds]);
+
+  const hasChanges = useMemo(() => {
+    if (pendingLeagueIds.length !== selectedLeagueIds.length) return true;
+    const selectedSet = new Set(selectedLeagueIds);
+    return pendingLeagueIds.some((id) => !selectedSet.has(id));
+  }, [pendingLeagueIds, selectedLeagueIds]);
+
+  const togglePendingLeague = (id: string) => {
+    setPendingLeagueIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+    );
+  };
+
+  const applyPendingLeagues = () => {
+    if (!hasChanges) return;
+    setSelectedLeagues(pendingLeagueIds);
+  };
+
+  const clearAllFilters = () => {
+    setPendingLeagueIds([]);
+    clearSelectedLeagues();
+  };
 
   return (
     <div className="h-full flex flex-col bg-[#1A1A1A]">
@@ -73,8 +100,8 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               <label key={league.id} className="flex items-center gap-2 py-1.5 text-xs text-[#CCCCCC] cursor-pointer hover:text-white transition-colors">
                 <input
                   type="checkbox"
-                  checked={selectedLeagueIds.includes(league.id)}
-                  onChange={() => toggleLeague(league.id)}
+                  checked={pendingLeagueIds.includes(league.id)}
+                  onChange={() => togglePendingLeague(league.id)}
                   className="accent-[#C9A84C] w-3.5 h-3.5"
                 />
                 <span>{league.bandeira}</span>
@@ -83,17 +110,24 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             ))}
           </div>
           <button
+            onClick={applyPendingLeagues}
+            disabled={!hasChanges}
+            className="w-full py-2 rounded bg-[#C9A84C] text-[11px] text-[#1A1A1A] font-black uppercase tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            OK
+          </button>
+          <button
             onClick={() => setShowAllLeagues(!showAllLeagues)}
             className="w-full text-[10px] text-[#C9A84C] font-bold uppercase hover:underline text-left"
           >
             {showAllLeagues ? "- Ver menos" : "+ Ver todas as ligas"}
           </button>
-          {selectedLeagueIds.length > 0 && (
+          {(selectedLeagueIds.length > 0 || pendingLeagueIds.length > 0) && (
             <button
-              onClick={clearSelectedLeagues}
+              onClick={clearAllFilters}
               className="w-full py-2 rounded border border-[#C9A84C]/40 text-[10px] text-[#C9A84C] font-bold uppercase hover:bg-[#C9A84C]/10 transition-colors"
             >
-              Limpar Filtros ({selectedLeagueIds.length})
+              Limpar Filtros ({pendingLeagueIds.length || selectedLeagueIds.length})
             </button>
           )}
         </div>
