@@ -5,16 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const FINISHED_STATUSES = new Set(['FT', 'AET', 'PEN']);
 
-function normalizeFixtureId(value: BetRow['fixture_id'] | string | number | null | undefined) {
-  if (value === null || value === undefined) return null;
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value === 'string') {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-}
-
 function getResultFromScore(home: number, away: number): '1' | 'X' | '2' {
   if (home > away) return '1';
   if (away > home) return '2';
@@ -42,19 +32,16 @@ export function useAutoResolveBets() {
       isRunning.current = true;
 
       try {
-        const pending = latestBets.current.filter((bet) => {
-          if (bet.status !== 'pending') return false;
-          return normalizeFixtureId(bet.fixture_id) !== null;
-        });
+        const pending = latestBets.current.filter(
+          (bet) => bet.status === 'pending' && typeof bet.fixture_id === 'number',
+        );
 
         for (const bet of pending) {
-          if (!active || inFlight.current.has(bet.id)) continue;
-          const fixtureId = normalizeFixtureId(bet.fixture_id);
-          if (fixtureId === null) continue;
+          if (!active || inFlight.current.has(bet.id) || bet.fixture_id === null) continue;
           inFlight.current.add(bet.id);
 
           try {
-            const fixture = await fetchFixtureById(fixtureId);
+            const fixture = await fetchFixtureById(bet.fixture_id);
             if (!fixture) continue;
 
             const statusShort = fixture.fixture.status.short;
