@@ -532,3 +532,52 @@ export interface H2HFixture {
   };
   goals: { home: number | null; away: number | null };
 }
+
+// ── Match context (stats + h2h) ──
+
+export interface MatchContext {
+  fixture: ApiFixture;
+  homeStats: TeamStats | null;
+  awayStats: TeamStats | null;
+  h2h: H2HFixture[];
+}
+
+/**
+ * Fetch full match context: head-to-head history.
+ * Team stats are not available on the free plan, so we return null.
+ */
+export async function fetchMatchContext(fixture: ApiFixture): Promise<MatchContext> {
+  let h2h: H2HFixture[] = [];
+
+  try {
+    const response = await apiFootballFetch<ApiFootballFixture>(
+      'fixtures/headtohead',
+      {
+        h2h: `${fixture.teams.home.id}-${fixture.teams.away.id}`,
+        last: '5',
+      },
+      'estatistica',
+      'low'
+    );
+
+    if (!hasApiErrors(response) && response.response) {
+      h2h = response.response.map(f => ({
+        fixture: { date: f.fixture.date },
+        teams: {
+          home: { id: f.teams.home.id, name: f.teams.home.name, winner: f.teams.home.winner },
+          away: { id: f.teams.away.id, name: f.teams.away.name, winner: f.teams.away.winner },
+        },
+        goals: { home: f.goals.home, away: f.goals.away },
+      }));
+    }
+  } catch (err) {
+    console.warn('[Oracle] H2H fetch failed:', err);
+  }
+
+  return {
+    fixture,
+    homeStats: null,
+    awayStats: null,
+    h2h,
+  };
+}
