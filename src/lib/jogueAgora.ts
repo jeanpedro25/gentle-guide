@@ -74,6 +74,15 @@ function estimateOdds(fixture: ApiFixture): { h: number; d: number; a: number } 
   };
 }
 
+function logEvDebug(probReal: number, odd: number, fonte: string) {
+  console.log('=== DEBUG ODDS ===');
+  console.log('Fonte da odd:', fonte);
+  console.log('Odd recebida:', odd);
+  console.log('Probabilidade usada:', probReal);
+  console.log('EV calculado:', (probReal * odd) - 1);
+  console.log('==================');
+}
+
 function calcConfianca(
   ev: number,
   prob: number,
@@ -101,6 +110,10 @@ export function analyzeMatch(fixture: ApiFixture): AnaliseJogo {
   const evH = (pH * odds.h) - 1;
   const evD = (pD * odds.d) - 1;
   const evA = (pA * odds.a) - 1;
+
+  logEvDebug(pH, odds.h, 'estimateOdds() em src/lib/jogueAgora.ts (Casa)');
+  logEvDebug(pD, odds.d, 'estimateOdds() em src/lib/jogueAgora.ts (Empate)');
+  logEvDebug(pA, odds.a, 'estimateOdds() em src/lib/jogueAgora.ts (Fora)');
 
   const maxEV = Math.max(evH, evD, evA);
   const melhor_resultado = maxEV === evH ? '1' as const : maxEV === evD ? 'X' as const : '2' as const;
