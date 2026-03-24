@@ -103,7 +103,7 @@ function ProbabilityBar({ label, value }: { label: string; value: number }) {
 }
 
 export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, onClose }: Props) {
-  const [showDetails, setShowDetails] = useState(false);
+  const [showDetails, setShowDetails] = useState(true);
   const [betAmount, setBetAmount] = useState('');
   const [manualReturn, setManualReturn] = useState('');
   const [oracle, setOracle] = useState<OracleAnalysis | null>(null);
@@ -113,7 +113,7 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
   const { data: bankroll } = useBankroll();
 
   useEffect(() => {
-    setShowDetails(false);
+    setShowDetails(true);
     setBetAmount('');
     setManualReturn('');
     setOracle(null);
