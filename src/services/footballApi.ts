@@ -50,7 +50,7 @@ interface ApiFootballOddsResponse {
 
 type OddsApiEvent = Record<string, unknown>;
 
-const ODDS_API_BASE_URL = 'https://api.odds-api.io/v3';
+const ODDS_API_BASE_URL = 'https://api.odds-api.io/v3/';
 
 function hashStringToNumber(value: string): number {
   let hash = 0;
@@ -327,7 +327,12 @@ async function fetchOddsApiEvents(): Promise<ApiFixture[]> {
     import.meta.env.VITE_ODDS_API_KEY ||
     import.meta.env.ODDS_API_KEY;
 
-  const baseUrl = `${ODDS_API_BASE_URL}/events?sport=football`;
+  const params = new URLSearchParams({
+    sports: 'football',
+    markets: 'h2h',
+    leagues: 'all',
+  });
+  const baseUrl = `${ODDS_API_BASE_URL}events?${params.toString()}`;
   const urlWithKey = apiKey ? `${baseUrl}&apiKey=${encodeURIComponent(apiKey)}` : baseUrl;
 
   const request = async (url: string) => {

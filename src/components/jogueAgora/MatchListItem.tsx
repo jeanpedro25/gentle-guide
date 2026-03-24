@@ -33,7 +33,7 @@ export function MatchListItem({ fixture, onAnalyze }: Props) {
       id: leagueId,
       apiId: fixture.league.id,
       nome: fixture.league.name,
-      bandeira: 'üèüÔ∏è',
+      bandeira: '🏟️',
     });
   }, [fixture.league.id, fixture.league.name, registerDynamicLeague]);
 

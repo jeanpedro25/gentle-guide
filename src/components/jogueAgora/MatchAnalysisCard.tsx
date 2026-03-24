@@ -72,7 +72,7 @@ export function TopCard({ analise, index, onBet }: Props) {
 
       {/* Predicted score */}
       <div className="bg-secondary/60 rounded-lg p-3 text-center">
-        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Placar Prov√°vel</p>
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Placar Provavel</p>
         <p className="text-2xl font-black text-foreground tracking-widest">{analise.placar_provavel}</p>
         <p className="text-[10px] text-muted-foreground">{analise.prob_placar.toFixed(1)}% de probabilidade</p>
       </div>
@@ -101,7 +101,7 @@ export function TopCard({ analise, index, onBet }: Props) {
 
       {/* Confidence */}
       <div>
-        <p className="text-[10px] text-muted-foreground mb-1">Confian√ßa</p>
+        <p className="text-[10px] text-muted-foreground mb-1">Confianca</p>
         <ConfidenceBar value={analise.confianca} />
       </div>
 
