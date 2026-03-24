@@ -18,9 +18,26 @@ import { useBankroll } from '@/hooks/usePredictions';
 import { AnaliseJogo, PICK_LABELS, PICK_LABELS_FULL } from '@/lib/jogueAgora';
 import { gerarDecisaoFinal, getEvExplanation } from '@/lib/evDecision';
 import { ApiFixture } from '@/types/fixture';
-import { fetchMatchContext } from '@/services/footballApi';
+import { MatchContext, fetchMatchContext } from '@/services/footballApi';
 import { analyzeMatch as analyzeOracleMatch } from '@/services/oracleService';
-import { OracleAnalysis, probAsPercent } from '@/types/prediction';
+import { OracleAnalysis, oracleToLegacy, probAsPercent } from '@/types/prediction';
+import { AnalysisSummary } from '@/components/oracle/AnalysisSummary';
+import { BetCard } from '@/components/oracle/BetCard';
+import { VerdictCard } from '@/components/oracle/VerdictCard';
+import { ConfidenceGradeCard } from '@/components/oracle/ConfidenceGradeCard';
+import { EVDisplay } from '@/components/oracle/EVDisplay';
+import { PoissonSection } from '@/components/oracle/PoissonSection';
+import { PoissonHeatmap } from '@/components/oracle/PoissonHeatmap';
+import { FormationPitch } from '@/components/oracle/FormationPitch';
+import { PlayerLineup } from '@/components/oracle/PlayerLineup';
+import { GoalkeeperDuelCard } from '@/components/oracle/GoalkeeperDuelCard';
+import { PlayerMatchups } from '@/components/oracle/PlayerMatchups';
+import { MarketComparisonCard } from '@/components/oracle/MarketComparisonCard';
+import { AnalysisBreakdown } from '@/components/oracle/AnalysisBreakdown';
+import { BettingInsight } from '@/components/oracle/BettingInsight';
+import { RedFlagsCard } from '@/components/oracle/RedFlagsCard';
+import { H2HHistory } from '@/components/oracle/H2HHistory';
+import { BankrollCalculator } from '@/components/oracle/BankrollCalculator';
 
 const MANUAL_BET_STORAGE_KEY = 'profeta-bet:manual-bets';
 
@@ -109,6 +126,7 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
   const [oracle, setOracle] = useState<OracleAnalysis | null>(null);
   const [oracleLoading, setOracleLoading] = useState(false);
   const [oracleError, setOracleError] = useState<string | null>(null);
+  const [matchContext, setMatchContext] = useState<MatchContext | null>(null);
   const createBet = useCreateBet();
   const { data: bankroll } = useBankroll();
 
@@ -119,6 +137,7 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
     setOracle(null);
     setOracleError(null);
     setOracleLoading(false);
+    setMatchContext(null);
   }, [fixture?.fixture.id]);
 
   useEffect(() => {
@@ -130,6 +149,9 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
         setOracleLoading(true);
         setOracleError(null);
         const context = await fetchMatchContext(fixture);
+        if (isActive) {
+          setMatchContext(context);
+        }
         const oracleResult = await analyzeOracleMatch(
           fixture,
           context.homeStats,
@@ -165,6 +187,10 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
   const betValue = Number.parseFloat(betAmount.replace(',', '.')) || 0;
   const manualReturnValue = Number.parseFloat(manualReturn.replace(',', '.')) || 0;
   const hasManualReturn = manualReturn.trim().length > 0;
+  const legacyResult = useMemo(() => {
+    if (!oracle || !fixture) return null;
+    return oracleToLegacy(oracle, fixture.teams.home.name, fixture.teams.away.name);
+  }, [oracle, fixture]);
   const potentialProfit = hasManualReturn
     ? Math.max(0, manualReturnValue - betValue)
     : analysis
@@ -688,6 +714,50 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
                             </div>
                           </div>
                         </div>
+
+                        {oracle && legacyResult && (
+                          <div className="space-y-4">
+                            <AnalysisSummary
+                              oracle={oracle}
+                              homeTeam={fixture.teams.home.name}
+                              awayTeam={fixture.teams.away.name}
+                            />
+
+                            <BetCard
+                              homeTeam={fixture.teams.home.name}
+                              awayTeam={fixture.teams.away.name}
+                              league={fixture.league.name}
+                              fixtureId={fixture.fixture.id}
+                              prediction={oracle.primaryBet.market.includes(fixture.teams.home.name)
+                                ? '1'
+                                : oracle.primaryBet.market.includes(fixture.teams.away.name)
+                                ? '2'
+                                : 'X'}
+                            />
+
+                            <VerdictCard
+                              result={legacyResult}
+                              oracle={oracle}
+                              homeTeam={fixture.teams.home.name}
+                              awayTeam={fixture.teams.away.name}
+                            />
+
+                            <ConfidenceGradeCard oracle={oracle} />
+                            <EVDisplay oracle={oracle} />
+                            <PoissonSection oracle={oracle} homeTeam={fixture.teams.home.name} awayTeam={fixture.teams.away.name} />
+                            <PoissonHeatmap oracle={oracle} homeTeam={fixture.teams.home.name} awayTeam={fixture.teams.away.name} />
+                            <FormationPitch oracle={oracle} homeTeam={fixture.teams.home.name} awayTeam={fixture.teams.away.name} />
+                            <PlayerLineup oracle={oracle} homeTeam={fixture.teams.home.name} awayTeam={fixture.teams.away.name} />
+                            <GoalkeeperDuelCard oracle={oracle} homeTeam={fixture.teams.home.name} awayTeam={fixture.teams.away.name} />
+                            <PlayerMatchups oracle={oracle} homeTeam={fixture.teams.home.name} awayTeam={fixture.teams.away.name} />
+                            <MarketComparisonCard oracle={oracle} />
+                            <AnalysisBreakdown result={legacyResult} oracle={oracle} />
+                            <BettingInsight result={legacyResult} oracle={oracle} />
+                            {(oracle.redFlags?.length ?? 0) > 0 && <RedFlagsCard redFlags={oracle.redFlags} />}
+                            <H2HHistory h2h={matchContext?.h2h ?? []} homeTeamId={fixture.teams.home.id} />
+                            <BankrollCalculator oracle={oracle} />
+                          </div>
+                        )}
                       </motion.div>
                     )}
                   </AnimatePresence>
