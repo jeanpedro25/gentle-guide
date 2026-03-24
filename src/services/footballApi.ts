@@ -72,12 +72,12 @@ async function rawApiFootballFetch<T = unknown>(
     import.meta.env.VITE_API_FOOTBALL_KEY;
 
   const { data, error } = await supabase.functions.invoke('football-proxy', {
-    body: { endpoint, params },
+    body: { endpoint, params, apiKey: clientKey },
   });
 
   if (error) {
     if (!clientKey) {
-      throw new Error(error.message || 'Proxy error');
+      throw new Error(error.message || 'Proxy error: configure VITE_ODDS_API_KEY');
     }
 
     console.warn('[Oracle] football-proxy unavailable, falling back to client key');
