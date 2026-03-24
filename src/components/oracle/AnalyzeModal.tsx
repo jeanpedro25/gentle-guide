@@ -27,7 +27,8 @@ export function AnalyzeModal({
   isLoading, 
   bankrollAmount = 200,
   fixtureId,
-  league = ''
+  league = '',
+  onViewFull
 }: AnalyzeModalProps) {
   if (!isOpen) return null;
 
