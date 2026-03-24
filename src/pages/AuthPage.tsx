@@ -18,6 +18,10 @@ export default function AuthPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isSupabaseConfigured) {
+      toast.error('Configure a chave anon do Supabase para continuar.');
+      return;
+    }
     setLoading(true);
 
     try {
@@ -124,7 +128,7 @@ export default function AuthPage() {
             </div>
           </div>
 
-          <Button type="submit" className="w-full font-bold" disabled={loading}>
+          <Button type="submit" className="w-full font-bold" disabled={loading || !isSupabaseConfigured}>
             {loading ? (
               <span className="animate-pulse">Aguarde...</span>
             ) : isLogin ? (
