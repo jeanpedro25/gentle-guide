@@ -70,7 +70,38 @@ async function rawApiFootballFetch<T = unknown>(
     body: { endpoint, params },
   });
 
-  if (error) throw new Error(error.message || 'Proxy error');
+  if (error) {
+    const clientKey =
+      import.meta.env.VITE_FOOTBALL_API_KEY ||
+      import.meta.env.VITE_ODDS_API_KEY ||
+      import.meta.env.VITE_API_FOOTBALL_KEY;
+
+    if (!clientKey) {
+      throw new Error(error.message || 'Proxy error');
+    }
+
+    console.warn('[Oracle] football-proxy unavailable, falling back to client key');
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    const queryParams = new URLSearchParams(params || {});
+    const url = `https://v3.football.api-sports.io/${cleanEndpoint}?${queryParams.toString()}`;
+    const res = await fetch(url, {
+      headers: {
+        'x-apisports-key': clientKey,
+      },
+    });
+    const response = (await res.json()) as ApiFootballResponse<T>;
+
+    if (!res.ok) {
+      const msg = getApiErrorMessage(response);
+      lastApiError = msg || `HTTP ${res.status}`;
+      if (/limit|too many|quota/i.test(lastApiError)) {
+        throw new ApiLimitError(lastApiError);
+      }
+      throw new Error(lastApiError || 'API error');
+    }
+
+    return response;
+  }
 
   const response = data as ApiFootballResponse<T>;
 
