@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export interface PredictionRow {
   id: string;
+  user_id: string | null;
   fixture_id: number;
   home_team: string;
   away_team: string;
@@ -22,12 +23,14 @@ export interface PredictionRow {
 
 export interface BankrollRow {
   id: string;
+  user_id: string | null;
   amount: number;
   updated_at: string;
 }
 
 export interface BetResultRow {
   id: string;
+  user_id: string | null;
   prediction_id: string;
   won: boolean | null;
   actual_score: string | null;
@@ -36,70 +39,81 @@ export interface BetResultRow {
 }
 
 export function usePredictions() {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['predictions'],
+    queryKey: ['predictions', user?.id],
     queryFn: async () => {
+      if (!user) return [] as PredictionRow[];
       const { data, error } = await supabase
         .from('predictions')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data as unknown as PredictionRow[];
     },
+    enabled: !!user,
   });
 }
 
 export function usePredictionByFixture(fixtureId: number | undefined) {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['predictions', 'fixture', fixtureId],
+    queryKey: ['predictions', 'fixture', fixtureId, user?.id],
     queryFn: async () => {
-      if (!fixtureId) return null;
+      if (!fixtureId || !user) return null;
       const { data, error } = await supabase
         .from('predictions')
         .select('*')
         .eq('fixture_id', fixtureId)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(1);
       if (error) throw error;
       return (data?.[0] as unknown as PredictionRow) ?? null;
     },
-    enabled: !!fixtureId,
+    enabled: !!fixtureId && !!user,
   });
 }
 
 export function useSavePrediction() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   return useMutation({
     mutationFn: async (prediction: Omit<PredictionRow, 'id' | 'created_at'>) => {
+      if (!user) throw new Error('Usuário não autenticado');
       const { data, error } = await supabase
         .from('predictions')
-        .insert(prediction as any)
+        .insert({ ...prediction, user_id: user.id } as any)
         .select()
         .single();
       if (error) throw error;
       return data as unknown as PredictionRow;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['predictions'] });
+      queryClient.invalidateQueries({ queryKey: ['predictions', user?.id] });
     },
   });
 }
 
 export function useUpdatePredictionStatus() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      if (!user) throw new Error('Usuário não autenticado');
       const { data, error } = await supabase
         .from('predictions')
         .update({ status } as any)
         .eq('id', id)
+        .eq('user_id', user.id)
         .select()
         .single();
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['predictions'] });
+      queryClient.invalidateQueries({ queryKey: ['predictions', user?.id] });
     },
   });
 }
@@ -113,7 +127,7 @@ export function useBankroll() {
       const { data, error } = await supabase
         .from('bankroll')
         .select('*')
-        .eq('id', user.id)
+        .eq('user_id', user.id)
         .maybeSingle();
       
       if (error) throw error;
@@ -134,19 +148,20 @@ export function useUpdateBankroll() {
       const { data: existing } = await supabase
         .from('bankroll')
         .select('id')
-        .eq('id', user.id)
+        .eq('user_id', user.id)
         .maybeSingle();
 
       if (existing) {
         const { error } = await supabase
           .from('bankroll')
           .update({ amount, updated_at: new Date().toISOString() })
-          .eq('id', existing.id);
+          .eq('id', existing.id)
+          .eq('user_id', user.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('bankroll')
-          .insert({ id: user.id, amount } as any);
+          .insert({ user_id: user.id, amount } as any);
         if (error) throw error;
       }
     },
@@ -157,15 +172,19 @@ export function useUpdateBankroll() {
 }
 
 export function useBetResults() {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['bet_results'],
+    queryKey: ['bet_results', user?.id],
     queryFn: async () => {
+      if (!user) return [] as any[];
       const { data, error } = await supabase
         .from('bet_results')
         .select('*')
+        .eq('user_id', user.id)
         .order('resolved_at', { ascending: false });
       if (error) throw error;
       return data as unknown as any[];
     },
+    enabled: !!user,
   });
 }

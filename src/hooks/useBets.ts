@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export interface BetRow {
   id: string;
+  user_id: string | null;
   home_team: string;
   away_team: string;
   league: string;
@@ -21,32 +22,38 @@ export interface BetRow {
 }
 
 export function useBets() {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['bets'],
+    queryKey: ['bets', user?.id],
     queryFn: async () => {
+      if (!user) return [] as BetRow[];
       const { data, error } = await supabase
         .from('bets')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data as unknown as BetRow[];
     },
+    enabled: !!user,
   });
 }
 
 export function useCreateBet() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   return useMutation({
     mutationFn: async (bet: Omit<BetRow, 'id' | 'created_at' | 'resolved_at' | 'status' | 'actual_result' | 'actual_score' | 'profit_loss'>) => {
+      if (!user) throw new Error('Usuário não autenticado');
       const { data, error } = await supabase
         .from('bets')
-        .insert({ ...bet, status: 'pending' } as any)
+        .insert({ ...bet, status: 'pending', user_id: user.id } as any)
         .select()
         .single();
       if (error) throw error;
       return data as unknown as BetRow;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['bets'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['bets', user?.id] }),
   });
 }
 
@@ -62,6 +69,7 @@ export function useResolveBet() {
         .from('bets')
         .update({ status, actual_result, actual_score, profit_loss, resolved_at: new Date().toISOString() } as any)
         .eq('id', id)
+        .eq('user_id', user.id)
         .eq('status', 'pending')
         .select('id, status')
         .maybeSingle();
@@ -86,7 +94,7 @@ export function useResolveBet() {
       if (updateBankrollError) throw updateBankrollError;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['bets'] });
+      qc.invalidateQueries({ queryKey: ['bets', user?.id] });
       qc.invalidateQueries({ queryKey: ['bankroll', user?.id] });
     },
   });
@@ -119,6 +127,7 @@ export function useUpdateBetManual() {
         .from('bets')
         .update({ status, actual_result, actual_score, profit_loss, resolved_at } as any)
         .eq('id', id)
+        .eq('user_id', user.id)
         .select('id, status, profit_loss')
         .maybeSingle();
       if (error) throw error;
@@ -145,7 +154,7 @@ export function useUpdateBetManual() {
       if (updateBankrollError) throw updateBankrollError;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['bets'] });
+      qc.invalidateQueries({ queryKey: ['bets', user?.id] });
       qc.invalidateQueries({ queryKey: ['bankroll', user?.id] });
     },
   });
