@@ -29,9 +29,22 @@ export default function BankrollPage() {
   const wins = resolved.filter(b => b.status === 'won');
   const pending = bets.filter(b => b.status === 'pending');
   
-  const safeStake = bankrollAmount * 0.02;
-  const maxStake = bankrollAmount * 0.05;
-  const weeklyStop = bankrollAmount * 0.2;
+  const safePct = 2;
+  const maxPct = 5;
+  const weeklyStopPct = 20;
+  const safeStake = bankrollAmount * (safePct / 100);
+  const maxStake = bankrollAmount * (maxPct / 100);
+  const weeklyStop = bankrollAmount * (weeklyStopPct / 100);
+  const lastBet = bets[0];
+  const lastBetPct = bankrollAmount > 0 && lastBet ? (lastBet.stake / bankrollAmount) * 100 : null;
+  const riskPerOpPct = lastBetPct !== null ? Math.min(100, lastBetPct) : safePct;
+  const riskProfileLabel = riskPerOpPct <= 2 ? 'Conservador' : riskPerOpPct <= 4 ? 'Moderado' : 'Agressivo';
+  const riskProfileDescription =
+    riskProfileLabel === 'Conservador'
+      ? 'Prioriza proteção da banca e consistência.'
+      : riskProfileLabel === 'Moderado'
+        ? 'Equilíbrio entre crescimento e proteção.'
+        : 'Busca crescimento mais rápido com maior exposição.';
 
   const handleSaveBankroll = async () => {
     const amount = parseFloat(bankrollInput.replace(',', '.'));
@@ -179,19 +192,43 @@ export default function BankrollPage() {
             <Target className="w-5 h-5 text-primary mx-auto mb-1" />
             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Stake segura</p>
             <p className="font-black text-xl text-white">R$ {safeStake.toFixed(2)}</p>
-            <p className="text-[10px] text-muted-foreground">2% da banca</p>
+            <p className="text-[10px] text-muted-foreground">{safePct}% da banca</p>
           </div>
           <div className="rounded-xl bg-secondary/40 border border-border p-4 text-center">
             <TrendingUp className="w-5 h-5 text-amber-500 mx-auto mb-1" />
             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Risco máximo</p>
             <p className="font-black text-xl text-white">R$ {maxStake.toFixed(2)}</p>
-            <p className="text-[10px] text-muted-foreground">5% da banca</p>
+            <p className="text-[10px] text-muted-foreground">{maxPct}% da banca</p>
           </div>
           <div className="rounded-xl bg-secondary/40 border border-border p-4 text-center">
             <DollarSign className="w-5 h-5 text-destructive mx-auto mb-1" />
             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Stop semanal</p>
             <p className="font-black text-xl text-white">R$ {weeklyStop.toFixed(2)}</p>
-            <p className="text-[10px] text-muted-foreground">20% da banca</p>
+            <p className="text-[10px] text-muted-foreground">{weeklyStopPct}% da banca</p>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-border/60 bg-secondary/20 p-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Percentual de risco por operação</p>
+              <p className="text-sm font-semibold text-foreground">
+                {riskPerOpPct.toFixed(1)}% atual{lastBet ? ' (última aposta)' : ''} · {safePct}% recomendado · {maxPct}% máximo
+              </p>
+            </div>
+            <div className="px-2.5 py-1 rounded-full bg-primary/15 text-primary text-[11px] font-bold uppercase tracking-wider">
+              Perfil {riskProfileLabel}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="rounded-lg border border-border/60 bg-background/30 p-3">
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Configuração recomendada</p>
+              <p className="text-sm text-foreground">Stake segura {safePct}%, risco máximo {maxPct}% e stop semanal {weeklyStopPct}%.</p>
+            </div>
+            <div className="rounded-lg border border-border/60 bg-background/30 p-3">
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Classificação de perfil</p>
+              <p className="text-sm text-foreground">{riskProfileLabel} — {riskProfileDescription}</p>
+            </div>
           </div>
         </div>
       </div>
