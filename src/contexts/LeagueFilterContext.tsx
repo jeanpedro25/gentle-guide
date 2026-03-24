@@ -181,6 +181,7 @@ export function LeagueFilterProvider({ children }: { children: ReactNode }) {
 
     setLeagueMap((prev) => {
       const next = { ...prev };
+      const prevCount = Object.keys(prev).length;
 
       const leagueNorm = normalizeLeagueName(league.nome);
       const existingByApi = typeof league.apiId === "number"
@@ -203,7 +204,14 @@ export function LeagueFilterProvider({ children }: { children: ReactNode }) {
         source: next[targetId]?.source || "dynamic",
       };
 
-      persist(selectedLeagueIds, next);
+      const allPreviouslySelected = selectedLeagueIds.length > 0 && selectedLeagueIds.length === prevCount;
+      if (allPreviouslySelected && !selectedLeagueIds.includes(targetId)) {
+        const nextSelected = [...selectedLeagueIds, targetId];
+        setSelectedLeagueIds(nextSelected);
+        persist(nextSelected, next);
+      } else {
+        persist(selectedLeagueIds, next);
+      }
       return next;
     });
   }, [persist, selectedLeagueIds]);
