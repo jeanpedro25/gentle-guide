@@ -66,21 +66,50 @@ async function rawApiFootballFetch<T = unknown>(
 ): Promise<ApiFootballResponse<T>> {
   console.log('[Oracle] API-Football →', endpoint, params || '');
 
+  const clientKey =
+    import.meta.env.VITE_FOOTBALL_API_KEY ||
+    import.meta.env.VITE_ODDS_API_KEY ||
+    import.meta.env.VITE_API_FOOTBALL_KEY;
+
   const { data, error } = await supabase.functions.invoke('football-proxy', {
     body: { endpoint, params },
   });
 
   if (error) {
-    const clientKey =
-      import.meta.env.VITE_FOOTBALL_API_KEY ||
-      import.meta.env.VITE_ODDS_API_KEY ||
-      import.meta.env.VITE_API_FOOTBALL_KEY;
-
     if (!clientKey) {
       throw new Error(error.message || 'Proxy error');
     }
 
     console.warn('[Oracle] football-proxy unavailable, falling back to client key');
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    const queryParams = new URLSearchParams(params || {});
+    const url = `https://v3.football.api-sports.io/${cleanEndpoint}?${queryParams.toString()}`;
+    const res = await fetch(url, {
+      headers: {
+        'x-apisports-key': clientKey,
+      },
+    });
+    const response = (await res.json()) as ApiFootballResponse<T>;
+
+    if (!res.ok) {
+      const msg = getApiErrorMessage(response);
+      lastApiError = msg || `HTTP ${res.status}`;
+      if (/limit|too many|quota/i.test(lastApiError)) {
+        throw new ApiLimitError(lastApiError);
+      }
+      throw new Error(lastApiError || 'API error');
+    }
+
+    return response;
+  }
+
+  if (data && typeof data === 'object' && 'error' in data) {
+    const errorMessage = String((data as { error?: unknown }).error || 'Erro na API');
+    lastApiError = errorMessage;
+    if (!clientKey) {
+      throw new Error(errorMessage);
+    }
+    console.warn('[Oracle] football-proxy retornou erro, usando client key');
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
     const queryParams = new URLSearchParams(params || {});
     const url = `https://v3.football.api-sports.io/${cleanEndpoint}?${queryParams.toString()}`;
@@ -374,8 +403,13 @@ async function fetchMatchesByDate(date: string): Promise<ApiFixture[]> {
     console.log(`[Oracle] fetchMatchesByDate(${date}): found ${fixtures.length} matches`);
     return fixtures;
   } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Erro ao buscar jogos.';
+    lastApiError = msg;
     console.error(`[Oracle] fetchMatchesByDate(${date}) error:`, err);
     if (isApiLimitError(err)) throw err;
+    if (/api key|apikey|proxy|not configured|all api keys|unauthorized|rate|limit/i.test(msg)) {
+      throw err instanceof Error ? err : new Error(msg);
+    }
     return [];
   }
 }
