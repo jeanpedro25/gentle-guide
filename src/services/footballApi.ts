@@ -124,10 +124,12 @@ export function hasApiKey(): boolean { return true; }
 
 // ── Date helpers ──
 
+export const BRAZIL_TIMEZONE = 'America/Manaus';
+
 function getBrazilDateString(offset = 0): string {
   const now = new Date();
   now.setDate(now.getDate() + offset);
-  return now.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+  return now.toLocaleDateString('en-CA', { timeZone: BRAZIL_TIMEZONE });
 }
 
 export function formatBrazilTime(dateStr: string, _timeStr?: string): string {
@@ -135,7 +137,7 @@ export function formatBrazilTime(dateStr: string, _timeStr?: string): string {
   const dt = new Date(dateStr);
   if (Number.isNaN(dt.getTime())) return '';
   return dt.toLocaleString('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: BRAZIL_TIMEZONE,
     weekday: 'short',
     day: '2-digit',
     month: 'short',

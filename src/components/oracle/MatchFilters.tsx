@@ -3,6 +3,7 @@ import { Filter, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLeagueFilter } from '@/contexts/LeagueFilterContext';
 import { createLeagueMatcher, readSelectedLeagueIdsFromStorage, resolveLeagueOptions } from '@/lib/leagueFilter';
+import { BRAZIL_TIMEZONE } from '@/services/footballApi';
 
 export interface MatchFiltersState {
   league: string;
@@ -160,7 +161,7 @@ export function applyMatchFilters(
       ...g,
       fixtures: g.fixtures.filter(f => {
         const date = new Date(f.fixture.timestamp * 1000);
-        const hour = parseInt(date.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hour12: false }));
+        const hour = parseInt(date.toLocaleString('en-US', { timeZone: BRAZIL_TIMEZONE, hour: '2-digit', hour12: false }));
         if (filters.timeOfDay === 'morning') return hour >= 6 && hour < 12;
         if (filters.timeOfDay === 'afternoon') return hour >= 12 && hour < 18;
         if (filters.timeOfDay === 'night') return hour >= 18 || hour < 6;

@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Trophy, Target, Compass, TrendingUp } from 'lucide-react';
 import { AnaliseJogo, PICK_LABELS_FULL } from '@/lib/jogueAgora';
+import { BRAZIL_TIMEZONE } from '@/services/footballApi';
 import { gerarDecisaoFinal, getBadgeJogo } from '@/lib/evDecision';
 
 interface Props {
@@ -58,7 +59,7 @@ export function TopCard({ analise, index, onBet }: Props) {
             month: '2-digit',
             hour: '2-digit',
             minute: '2-digit',
-            timeZone: 'America/Manaus',
+            timeZone: BRAZIL_TIMEZONE,
           })}
         </p>
       </div>
@@ -152,7 +153,7 @@ export function MedioCard({ analise, index, onBet }: Props) {
               month: '2-digit',
               hour: '2-digit',
               minute: '2-digit',
-              timeZone: 'America/Manaus',
+              timeZone: BRAZIL_TIMEZONE,
             })}
           </p>
         </div>
@@ -201,7 +202,7 @@ export function ExplorarCard({ analise, index, onBet }: Props) {
           <span className="text-[10px] text-muted-foreground">{analise.fixture.league.name}</span>
         </div>
         <span className="text-[10px] text-muted-foreground">
-          {new Date(analise.fixture.fixture.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}
+          {new Date(analise.fixture.fixture.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: BRAZIL_TIMEZONE })}
         </span>
       </div>
 

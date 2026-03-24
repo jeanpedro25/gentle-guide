@@ -24,18 +24,28 @@ export default function JogueAgoraPage() {
   const bankrollAmount = bankroll?.amount ?? 200;
 
   // Filtro Otimizado: Apenas jogos NS, nas próximas 4 horas e que respeitam o filtro de ligas
+  // Fallback: se não houver jogos nas próximas 4h, ampliar para 12h e depois para o dia todo.
   const upcomingMatches = useMemo(() => {
-    return todayMatches.filter(m => {
+    const candidates = todayMatches.filter(m => {
       if (m.fixture.status.short !== 'NS') return false;
       if (!isLeagueAllowed(m.league.name, m.league.id)) return false;
-
-      const matchTime = new Date(m.fixture.date).getTime();
-      const now = Date.now();
-      const diffHours = (matchTime - now) / (1000 * 60 * 60);
-      
-      // Foco total: Próximas 4 horas
-      return diffHours > 0 && diffHours <= 4;
+      return true;
     });
+
+    const now = Date.now();
+    const withDiff = candidates.map(m => {
+      const matchTime = new Date(m.fixture.date).getTime();
+      const diffHours = (matchTime - now) / (1000 * 60 * 60);
+      return { fixture: m, diffHours };
+    });
+
+    const within4 = withDiff.filter(({ diffHours }) => diffHours > 0 && diffHours <= 4).map(({ fixture }) => fixture);
+    if (within4.length > 0) return within4;
+
+    const within12 = withDiff.filter(({ diffHours }) => diffHours > 0 && diffHours <= 12).map(({ fixture }) => fixture);
+    if (within12.length > 0) return within12;
+
+    return candidates;
   }, [todayMatches, isLeagueAllowed]);
 
   useEffect(() => {
