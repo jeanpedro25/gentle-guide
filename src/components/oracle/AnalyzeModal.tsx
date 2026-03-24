@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Zap, TrendingUp, AlertTriangle, Target, DollarSign, Check } from 'lucide-react';
+import { X, Zap, TrendingUp, AlertTriangle, Target, DollarSign, Check, ExternalLink } from 'lucide-react';
 import { OracleAnalysis, probAsPercent } from '@/types/prediction';
 import { BetCard } from './BetCard';
 import { toast } from 'sonner';
@@ -15,6 +15,7 @@ interface AnalyzeModalProps {
   bankrollAmount?: number;
   fixtureId?: number;
   league?: string;
+  onViewFull?: () => void;
 }
 
 export function AnalyzeModal({ 
@@ -26,7 +27,8 @@ export function AnalyzeModal({
   isLoading, 
   bankrollAmount = 200,
   fixtureId,
-  league = ''
+  league = '',
+  onViewFull
 }: AnalyzeModalProps) {
   if (!isOpen) return null;
 
@@ -166,7 +168,17 @@ export function AnalyzeModal({
                     <p className="font-display text-lg text-foreground">{probAsPercent(value).toFixed(0)}%</p>
                   </div>
                 ))}
-              </div>
+               </div>
+
+              {onViewFull && (
+                <button
+                  onClick={onViewFull}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-display text-sm tracking-widest bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  VER ANÁLISE COMPLETA
+                </button>
+              )}
             </>
           ) : null}
         </motion.div>
