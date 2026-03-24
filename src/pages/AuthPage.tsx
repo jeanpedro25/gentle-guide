@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { isSupabaseConfigured, supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { Eye, EyeOff, LogIn, UserPlus } from 'lucide-react';
 
@@ -17,6 +18,10 @@ export default function AuthPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isSupabaseConfigured) {
+      toast.error('Configure a chave anon do Supabase para continuar.');
+      return;
+    }
     setLoading(true);
 
     try {
@@ -64,6 +69,16 @@ export default function AuthPage() {
             </p>
           </div>
         </div>
+
+        {!isSupabaseConfigured && (
+          <Alert variant="destructive">
+            <AlertTitle>Chave do Supabase invalida</AlertTitle>
+            <AlertDescription>
+              Configure uma chave anon valida nas variaveis `VITE_SUPABASE_ANON_KEY` ou
+              `VITE_SUPABASE_PUBLISHABLE_KEY` para liberar o login.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -113,7 +128,7 @@ export default function AuthPage() {
             </div>
           </div>
 
-          <Button type="submit" className="w-full font-bold" disabled={loading}>
+          <Button type="submit" className="w-full font-bold" disabled={loading || !isSupabaseConfigured}>
             {loading ? (
               <span className="animate-pulse">Aguarde...</span>
             ) : isLogin ? (
