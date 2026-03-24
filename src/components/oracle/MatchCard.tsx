@@ -339,6 +339,13 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
         awayTeam={fixture.teams.away.name}
         isLoading={isAnalyzing}
         bankrollAmount={bankrollAmount}
+        fixtureId={fixture.fixture.id}
+        league={fixture.league.name}
+        onViewFull={() => {
+          setShowAnalyzeModal(false);
+          sessionStorage.setItem('selected-fixture', JSON.stringify(fixture));
+          onClick();
+        }}
       />
 
       <LiveReanalysisModal

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Zap, TrendingUp, AlertTriangle, Target, DollarSign, Check } from 'lucide-react';
+import { X, Zap, TrendingUp, AlertTriangle, Target, DollarSign, Check, ExternalLink } from 'lucide-react';
 import { OracleAnalysis, probAsPercent } from '@/types/prediction';
 import { BetCard } from './BetCard';
 import { toast } from 'sonner';
@@ -15,6 +15,7 @@ interface AnalyzeModalProps {
   bankrollAmount?: number;
   fixtureId?: number;
   league?: string;
+  onViewFull?: () => void;
 }
 
 export function AnalyzeModal({ 
