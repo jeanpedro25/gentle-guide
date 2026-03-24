@@ -46,6 +46,128 @@ interface ApiFootballOddsResponse {
   bookmakers: ApiFootballBookmaker[];
 }
 
+// ── Odds-API (api.odds-api.io) fallback ──
+
+type OddsApiEvent = Record<string, unknown>;
+
+const ODDS_API_BASE_URL = 'https://api.odds-api.io/v3';
+
+function hashStringToNumber(value: string): number {
+  let hash = 0;
+  for (let i = 0; i < value.length; i++) {
+    hash = value.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash) || 1;
+}
+
+function normalizeOddsEvent(event: OddsApiEvent): ApiFixture | null {
+  const normalized = Object.fromEntries(
+    Object.entries(event).map(([key, val]) => [key.trim().toLowerCase(), val])
+  ) as Record<string, unknown>;
+
+  const homeTeam = String(
+    normalized.home ??
+      normalized['home_team'] ??
+      normalized['team_home'] ??
+      normalized['lar'] ??
+      normalized['casa'] ??
+      ''
+  ).trim();
+
+  const awayTeam = String(
+    normalized.away ??
+      normalized['away_team'] ??
+      normalized['team_away'] ??
+      normalized['ausente'] ??
+      normalized['fora'] ??
+      ''
+  ).trim();
+
+  const rawDate = String(
+    normalized.date ??
+      normalized['data'] ??
+      normalized['commence_time'] ??
+      normalized['start_time'] ??
+      normalized['start'] ??
+      ''
+  ).trim();
+
+  if (!homeTeam || !awayTeam || !rawDate) return null;
+
+  const fixtureIdRaw =
+    normalized.id ??
+    normalized['event_id'] ??
+    normalized['fixture_id'] ??
+    normalized['eu ia'];
+  const fixtureIdNum = Number(fixtureIdRaw);
+  const fixtureId = Number.isFinite(fixtureIdNum)
+    ? fixtureIdNum
+    : hashStringToNumber(`${homeTeam}|${awayTeam}|${rawDate}`);
+
+  const ts = new Date(rawDate).getTime();
+  if (Number.isNaN(ts)) return null;
+
+  const leagueName = String(
+    normalized.league ??
+      normalized['liga'] ??
+      normalized['competition'] ??
+      normalized['tournament'] ??
+      'Liga'
+  ).trim();
+
+  const statusText = String(
+    normalized.status ??
+      normalized['state'] ??
+      normalized['status_short'] ??
+      'NS'
+  ).trim();
+
+  const statusShort = (() => {
+    const s = statusText.toUpperCase();
+    if (s.includes('LIVE') || s.includes('1H') || s.includes('2H')) return 'LIVE';
+    if (s.includes('FINISHED') || s.includes('FT') || s.includes('FINAL')) return 'FT';
+    if (s.includes('POSTPONED') || s.includes('CANCEL')) return 'PST';
+    return 'NS';
+  })();
+
+  return {
+    fixture: {
+      id: fixtureId,
+      date: rawDate,
+      timestamp: Math.floor(ts / 1000),
+      status: {
+        short: statusShort,
+        long: statusText || 'Not Started',
+      },
+    },
+    league: {
+      id: hashStringToNumber(leagueName),
+      name: leagueName,
+      country: '',
+      logo: '',
+      round: '',
+    },
+    teams: {
+      home: {
+        id: hashStringToNumber(homeTeam),
+        name: homeTeam,
+        logo: '/placeholder.svg',
+        winner: null,
+      },
+      away: {
+        id: hashStringToNumber(awayTeam),
+        name: awayTeam,
+        logo: '/placeholder.svg',
+        winner: null,
+      },
+    },
+    goals: {
+      home: null,
+      away: null,
+    },
+  };
+}
+
 function hasApiErrors(response: ApiFootballResponse): boolean {
   if (Array.isArray(response.errors)) return response.errors.length > 0;
   return Object.keys(response.errors || {}).length > 0;
@@ -190,6 +312,62 @@ function getBrazilDateString(offset = 0): string {
   const now = new Date();
   now.setDate(now.getDate() + offset);
   return now.toLocaleDateString('en-CA', { timeZone: BRAZIL_TIMEZONE });
+}
+
+function getBrazilDateFromISO(dateStr: string): string | null {
+  if (!dateStr) return null;
+  const dt = new Date(dateStr);
+  if (Number.isNaN(dt.getTime())) return null;
+  return dt.toLocaleDateString('en-CA', { timeZone: BRAZIL_TIMEZONE });
+}
+
+async function fetchOddsApiEvents(): Promise<ApiFixture[]> {
+  const apiKey =
+    import.meta.env.VITE_ODDS_API_IO_KEY ||
+    import.meta.env.VITE_ODDS_API_KEY ||
+    import.meta.env.ODDS_API_KEY;
+
+  const baseUrl = `${ODDS_API_BASE_URL}/events?sport=football`;
+  const urlWithKey = apiKey ? `${baseUrl}&apiKey=${encodeURIComponent(apiKey)}` : baseUrl;
+
+  const request = async (url: string) => {
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`odds-api http ${res.status}`);
+    }
+    return res.json();
+  };
+
+  const data = await (async () => {
+    try {
+      return await request(urlWithKey);
+    } catch (err) {
+      if (apiKey) {
+        return await request(baseUrl);
+      }
+      throw err;
+    }
+  })();
+
+  const events = Array.isArray(data)
+    ? data
+    : (data?.data || data?.events || data?.response || []);
+
+  return (events as OddsApiEvent[])
+    .map(evt => normalizeOddsEvent(evt))
+    .filter((fixture): fixture is ApiFixture => Boolean(fixture));
+}
+
+async function fetchOddsFixturesByDate(date: string): Promise<ApiFixture[]> {
+  return cachedFetch<ApiFixture[]>({
+    cacheKey: `oddsapi|events|football|${date}`,
+    tipo: 'jogos',
+    priority: 'low',
+    fetchFn: async () => {
+      const fixtures = await fetchOddsApiEvents();
+      return fixtures.filter(f => getBrazilDateFromISO(f.fixture.date) === date);
+    },
+  });
 }
 
 export function formatBrazilTime(dateStr: string, _timeStr?: string): string {
@@ -400,12 +578,33 @@ async function fetchMatchesByDate(date: string): Promise<ApiFixture[]> {
         return a.fixture.timestamp - b.fixture.timestamp;
       });
 
-    console.log(`[Oracle] fetchMatchesByDate(${date}): found ${fixtures.length} matches`);
-    return fixtures;
+    if (fixtures.length > 0) {
+      console.log(`[Oracle] fetchMatchesByDate(${date}): found ${fixtures.length} matches`);
+      return fixtures;
+    }
+
+    const oddsFixtures = await fetchOddsFixturesByDate(date);
+    if (oddsFixtures.length > 0) {
+      console.warn(`[Oracle] fallback odds-api fixtures(${date}): ${oddsFixtures.length}`);
+      return oddsFixtures;
+    }
+
+    console.log(`[Oracle] fetchMatchesByDate(${date}): found 0 matches`);
+    return [];
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro ao buscar jogos.';
     lastApiError = msg;
     console.error(`[Oracle] fetchMatchesByDate(${date}) error:`, err);
+    try {
+      const oddsFixtures = await fetchOddsFixturesByDate(date);
+      if (oddsFixtures.length > 0) {
+        console.warn(`[Oracle] fallback odds-api fixtures(${date}): ${oddsFixtures.length}`);
+        return oddsFixtures;
+      }
+    } catch (fallbackErr) {
+      console.warn('[Oracle] odds-api fallback failed:', fallbackErr);
+    }
+
     if (isApiLimitError(err)) throw err;
     if (/api key|apikey|proxy|not configured|all api keys|unauthorized|rate|limit/i.test(msg)) {
       throw err instanceof Error ? err : new Error(msg);
