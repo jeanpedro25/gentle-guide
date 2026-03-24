@@ -18,6 +18,9 @@ import { useBankroll } from '@/hooks/usePredictions';
 import { AnaliseJogo, PICK_LABELS, PICK_LABELS_FULL } from '@/lib/jogueAgora';
 import { gerarDecisaoFinal, getEvExplanation } from '@/lib/evDecision';
 import { ApiFixture } from '@/types/fixture';
+import { fetchMatchContext } from '@/services/footballApi';
+import { analyzeMatch as analyzeOracleMatch } from '@/services/oracleService';
+import { OracleAnalysis, probAsPercent } from '@/types/prediction';
 
 const MANUAL_BET_STORAGE_KEY = 'profeta-bet:manual-bets';
 
@@ -103,6 +106,9 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
   const [showDetails, setShowDetails] = useState(false);
   const [betAmount, setBetAmount] = useState('');
   const [manualReturn, setManualReturn] = useState('');
+  const [oracle, setOracle] = useState<OracleAnalysis | null>(null);
+  const [oracleLoading, setOracleLoading] = useState(false);
+  const [oracleError, setOracleError] = useState<string | null>(null);
   const createBet = useCreateBet();
   const { data: bankroll } = useBankroll();
 
@@ -110,7 +116,47 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
     setShowDetails(false);
     setBetAmount('');
     setManualReturn('');
+    setOracle(null);
+    setOracleError(null);
+    setOracleLoading(false);
   }, [fixture?.fixture.id]);
+
+  useEffect(() => {
+    if (!showDetails || !fixture || oracle || oracleLoading) return;
+
+    let isActive = true;
+    const runDetailedAnalysis = async () => {
+      try {
+        setOracleLoading(true);
+        setOracleError(null);
+        const context = await fetchMatchContext(fixture);
+        const oracleResult = await analyzeOracleMatch(
+          fixture,
+          context.homeStats,
+          context.awayStats,
+          context.h2h
+        );
+        if (isActive) {
+          setOracle(oracleResult);
+        }
+      } catch (err) {
+        if (isActive) {
+          const message = err instanceof Error ? err.message : 'Erro ao gerar analise detalhada.';
+          setOracleError(message);
+        }
+      } finally {
+        if (isActive) {
+          setOracleLoading(false);
+        }
+      }
+    };
+
+    runDetailedAnalysis();
+
+    return () => {
+      isActive = false;
+    };
+  }, [fixture, oracle, oracleLoading, showDetails]);
 
   const bankrollAmount = bankroll?.amount ?? 100;
   const safeBet = bankrollAmount * 0.02;
@@ -487,7 +533,7 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
                     onClick={() => setShowDetails(!showDetails)}
                     className="flex w-full items-center justify-between rounded-lg border border-border bg-secondary/50 px-3 py-2 text-sm font-bold text-foreground transition-colors hover:bg-secondary/80"
                   >
-                    <span>Ver analise detalhada</span>
+                    <span>Ver analise detalhada (IA)</span>
                     {showDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
 
@@ -505,6 +551,108 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
                           <ProbabilityBar label={`Casa (${fixture.teams.home.name})`} value={analysis.prob_casa} />
                           <ProbabilityBar label="Empate" value={analysis.prob_empate} />
                           <ProbabilityBar label={`Fora (${fixture.teams.away.name})`} value={analysis.prob_fora} />
+                        </div>
+
+                        <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Analise detalhada (IA)</p>
+                            {oracle ? (
+                              <span className="text-[10px] font-bold text-primary">ATIVA</span>
+                            ) : oracleLoading ? (
+                              <span className="text-[10px] text-muted-foreground">GERANDO...</span>
+                            ) : oracleError ? (
+                              <span className="text-[10px] text-destructive">FALHOU</span>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground">AGUARDANDO</span>
+                            )}
+                          </div>
+
+                          {oracleLoading && (
+                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              Gerando analise com dados taticos, EV e Kelly...
+                            </div>
+                          )}
+
+                          {oracleError && (
+                            <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-[11px] text-destructive">
+                              {oracleError}
+                            </div>
+                          )}
+
+                          {oracle && (
+                            <div className="space-y-3">
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="rounded-lg bg-secondary/60 p-2 text-center">
+                                  <p className="text-[10px] text-muted-foreground">Veredito</p>
+                                  <p className="text-xs font-bold text-foreground">{oracle.verdict}</p>
+                                </div>
+                                <div className="rounded-lg bg-secondary/60 p-2 text-center">
+                                  <p className="text-[10px] text-muted-foreground">Confianca</p>
+                                  <p className="text-xs font-bold text-foreground">{oracle.primaryBet.confidence}</p>
+                                </div>
+                                <div className="rounded-lg bg-secondary/60 p-2 text-center">
+                                  <p className="text-[10px] text-muted-foreground">EV</p>
+                                  <p className={`text-xs font-bold ${oracle.primaryBet.ev > 0 ? 'text-primary' : 'text-destructive'}`}>
+                                    {oracle.primaryBet.ev > 0 ? '+' : ''}{oracle.primaryBet.ev.toFixed(1)}%
+                                  </p>
+                                </div>
+                                <div className="rounded-lg bg-secondary/60 p-2 text-center">
+                                  <p className="text-[10px] text-muted-foreground">Kelly</p>
+                                  <p className="text-xs font-bold text-foreground">{oracle.primaryBet.kellyFraction.toFixed(1)}%</p>
+                                </div>
+                              </div>
+
+                              <div className="space-y-1">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Aposta principal</p>
+                                <p className="text-xs font-bold text-foreground">{oracle.primaryBet.market}</p>
+                                <p className="text-[11px] text-muted-foreground">{oracle.primaryBet.reasoning}</p>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="rounded-lg border border-border/60 bg-background p-2">
+                                  <p className="text-[10px] text-muted-foreground">1X2</p>
+                                  <p className="text-[11px] text-foreground">
+                                    Casa {probAsPercent(oracle.probabilities.homeWin).toFixed(0)}% · Emp {probAsPercent(oracle.probabilities.draw).toFixed(0)}% · Fora {probAsPercent(oracle.probabilities.awayWin).toFixed(0)}%
+                                  </p>
+                                </div>
+                                <div className="rounded-lg border border-border/60 bg-background p-2">
+                                  <p className="text-[10px] text-muted-foreground">Over 2.5 / BTTS</p>
+                                  <p className="text-[11px] text-foreground">
+                                    Over {probAsPercent(oracle.probabilities.over25).toFixed(0)}% · BTTS {probAsPercent(oracle.probabilities.btts).toFixed(0)}%
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="rounded-lg border border-border/60 bg-background p-2">
+                                  <p className="text-[10px] text-muted-foreground">xG (Poisson)</p>
+                                  <p className="text-[11px] text-foreground">
+                                    {oracle.poisson.homeExpectedGoals.toFixed(2)} x {oracle.poisson.awayExpectedGoals.toFixed(2)}
+                                  </p>
+                                </div>
+                                <div className="rounded-lg border border-border/60 bg-background p-2">
+                                  <p className="text-[10px] text-muted-foreground">Placar provavel</p>
+                                  <p className="text-[11px] text-foreground">
+                                    {oracle.predictedScore ? `${oracle.predictedScore.home}x${oracle.predictedScore.away}` : (oracle.poisson.mostLikelyScores?.[0]?.score ?? 'N/A')}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {(oracle.redFlags?.length ?? 0) > 0 && (
+                                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-2">
+                                  <p className="text-[10px] font-bold uppercase tracking-wider text-destructive">Red flags</p>
+                                  <p className="text-[11px] text-destructive">{oracle.redFlags.join(' · ')}</p>
+                                </div>
+                              )}
+
+                              <div className="rounded-lg border border-border/60 bg-background p-2">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Fatores-chave</p>
+                                <p className="text-[11px] text-foreground">Vantagem casa: {oracle.homeAdvantage} · Goleiros: {oracle.goalkeeperEdge} · Impacto lesoes: {oracle.injuryImpact}</p>
+                                <p className="text-[11px] text-muted-foreground">{oracle.tacticalEdge}</p>
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         <div className="grid grid-cols-3 gap-2">
