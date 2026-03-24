@@ -25,6 +25,7 @@ const createBuilder = (response: any) => {
     limit: vi.fn().mockReturnThis(),
     insert: vi.fn().mockReturnThis(),
     update: vi.fn().mockReturnThis(),
+    upsert: vi.fn().mockReturnThis(),
     maybeSingle: vi.fn(() => Promise.resolve(response)),
     single: vi.fn(() => Promise.resolve(response)),
     then: (resolve: any, reject: any) => Promise.resolve(response).then(resolve, reject),
@@ -103,17 +104,18 @@ describe('isolamento de dados por user_id', () => {
   });
 
   it('useUpdateBankroll restringe update ao user_id', async () => {
-    const selectBuilder = createBuilder({ data: { id: 'row-1' }, error: null });
-    const updateBuilder = createBuilder({ data: null, error: null });
-    fromMock
-      .mockImplementationOnce(() => selectBuilder)
-      .mockImplementationOnce(() => updateBuilder);
+    const upsertBuilder = createBuilder({ data: null, error: null });
+    fromMock.mockReturnValue(upsertBuilder);
 
     const wrapper = createWrapper();
     const { result } = renderHook(() => useUpdateBankroll(), { wrapper });
 
     await result.current.mutateAsync(250);
 
-    expect(updateBuilder.eq).toHaveBeenCalledWith('user_id', 'user-a');
+    expect(fromMock).toHaveBeenCalledWith('bankroll');
+    expect(upsertBuilder.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ user_id: 'user-a', amount: 250 }),
+      { onConflict: 'user_id' }
+    );
   });
 });

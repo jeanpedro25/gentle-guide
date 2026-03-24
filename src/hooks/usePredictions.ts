@@ -145,25 +145,14 @@ export function useUpdateBankroll() {
     mutationFn: async (amount: number) => {
       if (!user) throw new Error('Usuário não autenticado');
 
-      const { data: existing } = await supabase
+      const { error } = await supabase
         .from('bankroll')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+        .upsert(
+          { user_id: user.id, amount, updated_at: new Date().toISOString() } as any,
+          { onConflict: 'user_id' }
+        );
 
-      if (existing) {
-        const { error } = await supabase
-          .from('bankroll')
-          .update({ amount, updated_at: new Date().toISOString() })
-          .eq('id', existing.id)
-          .eq('user_id', user.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('bankroll')
-          .insert({ user_id: user.id, amount } as any);
-        if (error) throw error;
-      }
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bankroll', user?.id] });

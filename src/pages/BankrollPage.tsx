@@ -56,8 +56,10 @@ export default function BankrollPage() {
       await updateBankroll.mutateAsync(amount);
       setEditingBankroll(false);
       toast.success('Banca configurada com sucesso!');
-    } catch {
-      toast.error('Erro ao salvar banca');
+    } catch (error) {
+      console.error('Erro ao salvar banca', error);
+      const message = error instanceof Error ? error.message : 'Erro ao salvar banca';
+      toast.error(message);
     }
   };
 
