@@ -102,8 +102,16 @@ async function handleApiFootballRequest(body: {
   // Legacy support: path field maps to endpoint
   path?: string;
 }): Promise<Response> {
-  const apiKey = Deno.env.get("FOOTBALL_API_KEY");
-  if (!apiKey) {
+  const apiKeysEnv = Deno.env.get("FOOTBALL_API_KEYS");
+  const apiKeys = [
+    ...(apiKeysEnv ? apiKeysEnv.split(',') : []),
+    Deno.env.get("FOOTBALL_API_KEY"),
+    Deno.env.get("FOOTBALL_API_KEY_SECONDARY"),
+  ]
+    .map(key => (key || '').trim())
+    .filter((key, index, all) => Boolean(key) && all.indexOf(key) === index);
+
+  if (apiKeys.length === 0) {
     return new Response(
       JSON.stringify({ error: "FOOTBALL_API_KEY not configured" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -125,22 +133,42 @@ async function handleApiFootballRequest(body: {
 
   console.log(`[football-proxy] API-Football → ${cleanEndpoint} params:`, body.params || {});
 
-  const res = await fetch(url, {
-    headers: {
-      "x-apisports-key": apiKey,
-    },
-  });
+  for (let i = 0; i < apiKeys.length; i += 1) {
+    const apiKey = apiKeys[i];
+    const res = await fetch(url, {
+      headers: {
+        "x-apisports-key": apiKey,
+      },
+    });
 
-  const json = await res.json();
+    const json = await res.json();
+    const errors = json?.errors;
+    const errorMessages = Array.isArray(errors)
+      ? errors.join(' | ')
+      : Object.values(errors || {}).join(' | ');
 
-  // Check for API errors
-  if (json.errors && Object.keys(json.errors).length > 0) {
-    console.error(`[football-proxy] API errors:`, json.errors);
+    const hasErrors = Boolean(errorMessages);
+    const isRateLimit = res.status === 429 || /limit|too many|quota|rate/i.test(errorMessages);
+    const isAuthError = res.status === 401 || res.status === 403 || /apikey|key|unauthorized|access/i.test(errorMessages);
+
+    if (hasErrors) {
+      console.error(`[football-proxy] API errors:`, errors);
+    }
+
+    if ((isRateLimit || isAuthError) && i < apiKeys.length - 1) {
+      console.warn(`[football-proxy] Retrying with backup key for ${cleanEndpoint}`);
+      continue;
+    }
+
+    console.log(`[football-proxy] ✅ ${cleanEndpoint} → results: ${json.results ?? 0}`);
+
+    return new Response(JSON.stringify(json), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
-  console.log(`[football-proxy] ✅ ${cleanEndpoint} → results: ${json.results ?? 0}`);
-
-  return new Response(JSON.stringify(json), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+  return new Response(
+    JSON.stringify({ error: "All API keys failed" }),
+    { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
 }
