@@ -24,6 +24,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { pathname } = useLocation();
 
   const fixedIds = useMemo(() => new Set(FIXED_LEAGUES.map((league) => league.id)), []);
+  const allLeagueIds = useMemo(() => leagueOptions.map((league) => league.id), [leagueOptions]);
   
   const visibleLeagues = useMemo(() => {
     const pool = showAllLeagues ? leagueOptions : leagueOptions.filter(l => fixedIds.has(l.id));
@@ -56,6 +57,14 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const clearAllFilters = () => {
     setPendingLeagueIds([]);
     clearSelectedLeagues();
+  };
+
+  const selectAllLeagues = () => {
+    setPendingLeagueIds(allLeagueIds);
+  };
+
+  const deselectAllLeagues = () => {
+    setPendingLeagueIds([]);
   };
 
   return (
@@ -109,6 +118,20 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                 <span className="truncate flex-1">{league.nome}</span>
               </label>
             ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={selectAllLeagues}
+              className="flex-1 py-2 rounded border border-[#C9A84C]/40 text-[10px] text-[#C9A84C] font-bold uppercase hover:bg-[#C9A84C]/10 transition-colors"
+            >
+              Selecionar todas
+            </button>
+            <button
+              onClick={deselectAllLeagues}
+              className="flex-1 py-2 rounded border border-[#444] text-[10px] text-[#CFCFCF] font-bold uppercase hover:bg-white/5 transition-colors"
+            >
+              Desmarcar
+            </button>
           </div>
           <button
             onClick={applyPendingLeagues}

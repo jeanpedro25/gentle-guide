@@ -210,7 +210,7 @@ export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
   try {
     const response = await apiFootballFetch<ApiFootballFixture>(
       'fixtures',
-      { live: 'all' },
+      { live: 'all', timezone: BRAZIL_TIMEZONE },
       'livescores',
       'medium'
     );
@@ -313,7 +313,7 @@ async function fetchMatchesByDate(date: string): Promise<ApiFixture[]> {
   try {
     const response = await apiFootballFetch<ApiFootballFixture>(
       'fixtures',
-      { date },
+      { date, timezone: BRAZIL_TIMEZONE },
       'jogos',
       'medium'
     );
@@ -409,6 +409,7 @@ export async function fetchFixturesByLeague(
       {
         league: String(league.id),
         season: String(league.season),
+        timezone: BRAZIL_TIMEZONE,
       },
       'jogos',
       'low'
