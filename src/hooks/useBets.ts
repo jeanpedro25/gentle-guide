@@ -45,6 +45,37 @@ export function useCreateBet() {
   return useMutation({
     mutationFn: async (bet: Omit<BetRow, 'id' | 'created_at' | 'resolved_at' | 'status' | 'actual_result' | 'actual_score' | 'profit_loss'>) => {
       if (!user) throw new Error('Usuário não autenticado');
+      const selection = bet.prediction === '1'
+        ? 'Home'
+        : bet.prediction === '2'
+          ? 'Away'
+          : bet.prediction === 'X'
+            ? 'Draw'
+            : bet.prediction;
+
+      const { data: validation, error: validationError } = await supabase.functions.invoke('validate-bet', {
+        body: {
+          fixture_id: bet.fixture_id,
+          selection,
+          odd: bet.odd,
+          stake: bet.stake,
+          market: '1x2',
+          client_user_id: user.id,
+          sport: 'football',
+        },
+      });
+
+      if (validationError) {
+        throw new Error(validationError.message || 'Erro ao validar aposta');
+      }
+
+      if (!validation || validation.status !== 'success') {
+        const validationMessage = typeof validation?.errors === 'string'
+          ? validation.errors
+          : JSON.stringify(validation?.errors ?? 'Erro de validação');
+        throw new Error(validationMessage);
+      }
+
       const { data, error } = await supabase
         .from('bets')
         .insert({ ...bet, status: 'pending', user_id: user.id } as any)
