@@ -534,18 +534,8 @@ export async function fetchWeekMatches(): Promise<ApiFixture[]> {
 
 export async function fetchFixtureById(fixtureId: number): Promise<ApiFixture | null> {
   try {
-    const response = await apiFootballFetch<ApiFootballFixture>(
-      'fixtures',
-      { id: String(fixtureId) },
-      'resultado',
-      'high'
-    );
-
-    if (hasApiErrors(response) || !response.response || response.response.length === 0) {
-      return null;
-    }
-
-    return normalizeFixture(response.response[0]);
+    const fixtures = await fetchOddsApiEvents();
+    return fixtures.find(f => f.fixture.id === fixtureId) || null;
   } catch (err) {
     console.warn('[Oracle] fetchFixtureById failed:', err);
     return null;
@@ -557,63 +547,17 @@ async function fetchMatchesByDate(date: string): Promise<ApiFixture[]> {
     const oddsFixtures = await fetchOddsFixturesByDate(date);
     if (oddsFixtures.length > 0) {
       console.log(`[Oracle] odds-api fixtures(${date}): ${oddsFixtures.length}`);
-      return oddsFixtures;
+      return oddsFixtures
+        .filter(f => !['CANC', 'ABD', 'AWD', 'WO'].includes(f.fixture.status.short))
+        .sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
     }
 
-    const response = await apiFootballFetch<ApiFootballFixture>(
-      'fixtures',
-      { date, timezone: BRAZIL_TIMEZONE },
-      'jogos',
-      'medium'
-    );
-
-    if (hasApiErrors(response)) {
-      const msg = getApiErrorMessage(response);
-      if (/limit|quota/i.test(msg)) throw new ApiLimitError(msg);
-      console.warn(`[Oracle] fixtures(${date}) failed:`, msg);
-      return [];
-    }
-
-    const fixtures = (response.response || [])
-      .filter(f => {
-        // Only include relevant statuses
-        const status = f.fixture.status.short;
-        return !['CANC', 'ABD', 'AWD', 'WO'].includes(status);
-      })
-      .map(f => normalizeFixture(f))
-      .sort((a, b) => {
-        const liveStatuses = ['1H', '2H', 'HT', 'LIVE', 'PEN', 'ET'];
-        const aLive = liveStatuses.includes(a.fixture.status.short) ? 0 : 1;
-        const bLive = liveStatuses.includes(b.fixture.status.short) ? 0 : 1;
-        if (aLive !== bLive) return aLive - bLive;
-        return a.fixture.timestamp - b.fixture.timestamp;
-      });
-
-    if (fixtures.length > 0) {
-      console.log(`[Oracle] fetchMatchesByDate(${date}): found ${fixtures.length} matches`);
-      return fixtures;
-    }
-
-    console.log(`[Oracle] fetchMatchesByDate(${date}): found 0 matches`);
+    console.log(`[Oracle] odds-api fixtures(${date}): found 0 matches`);
     return [];
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro ao buscar jogos.';
     lastApiError = msg;
     console.error(`[Oracle] fetchMatchesByDate(${date}) error:`, err);
-    try {
-      const oddsFixtures = await fetchOddsFixturesByDate(date);
-      if (oddsFixtures.length > 0) {
-        console.warn(`[Oracle] odds-api fixtures(${date}): ${oddsFixtures.length}`);
-        return oddsFixtures;
-      }
-    } catch (fallbackErr) {
-      console.warn('[Oracle] odds-api fetch failed:', fallbackErr);
-    }
-
-    if (isApiLimitError(err)) throw err;
-    if (/api key|apikey|proxy|not configured|all api keys|unauthorized|rate|limit/i.test(msg)) {
-      throw err instanceof Error ? err : new Error(msg);
-    }
     return [];
   }
 }

@@ -23,7 +23,6 @@ export interface PredictionRow {
 
 export interface BankrollRow {
   id: string;
-  user_id: string | null;
   amount: number;
   updated_at: string;
 }
@@ -127,7 +126,7 @@ export function useBankroll() {
       const { data, error } = await supabase
         .from('bankroll')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .maybeSingle();
       
       if (error) throw error;
@@ -148,8 +147,8 @@ export function useUpdateBankroll() {
       const { error } = await supabase
         .from('bankroll')
         .upsert(
-          { user_id: user.id, amount, updated_at: new Date().toISOString() } as any,
-          { onConflict: 'user_id' }
+          { id: user.id, amount, updated_at: new Date().toISOString() } as any,
+          { onConflict: 'id' }
         );
 
       if (error) throw error;
