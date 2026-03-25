@@ -554,6 +554,12 @@ export async function fetchFixtureById(fixtureId: number): Promise<ApiFixture | 
 
 async function fetchMatchesByDate(date: string): Promise<ApiFixture[]> {
   try {
+    const oddsFixtures = await fetchOddsFixturesByDate(date);
+    if (oddsFixtures.length > 0) {
+      console.log(`[Oracle] odds-api fixtures(${date}): ${oddsFixtures.length}`);
+      return oddsFixtures;
+    }
+
     const response = await apiFootballFetch<ApiFootballFixture>(
       'fixtures',
       { date, timezone: BRAZIL_TIMEZONE },
@@ -588,12 +594,6 @@ async function fetchMatchesByDate(date: string): Promise<ApiFixture[]> {
       return fixtures;
     }
 
-    const oddsFixtures = await fetchOddsFixturesByDate(date);
-    if (oddsFixtures.length > 0) {
-      console.warn(`[Oracle] fallback odds-api fixtures(${date}): ${oddsFixtures.length}`);
-      return oddsFixtures;
-    }
-
     console.log(`[Oracle] fetchMatchesByDate(${date}): found 0 matches`);
     return [];
   } catch (err) {
@@ -603,11 +603,11 @@ async function fetchMatchesByDate(date: string): Promise<ApiFixture[]> {
     try {
       const oddsFixtures = await fetchOddsFixturesByDate(date);
       if (oddsFixtures.length > 0) {
-        console.warn(`[Oracle] fallback odds-api fixtures(${date}): ${oddsFixtures.length}`);
+        console.warn(`[Oracle] odds-api fixtures(${date}): ${oddsFixtures.length}`);
         return oddsFixtures;
       }
     } catch (fallbackErr) {
-      console.warn('[Oracle] odds-api fallback failed:', fallbackErr);
+      console.warn('[Oracle] odds-api fetch failed:', fallbackErr);
     }
 
     if (isApiLimitError(err)) throw err;
