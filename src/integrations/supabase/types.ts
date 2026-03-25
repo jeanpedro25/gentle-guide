@@ -49,19 +49,16 @@ export type Database = {
           amount: number
           id: string
           updated_at: string
-          user_id: string | null
         }
         Insert: {
           amount?: number
           id?: string
           updated_at?: string
-          user_id?: string | null
         }
         Update: {
           amount?: number
           id?: string
           updated_at?: string
-          user_id?: string | null
         }
         Relationships: []
       }
@@ -72,7 +69,6 @@ export type Database = {
           prediction_id: string
           profit_loss: number | null
           resolved_at: string
-          user_id: string | null
           won: boolean | null
         }
         Insert: {
@@ -81,7 +77,6 @@ export type Database = {
           prediction_id: string
           profit_loss?: number | null
           resolved_at?: string
-          user_id?: string | null
           won?: boolean | null
         }
         Update: {
@@ -90,7 +85,6 @@ export type Database = {
           prediction_id?: string
           profit_loss?: number | null
           resolved_at?: string
-          user_id?: string | null
           won?: boolean | null
         }
         Relationships: [
@@ -120,7 +114,6 @@ export type Database = {
           resolved_at: string | null
           stake: number
           status: string
-          user_id: string | null
         }
         Insert: {
           actual_result?: string | null
@@ -138,7 +131,6 @@ export type Database = {
           resolved_at?: string | null
           stake?: number
           status?: string
-          user_id?: string | null
         }
         Update: {
           actual_result?: string | null
@@ -156,7 +148,6 @@ export type Database = {
           resolved_at?: string | null
           stake?: number
           status?: string
-          user_id?: string | null
         }
         Relationships: []
       }
@@ -177,7 +168,6 @@ export type Database = {
           recommended_market: string | null
           stake_pct: number | null
           status: string
-          user_id: string | null
         }
         Insert: {
           away_team: string
@@ -195,7 +185,6 @@ export type Database = {
           recommended_market?: string | null
           stake_pct?: number | null
           status?: string
-          user_id?: string | null
         }
         Update: {
           away_team?: string
@@ -213,7 +202,6 @@ export type Database = {
           recommended_market?: string | null
           stake_pct?: number | null
           status?: string
-          user_id?: string | null
         }
         Relationships: []
       }
