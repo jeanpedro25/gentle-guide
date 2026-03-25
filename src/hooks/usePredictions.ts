@@ -22,7 +22,8 @@ export interface PredictionRow {
 }
 
 export interface BankrollRow {
-  id: string;
+  id?: string;
+  user_id?: string | null;
   amount: number;
   updated_at: string;
 }
@@ -37,10 +38,20 @@ export interface BetResultRow {
   resolved_at: string;
 }
 
-function isMissingUserIdColumn(error: unknown) {
+function getErrorMessage(error: unknown) {
   return typeof (error as { message?: string })?.message === 'string'
-    && (error as { message: string }).message.toLowerCase().includes('user_id')
-    && (error as { message: string }).message.toLowerCase().includes('column');
+    ? (error as { message: string }).message.toLowerCase()
+    : '';
+}
+
+function isUserIdColumnError(error: unknown) {
+  const message = getErrorMessage(error);
+  return message.includes('user_id') && message.includes('column');
+}
+
+function isConflictConstraintError(error: unknown) {
+  const message = getErrorMessage(error);
+  return message.includes('conflict') || message.includes('constraint') || message.includes('unique');
 }
 
 export function usePredictions() {
@@ -135,19 +146,17 @@ export function useBankroll() {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (error) {
-        if (isMissingUserIdColumn(error)) {
-          const legacy = await supabase
-            .from('bankroll')
-            .select('*')
-            .eq('id', user.id)
-            .maybeSingle();
-          if (legacy.error) throw legacy.error;
-          return legacy.data as unknown as BankrollRow;
-        }
-        throw error;
-      }
-      return data as unknown as BankrollRow;
+      if (error && !isUserIdColumnError(error)) throw error;
+
+      if (!error && data) return data as unknown as BankrollRow;
+
+      const legacy = await supabase
+        .from('bankroll')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (legacy.error) throw legacy.error;
+      return legacy.data as unknown as BankrollRow;
     },
     enabled: !!user,
   });
@@ -168,19 +177,18 @@ export function useUpdateBankroll() {
           { onConflict: 'user_id' }
         );
 
-      if (error) {
-        if (isMissingUserIdColumn(error)) {
-          const legacy = await supabase
-            .from('bankroll')
-            .upsert(
-              { id: user.id, amount, updated_at: new Date().toISOString() } as any,
-              { onConflict: 'id' }
-            );
-          if (legacy.error) throw legacy.error;
-          return;
-        }
-        throw error;
-      }
+      if (!error) return;
+
+      const shouldFallback = isUserIdColumnError(error) || isConflictConstraintError(error);
+      if (!shouldFallback) throw error;
+
+      const legacy = await supabase
+        .from('bankroll')
+        .upsert(
+          { id: user.id, amount, updated_at: new Date().toISOString() } as any,
+          { onConflict: 'id' }
+        );
+      if (legacy.error) throw legacy.error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bankroll', user?.id] });

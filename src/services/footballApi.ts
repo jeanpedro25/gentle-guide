@@ -341,7 +341,13 @@ export function clearFootballCache(pathIncludes?: string): void {
   clearApiCache(pathIncludes ? `apifootball|${pathIncludes}` : undefined);
 }
 
-export function hasApiKey(): boolean { return true; }
+export function hasApiKey(): boolean {
+  return Boolean(
+    import.meta.env.VITE_ODDS_API_IO_KEY ||
+    import.meta.env.VITE_ODDS_API_KEY ||
+    import.meta.env.ODDS_API_KEY
+  );
+}
 
 // ── Date helpers ──
 
@@ -615,35 +621,23 @@ export async function fetchFixturesByLeague(
   }
 
   try {
-    const response = await apiFootballFetch<ApiFootballFixture>(
-      'fixtures',
-      {
-        league: String(league.id),
-        season: String(league.season),
-        timezone: BRAZIL_TIMEZONE,
-      },
-      'jogos',
-      'low'
-    );
-
-    if (hasApiErrors(response) || !response.response) {
-      console.warn(`[Oracle] ${league.name} fixtures failed`);
-      return [];
-    }
+    const fixtures = await fetchOddsApiEvents({ leagues: 'all' });
+    const leagueId = hashStringToNumber(league.name);
+    const nameLower = league.name.toLowerCase();
 
     const now = Date.now();
     const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
 
-    return response.response
+    return fixtures
       .filter(f => {
         const ts = f.fixture.timestamp * 1000;
-        return ts >= now - thirtyDaysMs && ts <= now + thirtyDaysMs;
+        if (ts < now - thirtyDaysMs || ts > now + thirtyDaysMs) return false;
+        if (f.league.id === leagueId) return true;
+        return f.league.name.toLowerCase().includes(nameLower);
       })
-      .sort((a, b) => a.fixture.timestamp - b.fixture.timestamp)
-      .map(f => normalizeFixture(f));
+      .sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
   } catch (err) {
     console.warn(`[Oracle] ${league.name} failed:`, err);
-    if (isApiLimitError(err)) throw err;
     return [];
   }
 }
@@ -699,43 +693,7 @@ export interface MatchOdds {
  */
 export async function fetchMatchOdds(fixtureId: number): Promise<MatchOdds | null> {
   try {
-    const response = await apiFootballFetch<ApiFootballOddsResponse>(
-      'odds',
-      { fixture: String(fixtureId) },
-      'odds',
-      'high'
-    );
-
-    if (hasApiErrors(response) || !response.response || response.response.length === 0) {
-      return null;
-    }
-
-    const oddsData = response.response[0];
-    if (!oddsData.bookmakers || oddsData.bookmakers.length === 0) return null;
-
-    // Find Match Winner (1X2) market from first bookmaker
-    for (const bookmaker of oddsData.bookmakers) {
-      const matchWinner = bookmaker.bets.find(
-        b => b.name === 'Match Winner' || b.id === 1
-      );
-
-      if (matchWinner && matchWinner.values.length >= 3) {
-        const home = matchWinner.values.find(v => v.value === 'Home');
-        const draw = matchWinner.values.find(v => v.value === 'Draw');
-        const away = matchWinner.values.find(v => v.value === 'Away');
-
-        if (home && draw && away) {
-          return {
-            home: parseFloat(home.odd),
-            draw: parseFloat(draw.odd),
-            away: parseFloat(away.odd),
-            bookmaker: bookmaker.name,
-            updated: oddsData.update,
-          };
-        }
-      }
-    }
-
+    console.warn('[Oracle] odds-api match odds not available for fixture', fixtureId);
     return null;
   } catch (err) {
     console.warn('[Oracle] fetchMatchOdds error:', err);
@@ -784,26 +742,7 @@ export async function fetchMatchContext(fixture: ApiFixture): Promise<MatchConte
   let h2h: H2HFixture[] = [];
 
   try {
-    const response = await apiFootballFetch<ApiFootballFixture>(
-      'fixtures/headtohead',
-      {
-        h2h: `${fixture.teams.home.id}-${fixture.teams.away.id}`,
-        last: '5',
-      },
-      'estatistica',
-      'low'
-    );
-
-    if (!hasApiErrors(response) && response.response) {
-      h2h = response.response.map(f => ({
-        fixture: { date: f.fixture.date },
-        teams: {
-          home: { id: f.teams.home.id, name: f.teams.home.name, winner: f.teams.home.winner },
-          away: { id: f.teams.away.id, name: f.teams.away.name, winner: f.teams.away.winner },
-        },
-        goals: { home: f.goals.home, away: f.goals.away },
-      }));
-    }
+    h2h = [];
   } catch (err) {
     console.warn('[Oracle] H2H fetch failed:', err);
   }
