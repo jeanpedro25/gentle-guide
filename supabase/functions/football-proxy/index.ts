@@ -101,21 +101,20 @@ async function handleApiFootballRequest(body: {
   params?: Record<string, string>;
   // Legacy support: path field maps to endpoint
   path?: string;
-  apiKey?: string;
 }): Promise<Response> {
   const apiKeysEnv = Deno.env.get("FOOTBALL_API_KEYS");
   const apiKeys = [
     ...(apiKeysEnv ? apiKeysEnv.split(',') : []),
+    Deno.env.get("ISPORTS_API_KEY"),
     Deno.env.get("FOOTBALL_API_KEY"),
     Deno.env.get("FOOTBALL_API_KEY_SECONDARY"),
-    body.apiKey,
   ]
     .map(key => (key || '').trim())
     .filter((key, index, all) => Boolean(key) && all.indexOf(key) === index);
 
   if (apiKeys.length === 0) {
     return new Response(
-      JSON.stringify({ error: "FOOTBALL_API_KEY not configured" }),
+      JSON.stringify({ error: "ISPORTS_API_KEY/FOOTBALL_API_KEY not configured" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
