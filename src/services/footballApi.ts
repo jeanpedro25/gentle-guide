@@ -22,191 +22,6 @@ interface ApiFootballResponse<T = unknown> {
 // API-Football returns fixtures in this exact format (matches our ApiFixture type)
 type ApiFootballFixture = ApiFixture;
 
-interface ApiFootballOddsValue {
-  value: string;
-  odd: string;
-}
-
-interface ApiFootballOddsBet {
-  id: number;
-  name: string;
-  values: ApiFootballOddsValue[];
-}
-
-interface ApiFootballBookmaker {
-  id: number;
-  name: string;
-  bets: ApiFootballOddsBet[];
-}
-
-interface ApiFootballOddsResponse {
-  league: { id: number; name: string };
-  fixture: { id: number; date: string };
-  update: string;
-  bookmakers: ApiFootballBookmaker[];
-}
-
-// ── Odds-API (api.odds-api.io) primary ──
-
-type OddsApiEvent = Record<string, unknown>;
-
-const ODDS_API_BASE_URL = 'https://api.odds-api.io/v3/';
-
-interface OddsApiRequestOptions {
-  sports?: string;
-  markets?: string;
-  leagues?: string;
-}
-
-async function requestOddsApi(path: string, options: OddsApiRequestOptions = {}): Promise<unknown> {
-  const apiKey =
-    import.meta.env.VITE_ODDS_API_IO_KEY ||
-    import.meta.env.VITE_ODDS_API_KEY ||
-    import.meta.env.ODDS_API_KEY;
-
-  const params = new URLSearchParams({
-    sports: options.sports || 'football',
-    markets: options.markets || 'h2h',
-    leagues: options.leagues || 'all',
-  });
-
-  const baseUrl = `${ODDS_API_BASE_URL}${path}?${params.toString()}`;
-  const urlWithKey = apiKey ? `${baseUrl}&apiKey=${encodeURIComponent(apiKey)}` : baseUrl;
-
-  const request = async (url: string) => {
-    const res = await fetch(url);
-    if (!res.ok) {
-      throw new Error(`odds-api http ${res.status}`);
-    }
-    return res.json();
-  };
-
-  try {
-    return await request(urlWithKey);
-  } catch (err) {
-    if (apiKey) {
-      return await request(baseUrl);
-    }
-    throw err;
-  }
-}
-
-function hashStringToNumber(value: string): number {
-  let hash = 0;
-  for (let i = 0; i < value.length; i++) {
-    hash = value.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return Math.abs(hash) || 1;
-}
-
-function normalizeOddsEvent(event: OddsApiEvent): ApiFixture | null {
-  const normalized = Object.fromEntries(
-    Object.entries(event).map(([key, val]) => [key.trim().toLowerCase(), val])
-  ) as Record<string, unknown>;
-
-  const homeTeam = String(
-    normalized.home ??
-      normalized['home_team'] ??
-      normalized['team_home'] ??
-      normalized['lar'] ??
-      normalized['casa'] ??
-      ''
-  ).trim();
-
-  const awayTeam = String(
-    normalized.away ??
-      normalized['away_team'] ??
-      normalized['team_away'] ??
-      normalized['ausente'] ??
-      normalized['fora'] ??
-      ''
-  ).trim();
-
-  const rawDate = String(
-    normalized.date ??
-      normalized['data'] ??
-      normalized['commence_time'] ??
-      normalized['start_time'] ??
-      normalized['start'] ??
-      ''
-  ).trim();
-
-  if (!homeTeam || !awayTeam || !rawDate) return null;
-
-  const fixtureIdRaw =
-    normalized.id ??
-    normalized['event_id'] ??
-    normalized['fixture_id'] ??
-    normalized['eu ia'];
-  const fixtureIdNum = Number(fixtureIdRaw);
-  const fixtureId = Number.isFinite(fixtureIdNum)
-    ? fixtureIdNum
-    : hashStringToNumber(`${homeTeam}|${awayTeam}|${rawDate}`);
-
-  const ts = new Date(rawDate).getTime();
-  if (Number.isNaN(ts)) return null;
-
-  const leagueName = String(
-    normalized.league ??
-      normalized['liga'] ??
-      normalized['competition'] ??
-      normalized['tournament'] ??
-      'Liga'
-  ).trim();
-
-  const statusText = String(
-    normalized.status ??
-      normalized['state'] ??
-      normalized['status_short'] ??
-      'NS'
-  ).trim();
-
-  const statusShort = (() => {
-    const s = statusText.toUpperCase();
-    if (s.includes('LIVE') || s.includes('1H') || s.includes('2H')) return 'LIVE';
-    if (s.includes('FINISHED') || s.includes('FT') || s.includes('FINAL')) return 'FT';
-    if (s.includes('POSTPONED') || s.includes('CANCEL')) return 'PST';
-    return 'NS';
-  })();
-
-  return {
-    fixture: {
-      id: fixtureId,
-      date: rawDate,
-      timestamp: Math.floor(ts / 1000),
-      status: {
-        short: statusShort,
-        long: statusText || 'Not Started',
-      },
-    },
-    league: {
-      id: hashStringToNumber(leagueName),
-      name: leagueName,
-      country: '',
-      logo: '',
-      round: '',
-    },
-    teams: {
-      home: {
-        id: hashStringToNumber(homeTeam),
-        name: homeTeam,
-        logo: '/placeholder.svg',
-        winner: null,
-      },
-      away: {
-        id: hashStringToNumber(awayTeam),
-        name: awayTeam,
-        logo: '/placeholder.svg',
-        winner: null,
-      },
-    },
-    goals: {
-      home: null,
-      away: null,
-    },
-  };
-}
-
 function hasApiErrors(response: ApiFootballResponse): boolean {
   if (Array.isArray(response.errors)) return response.errors.length > 0;
   return Object.keys(response.errors || {}).length > 0;
@@ -229,7 +44,6 @@ async function rawApiFootballFetch<T = unknown>(
 
   const clientKey =
     import.meta.env.VITE_FOOTBALL_API_KEY ||
-    import.meta.env.VITE_ODDS_API_KEY ||
     import.meta.env.VITE_API_FOOTBALL_KEY;
 
   const { data, error } = await supabase.functions.invoke('football-proxy', {
@@ -238,7 +52,7 @@ async function rawApiFootballFetch<T = unknown>(
 
   if (error) {
     if (!clientKey) {
-      throw new Error(error.message || 'Proxy error: configure VITE_ODDS_API_KEY');
+      throw new Error(error.message || 'Proxy error: configure VITE_FOOTBALL_API_KEY');
     }
 
     console.warn('[Oracle] football-proxy unavailable, falling back to client key');
@@ -338,15 +152,13 @@ async function apiFootballFetch<T = unknown>(
 }
 
 export function clearFootballCache(pathIncludes?: string): void {
-  clearApiCache(pathIncludes ? `oddsapi|${pathIncludes}` : undefined);
   clearApiCache(pathIncludes ? `apifootball|${pathIncludes}` : undefined);
 }
 
 export function hasApiKey(): boolean {
   return Boolean(
-    import.meta.env.VITE_ODDS_API_IO_KEY ||
-    import.meta.env.VITE_ODDS_API_KEY ||
-    import.meta.env.ODDS_API_KEY
+    import.meta.env.VITE_FOOTBALL_API_KEY ||
+    import.meta.env.VITE_API_FOOTBALL_KEY
   );
 }
 
@@ -358,37 +170,6 @@ function getBrazilDateString(offset = 0): string {
   const now = new Date();
   now.setDate(now.getDate() + offset);
   return now.toLocaleDateString('en-CA', { timeZone: BRAZIL_TIMEZONE });
-}
-
-function getBrazilDateFromISO(dateStr: string): string | null {
-  if (!dateStr) return null;
-  const dt = new Date(dateStr);
-  if (Number.isNaN(dt.getTime())) return null;
-  return dt.toLocaleDateString('en-CA', { timeZone: BRAZIL_TIMEZONE });
-}
-
-async function fetchOddsApiEvents(options: OddsApiRequestOptions = {}): Promise<ApiFixture[]> {
-  const data = await requestOddsApi('events', options);
-
-  const events = Array.isArray(data)
-    ? data
-    : (data?.data || data?.events || data?.response || []);
-
-  return (events as OddsApiEvent[])
-    .map(evt => normalizeOddsEvent(evt))
-    .filter((fixture): fixture is ApiFixture => Boolean(fixture));
-}
-
-async function fetchOddsFixturesByDate(date: string): Promise<ApiFixture[]> {
-  return cachedFetch<ApiFixture[]>({
-    cacheKey: `oddsapi|events|football|${date}`,
-    tipo: 'jogos',
-    priority: 'low',
-    fetchFn: async () => {
-      const fixtures = await fetchOddsApiEvents();
-      return fixtures.filter(f => getBrazilDateFromISO(f.fixture.date) === date);
-    },
-  });
 }
 
 export function formatBrazilTime(dateStr: string, _timeStr?: string): string {
@@ -467,31 +248,25 @@ export interface LiveMatchData {
 
 export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
   try {
-    const fixtures = await fetchOddsApiEvents();
-    const now = Date.now();
-    const liveWindowMs = 2 * 60 * 60 * 1000;
+    const response = await apiFootballFetch<ApiFootballFixture>('/fixtures', { live: 'all' }, 'livescores', 'high');
+    const fixtures = response.response.map(normalizeFixture);
 
     return fixtures
-      .map(fixture => {
-        const startMs = fixture.fixture.timestamp * 1000;
-        const withinLiveWindow = startMs <= now && now - startMs <= liveWindowMs;
-        const statusShort = withinLiveWindow ? 'LIVE' : fixture.fixture.status.short;
-        return {
-          id: String(fixture.fixture.id),
-          homeTeam: fixture.teams.home.name,
-          awayTeam: fixture.teams.away.name,
-          homeBadge: fixture.teams.home.logo || '/placeholder.svg',
-          awayBadge: fixture.teams.away.logo || '/placeholder.svg',
-          homeScore: fixture.goals.home !== null ? String(fixture.goals.home) : null,
-          awayScore: fixture.goals.away !== null ? String(fixture.goals.away) : null,
-          status: statusShort,
-          league: fixture.league.name,
-          leagueId: fixture.league.id,
-          leagueBadge: fixture.league.logo || '',
-          time: formatBrazilTime(fixture.fixture.date),
-          venue: '',
-        } satisfies LiveMatchData;
-      })
+      .map(fixture => ({
+        id: String(fixture.fixture.id),
+        homeTeam: fixture.teams.home.name,
+        awayTeam: fixture.teams.away.name,
+        homeBadge: fixture.teams.home.logo || '/placeholder.svg',
+        awayBadge: fixture.teams.away.logo || '/placeholder.svg',
+        homeScore: fixture.goals.home !== null ? String(fixture.goals.home) : null,
+        awayScore: fixture.goals.away !== null ? String(fixture.goals.away) : null,
+        status: fixture.fixture.status.short,
+        league: fixture.league.name,
+        leagueId: fixture.league.id,
+        leagueBadge: fixture.league.logo || '',
+        time: formatBrazilTime(fixture.fixture.date),
+        venue: '',
+      }) satisfies LiveMatchData)
       .filter(match => ['LIVE', '1H', '2H', 'HT', 'PEN', 'ET'].includes(match.status))
       .sort((a, b) => a.league.localeCompare(b.league));
   } catch (err) {
@@ -539,8 +314,14 @@ export async function fetchWeekMatches(): Promise<ApiFixture[]> {
 
 export async function fetchFixtureById(fixtureId: number): Promise<ApiFixture | null> {
   try {
-    const fixtures = await fetchOddsApiEvents();
-    return fixtures.find(f => f.fixture.id === fixtureId) || null;
+    const response = await apiFootballFetch<ApiFootballFixture>(
+      '/fixtures',
+      { id: String(fixtureId) },
+      'jogos',
+      'high'
+    );
+    const fixture = response.response[0];
+    return fixture ? normalizeFixture(fixture) : null;
   } catch (err) {
     console.warn('[Oracle] fetchFixtureById failed:', err);
     return null;
@@ -549,16 +330,17 @@ export async function fetchFixtureById(fixtureId: number): Promise<ApiFixture | 
 
 async function fetchMatchesByDate(date: string): Promise<ApiFixture[]> {
   try {
-    const oddsFixtures = await fetchOddsFixturesByDate(date);
-    if (oddsFixtures.length > 0) {
-      console.log(`[Oracle] odds-api fixtures(${date}): ${oddsFixtures.length}`);
-      return oddsFixtures
-        .filter(f => !['CANC', 'ABD', 'AWD', 'WO'].includes(f.fixture.status.short))
-        .sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
-    }
+    const response = await apiFootballFetch<ApiFootballFixture>(
+      '/fixtures',
+      { date },
+      'jogos',
+      'medium'
+    );
+    const fixtures = response.response.map(normalizeFixture);
 
-    console.log(`[Oracle] odds-api fixtures(${date}): found 0 matches`);
-    return [];
+    return fixtures
+      .filter(f => !['CANC', 'ABD', 'AWD', 'WO'].includes(f.fixture.status.short))
+      .sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro ao buscar jogos.';
     lastApiError = msg;
@@ -622,20 +404,14 @@ export async function fetchFixturesByLeague(
   }
 
   try {
-    const fixtures = await fetchOddsApiEvents({ leagues: 'all' });
-    const leagueId = hashStringToNumber(league.name);
-    const nameLower = league.name.toLowerCase();
-
-    const now = Date.now();
-    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-
-    return fixtures
-      .filter(f => {
-        const ts = f.fixture.timestamp * 1000;
-        if (ts < now - thirtyDaysMs || ts > now + thirtyDaysMs) return false;
-        if (f.league.id === leagueId) return true;
-        return f.league.name.toLowerCase().includes(nameLower);
-      })
+    const response = await apiFootballFetch<ApiFootballFixture>(
+      '/fixtures',
+      { league: String(league.id), season: String(league.season) },
+      'liga',
+      'low'
+    );
+    return response.response
+      .map(normalizeFixture)
       .sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
   } catch (err) {
     console.warn(`[Oracle] ${league.name} failed:`, err);
