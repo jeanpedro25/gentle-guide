@@ -111,7 +111,7 @@ export function useResolveBet() {
       const { data: bankrollRow, error: bankrollError } = await supabase
         .from('bankroll')
         .select('amount')
-        .eq('id', user.id)
+        .eq('user_id', user.id)
         .maybeSingle();
       if (bankrollError) throw bankrollError;
       if (!bankrollRow) return;
@@ -121,7 +121,7 @@ export function useResolveBet() {
       const { error: updateBankrollError } = await supabase
         .from('bankroll')
         .update({ amount: newAmount, updated_at: new Date().toISOString() })
-        .eq('id', user.id);
+        .eq('user_id', user.id);
       if (updateBankrollError) throw updateBankrollError;
     },
     onSuccess: () => {
@@ -171,7 +171,7 @@ export function useUpdateBetManual() {
       const { data: bankrollRow, error: bankrollError } = await supabase
         .from('bankroll')
         .select('amount')
-        .eq('id', user.id)
+        .eq('user_id', user.id)
         .maybeSingle();
       if (bankrollError) throw bankrollError;
       if (!bankrollRow) return;
@@ -181,7 +181,7 @@ export function useUpdateBetManual() {
       const { error: updateBankrollError } = await supabase
         .from('bankroll')
         .update({ amount: newAmount, updated_at: new Date().toISOString() })
-        .eq('id', user.id);
+        .eq('user_id', user.id);
       if (updateBankrollError) throw updateBankrollError;
     },
     onSuccess: () => {
