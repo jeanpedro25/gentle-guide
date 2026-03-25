@@ -46,11 +46,50 @@ interface ApiFootballOddsResponse {
   bookmakers: ApiFootballBookmaker[];
 }
 
-// ── Odds-API (api.odds-api.io) fallback ──
+// ── Odds-API (api.odds-api.io) primary ──
 
 type OddsApiEvent = Record<string, unknown>;
 
 const ODDS_API_BASE_URL = 'https://api.odds-api.io/v3/';
+
+interface OddsApiRequestOptions {
+  sports?: string;
+  markets?: string;
+  leagues?: string;
+}
+
+async function requestOddsApi(path: string, options: OddsApiRequestOptions = {}): Promise<unknown> {
+  const apiKey =
+    import.meta.env.VITE_ODDS_API_IO_KEY ||
+    import.meta.env.VITE_ODDS_API_KEY ||
+    import.meta.env.ODDS_API_KEY;
+
+  const params = new URLSearchParams({
+    sports: options.sports || 'football',
+    markets: options.markets || 'h2h',
+    leagues: options.leagues || 'all',
+  });
+
+  const baseUrl = `${ODDS_API_BASE_URL}${path}?${params.toString()}`;
+  const urlWithKey = apiKey ? `${baseUrl}&apiKey=${encodeURIComponent(apiKey)}` : baseUrl;
+
+  const request = async (url: string) => {
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`odds-api http ${res.status}`);
+    }
+    return res.json();
+  };
+
+  try {
+    return await request(urlWithKey);
+  } catch (err) {
+    if (apiKey) {
+      return await request(baseUrl);
+    }
+    throw err;
+  }
+}
 
 function hashStringToNumber(value: string): number {
   let hash = 0;
@@ -321,38 +360,8 @@ function getBrazilDateFromISO(dateStr: string): string | null {
   return dt.toLocaleDateString('en-CA', { timeZone: BRAZIL_TIMEZONE });
 }
 
-async function fetchOddsApiEvents(): Promise<ApiFixture[]> {
-  const apiKey =
-    import.meta.env.VITE_ODDS_API_IO_KEY ||
-    import.meta.env.VITE_ODDS_API_KEY ||
-    import.meta.env.ODDS_API_KEY;
-
-  const params = new URLSearchParams({
-    sports: 'football',
-    markets: 'h2h',
-    leagues: 'all',
-  });
-  const baseUrl = `${ODDS_API_BASE_URL}events?${params.toString()}`;
-  const urlWithKey = apiKey ? `${baseUrl}&apiKey=${encodeURIComponent(apiKey)}` : baseUrl;
-
-  const request = async (url: string) => {
-    const res = await fetch(url);
-    if (!res.ok) {
-      throw new Error(`odds-api http ${res.status}`);
-    }
-    return res.json();
-  };
-
-  const data = await (async () => {
-    try {
-      return await request(urlWithKey);
-    } catch (err) {
-      if (apiKey) {
-        return await request(baseUrl);
-      }
-      throw err;
-    }
-  })();
+async function fetchOddsApiEvents(options: OddsApiRequestOptions = {}): Promise<ApiFixture[]> {
+  const data = await requestOddsApi('events', options);
 
   const events = Array.isArray(data)
     ? data
@@ -451,21 +460,15 @@ export interface LiveMatchData {
 
 export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
   try {
-    const response = await apiFootballFetch<ApiFootballFixture>(
-      'fixtures',
-      { live: 'all', timezone: BRAZIL_TIMEZONE },
-      'livescores',
-      'medium'
-    );
+    const fixtures = await fetchOddsApiEvents();
+    const now = Date.now();
+    const liveWindowMs = 2 * 60 * 60 * 1000;
 
-    if (hasApiErrors(response) || !response.response) {
-      console.warn('[Oracle] livescores failed');
-      return [];
-    }
-
-    return response.response
+    return fixtures
       .map(fixture => {
-        const statusShort = fixture.fixture.status.short;
+        const startMs = fixture.fixture.timestamp * 1000;
+        const withinLiveWindow = startMs <= now && now - startMs <= liveWindowMs;
+        const statusShort = withinLiveWindow ? 'LIVE' : fixture.fixture.status.short;
         return {
           id: String(fixture.fixture.id),
           homeTeam: fixture.teams.home.name,
@@ -478,17 +481,12 @@ export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
           league: fixture.league.name,
           leagueId: fixture.league.id,
           leagueBadge: fixture.league.logo || '',
-          time: '',
+          time: formatBrazilTime(fixture.fixture.date),
           venue: '',
         } satisfies LiveMatchData;
       })
-      .sort((a, b) => {
-        const liveStatuses = new Set(['1H', '2H', 'HT', 'LIVE', 'PEN']);
-        const aLive = liveStatuses.has(a.status) ? 0 : 1;
-        const bLive = liveStatuses.has(b.status) ? 0 : 1;
-        if (aLive !== bLive) return aLive - bLive;
-        return a.league.localeCompare(b.league);
-      });
+      .filter(match => ['LIVE', '1H', '2H', 'HT', 'PEN', 'ET'].includes(match.status))
+      .sort((a, b) => a.league.localeCompare(b.league));
   } catch (err) {
     lastApiError = err instanceof Error ? err.message : 'Erro ao buscar jogos ao vivo.';
     console.error('[Oracle] fetchLiveMatches error:', err);

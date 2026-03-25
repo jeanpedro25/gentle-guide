@@ -37,6 +37,12 @@ export interface BetResultRow {
   resolved_at: string;
 }
 
+function isMissingUserIdColumn(error: unknown) {
+  return typeof (error as { message?: string })?.message === 'string'
+    && (error as { message: string }).message.toLowerCase().includes('user_id')
+    && (error as { message: string }).message.toLowerCase().includes('column');
+}
+
 export function usePredictions() {
   const { user } = useAuth();
   return useQuery({
@@ -126,10 +132,21 @@ export function useBankroll() {
       const { data, error } = await supabase
         .from('bankroll')
         .select('*')
-        .eq('id', user.id)
+        .eq('user_id', user.id)
         .maybeSingle();
-      
-      if (error) throw error;
+
+      if (error) {
+        if (isMissingUserIdColumn(error)) {
+          const legacy = await supabase
+            .from('bankroll')
+            .select('*')
+            .eq('id', user.id)
+            .maybeSingle();
+          if (legacy.error) throw legacy.error;
+          return legacy.data as unknown as BankrollRow;
+        }
+        throw error;
+      }
       return data as unknown as BankrollRow;
     },
     enabled: !!user,
@@ -147,11 +164,23 @@ export function useUpdateBankroll() {
       const { error } = await supabase
         .from('bankroll')
         .upsert(
-          { id: user.id, amount, updated_at: new Date().toISOString() } as any,
-          { onConflict: 'id' }
+          { user_id: user.id, amount, updated_at: new Date().toISOString() } as any,
+          { onConflict: 'user_id' }
         );
 
-      if (error) throw error;
+      if (error) {
+        if (isMissingUserIdColumn(error)) {
+          const legacy = await supabase
+            .from('bankroll')
+            .upsert(
+              { id: user.id, amount, updated_at: new Date().toISOString() } as any,
+              { onConflict: 'id' }
+            );
+          if (legacy.error) throw legacy.error;
+          return;
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bankroll', user?.id] });
