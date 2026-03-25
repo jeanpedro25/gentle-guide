@@ -338,6 +338,7 @@ async function apiFootballFetch<T = unknown>(
 }
 
 export function clearFootballCache(pathIncludes?: string): void {
+  clearApiCache(pathIncludes ? `oddsapi|${pathIncludes}` : undefined);
   clearApiCache(pathIncludes ? `apifootball|${pathIncludes}` : undefined);
 }
 
@@ -688,8 +689,8 @@ export interface MatchOdds {
 }
 
 /**
- * Fetch real odds for a specific fixture from API-Football.
- * Returns null if odds are not available (requires paid plan).
+ * Odds API does not expose fixture-level odds in this integration yet.
+ * Returns null for now.
  */
 export async function fetchMatchOdds(fixtureId: number): Promise<MatchOdds | null> {
   try {
@@ -701,7 +702,7 @@ export async function fetchMatchOdds(fixtureId: number): Promise<MatchOdds | nul
   }
 }
 
-// ── Team stats (simplified for API-Football) ──
+// ── Team stats (not available with Odds API) ──
 
 export interface TeamStats {
   form: string;
