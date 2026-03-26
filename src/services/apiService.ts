@@ -1,14 +1,14 @@
 import { supabase } from '@/integrations/supabase/client';
 
-// ── Cache TTLs by data type (in milliseconds) ──
+// ── Cache TTLs by data type — optimized to minimize API-Football requests ──
 const CACHE_TTLS: Record<CacheDataType, number> = {
-  jogos: 30 * 60 * 1000,           // 30 minutes
-  odds: 5 * 60 * 1000,             // 5 minutes
-  resultado: Infinity,              // Permanent
-  liga: 7 * 24 * 60 * 60 * 1000,   // 7 days
-  time: 7 * 24 * 60 * 60 * 1000,   // 7 days
-  estatistica: 24 * 60 * 60 * 1000, // 24 hours
-  livescores: 60 * 1000,            // 60 seconds
+  jogos:       5 * 60 * 1000,             // 5 minutes (was 30min, jogos mudam status)
+  livescores:  90 * 1000,                 // 90 seconds (ao vivo)
+  odds:        10 * 60 * 1000,            // 10 minutes
+  resultado:   Infinity,                  // Permanent (resultado não muda)
+  liga:        7 * 24 * 60 * 60 * 1000,  // 7 days
+  time:        7 * 24 * 60 * 60 * 1000,  // 7 days
+  estatistica: 6 * 60 * 60 * 1000,       // 6 hours (era 24h, ajustado)
 };
 
 export type CacheDataType = 'jogos' | 'odds' | 'resultado' | 'liga' | 'time' | 'estatistica' | 'livescores';
@@ -81,6 +81,66 @@ function getMemoryCache(key: string): any | null {
 
 function setMemoryCache(key: string, data: any, ttl: number) {
   memoryCache.set(key, { data, ts: Date.now(), ttl });
+}
+
+// ── localStorage cache layer (survives reloads, shared within device) ──
+const LS_PREFIX = 'profeta_apicache_';
+
+export function getLsCache(key: string): any | null {
+  try {
+    const raw = localStorage.getItem(LS_PREFIX + btoa(key).slice(0, 60));
+    if (!raw) return null;
+    const entry: { data: any; exp: number } = JSON.parse(raw);
+    if (Date.now() > entry.exp) {
+      // Don't delete expired entries — keep as stale fallback
+      return null; // returns null for fresh check, but stale is accessible via getStaleLsCache
+    }
+    return entry.data;
+  } catch { return null; }
+}
+
+/**
+ * Returns stale (expired) localStorage data as fallback when API is unavailable.
+ * This is the KEY function for rate-limit protection.
+ */
+export function getStaleLsCache(key: string): any | null {
+  try {
+    const raw = localStorage.getItem(LS_PREFIX + btoa(key).slice(0, 60));
+    if (!raw) return null;
+    const entry: { data: any; exp: number } = JSON.parse(raw);
+    return entry.data ?? null; // return even if expired
+  } catch { return null; }
+}
+
+export function setLsCache(key: string, data: any, ttl: number) {
+  if (ttl === Infinity) ttl = 7 * 24 * 60 * 60 * 1000;
+  try {
+    localStorage.setItem(
+      LS_PREFIX + btoa(key).slice(0, 60),
+      JSON.stringify({ data, exp: Date.now() + ttl })
+    );
+  } catch { /* quota exceeded — ignore */ }
+}
+
+// ── API Request Counter (track daily usage) ──
+const COUNTER_KEY = 'profeta_api_requests_';
+
+export function getApiRequestCount(): { today: number; date: string } {
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const raw = localStorage.getItem(COUNTER_KEY + today);
+    return { today: raw ? parseInt(raw, 10) : 0, date: today };
+  } catch { return { today: 0, date: today }; }
+}
+
+function incrementApiCounter() {
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const key = COUNTER_KEY + today;
+    const current = parseInt(localStorage.getItem(key) || '0', 10);
+    localStorage.setItem(key, String(current + 1));
+    console.log(`[apiService] 📊 Requests hoje: ${current + 1}/100`);
+  } catch {}
 }
 
 // ── Supabase cache operations ──
@@ -165,44 +225,58 @@ export interface FetchOptions {
 
 /**
  * Central API service. ALL API calls must go through this.
- * Flow: memory cache → Supabase cache → API call → save to both caches
+ * Flow: memory → localStorage → Supabase cache → API call → save everywhere
  */
 export async function cachedFetch<T = any>(options: FetchOptions): Promise<T> {
   const { cacheKey, tipo, priority = 'medium', fetchFn } = options;
   const ttl = CACHE_TTLS[tipo];
 
-  // 1. Memory cache (instant)
+  // 1. Memory cache (instant, per-session)
   const memCached = getMemoryCache(cacheKey);
   if (memCached !== null) {
     return memCached as T;
   }
 
-  // 2. Supabase cache (shared across users)
+  // 2. localStorage cache (survives reloads, shared within device)
+  const lsCached = getLsCache(cacheKey);
+  if (lsCached !== null) {
+    setMemoryCache(cacheKey, lsCached, ttl === Infinity ? 24 * 60 * 60 * 1000 : ttl);
+    return lsCached as T;
+  }
+
+  // 3. Supabase cache (shared across ALL users — KEY for multi-user efficiency)
   const dbCached = await getSupabaseCache(cacheKey);
   if (dbCached !== null) {
     setMemoryCache(cacheKey, dbCached, ttl === Infinity ? 24 * 60 * 60 * 1000 : ttl);
+    setLsCache(cacheKey, dbCached, ttl);
     return dbCached as T;
   }
 
-  // 3. Deduplicated API call through priority queue
+  // 4. Real API call — only when all caches miss (counted against daily limit)
   return fetchWithDedup(cacheKey, () =>
     enqueue(priority, async () => {
       try {
+        incrementApiCounter(); // ← conta apenas chamadas reais à API
         const result = await fetchFn();
 
-        // Save to both caches
+        // Save to ALL cache layers
         setMemoryCache(cacheKey, result, ttl === Infinity ? 24 * 60 * 60 * 1000 : ttl);
+        setLsCache(cacheKey, result, ttl);
         await setSupabaseCache(cacheKey, result, tipo);
 
         return result as T;
       } catch (error) {
-        // Fallback: try stale cache
-        const stale = await getStaleSupabaseCache(cacheKey);
+        // ─── CRITICAL: Rate limit / API failure fallback ───────────────
+        // Try stale data in order: Supabase stale → localStorage stale
+        // This ensures users always see data even when API quota is exceeded
+        console.warn(`[apiService] ⚠️ API falhou para "${cacheKey.split('|')[1]}". Tentando cache obsoleto...`);
+        const stale = await getStaleSupabaseCache(cacheKey) ?? getStaleLsCache(cacheKey);
         if (stale !== null) {
-          console.warn(`[apiService] Using stale cache for ${cacheKey}`);
-          setMemoryCache(cacheKey, stale, 60 * 1000); // Keep stale for 1 min
+          console.info(`[apiService] ✅ Cache obsoleto encontrado e servido (dados podem ter até 24h).`);
+          setMemoryCache(cacheKey, stale, 3 * 60 * 1000); // cache stale por 3 min
           return stale as T;
         }
+        // No cache at all — re-throw so caller can handle gracefully
         throw error;
       }
     })

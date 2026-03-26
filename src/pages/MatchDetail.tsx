@@ -24,6 +24,7 @@ import { GoalkeeperDuelCard } from '@/components/oracle/GoalkeeperDuelCard';
 import { PlayerMatchups } from '@/components/oracle/PlayerMatchups';
 import { LoadingState } from '@/components/oracle/LoadingState';
 import { BetCard } from '@/components/oracle/BetCard';
+import { RealOddsPanel } from '@/components/oracle/RealOddsPanel';
 import { H2HFixture } from '@/types/fixture';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Zap, Loader2 } from 'lucide-react';
@@ -295,6 +296,29 @@ export default function MatchDetail() {
             />
 
             <ConfidenceGradeCard oracle={oracle} />
+
+            {/* 💹 Odds reais do mercado + EV vs Poisson */}
+            <RealOddsPanel
+              homeTeam={fixture.teams.home.name}
+              awayTeam={fixture.teams.away.name}
+              leagueName={fixture.league.name}
+              homeProb={oracle.probabilities.homeWin > 1 ? oracle.probabilities.homeWin / 100 : oracle.probabilities.homeWin}
+              drawProb={oracle.probabilities.draw > 1 ? oracle.probabilities.draw / 100 : oracle.probabilities.draw}
+              awayProb={oracle.probabilities.awayWin > 1 ? oracle.probabilities.awayWin / 100 : oracle.probabilities.awayWin}
+            />
+
+            {/* 🎯 Card de Registro de Aposta Manual */}
+            <BetCard
+              homeTeam={fixture.teams.home.name}
+              awayTeam={fixture.teams.away.name}
+              league={fixture.league.name}
+              fixtureId={fixture.fixture.id}
+              prediction={
+                oracle.primaryBet.market.includes(fixture.teams.home.name) ? '1' :
+                oracle.primaryBet.market.includes(fixture.teams.away.name) ? '2' :
+                oracle.primaryBet.market === 'Empate' ? 'X' : '1'
+              }
+            />
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}

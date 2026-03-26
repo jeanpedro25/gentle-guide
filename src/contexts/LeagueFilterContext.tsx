@@ -36,11 +36,24 @@ interface LeagueFilterContextType {
 }
 
 export const FIXED_LEAGUES: LeagueOption[] = [
+  // ── Mundiais ──
+  { id: "copa-do-mundo", nome: "Copa do Mundo", bandeira: "🏆", source: "fixed", apiId: 1, aliases: ["fifa world cup", "world cup", "mundial", "copa mundo"] },
+  { id: "amistosos-internacionais", nome: "Amistosos Int.", bandeira: "🌍", source: "fixed", apiId: 10, aliases: ["friendlies", "world friendlies", "amistosos", "amistosos internacionais"] },
+  { id: "eurocopa", nome: "Eurocopa", bandeira: "🇪🇺", source: "fixed", apiId: 4, aliases: ["euro championship", "uefa euro", "eurocopa"] },
+  { id: "copa-america", nome: "Copa América", bandeira: "🌎", source: "fixed", apiId: 9, aliases: ["copa america", "conmebol copa america"] },
+  { id: "eliminatorias-copa", nome: "Eliminatórias Copa", bandeira: "🌍", source: "fixed", apiId: 31, aliases: ["eliminatorias copa do mundo", "world cup", "wc qualification", "wc qualification south america", "conmebol eliminatorias"] },
+  { id: "eliminatorias-uefa", nome: "Eliminatórias UEFA", bandeira: "🇪🇺", source: "fixed", apiId: 32, aliases: ["eliminatorias uefa", "uefa qualifiers", "european qualifiers", "euro qualification", "wc qualification europe", "world cup qualification europe"] },
+  { id: "copa-das-nacoes", nome: "Nations League", bandeira: "🌐", source: "fixed", apiId: 5, aliases: ["uefa nations league", "nations league"] },
+  // ── Brasil ──
   { id: "brasileirao-a", nome: "Brasileirão A", bandeira: "🇧🇷", source: "fixed", aliases: ["serie a brasil", "brasileirao serie a", "campeonato brasileiro"] },
   { id: "serie-b", nome: "Série B", bandeira: "🇧🇷", source: "fixed", aliases: ["brasileirao serie b", "serie b brasil", "campeonato brasileiro b"] },
-  { id: "copa-do-brasil", nome: "Copa do Brasil", bandeira: "🇧🇷", source: "fixed" },
+  { id: "copa-do-brasil", nome: "Copa do Brasil", bandeira: "🇧🇷", source: "fixed", aliases: ["copa do brasil"] },
+  { id: "copa-verde", nome: "Copa Verde", bandeira: "🟢", source: "fixed", apiId: 74, aliases: ["copa verde", "copa verde brasil"] },
+  { id: "copa-nordeste", nome: "Copa do Nordeste", bandeira: "🇧🇷", source: "fixed", apiId: 73, aliases: ["copa nordeste", "copa do nordeste", "nordestao"] },
+  { id: "copa-sul-sudeste", nome: "Copa Sul-Sudeste", bandeira: "🇧🇷", source: "fixed", aliases: ["copa sul sudeste", "copa sul-sudeste"] },
   { id: "brasileirao-fem", nome: "Brasileirão Fem.", bandeira: "🇧🇷", source: "fixed", aliases: ["brasileirao feminino", "campeonato brasileiro feminino"] },
   { id: "copa-do-brasil-fem", nome: "Copa BR Fem.", bandeira: "🇧🇷", source: "fixed", aliases: ["copa do brasil feminino", "copa br feminina"] },
+  // ── Europa ──
   { id: "champions-league", nome: "Champions League", bandeira: "🏆", source: "fixed", aliases: ["uefa champions league"] },
   { id: "europa-league", nome: "Europa League", bandeira: "🟠", source: "fixed", aliases: ["uefa europa league"] },
   { id: "premier-league", nome: "Premier League", bandeira: "🏴", source: "fixed", aliases: ["england premier league", "epl"] },
@@ -48,12 +61,13 @@ export const FIXED_LEAGUES: LeagueOption[] = [
   { id: "serie-a-it", nome: "Serie A", bandeira: "🇮🇹", source: "fixed", aliases: ["italy serie a"] },
   { id: "bundesliga", nome: "Bundesliga", bandeira: "🇩🇪", source: "fixed", aliases: ["germany bundesliga"] },
   { id: "ligue-1", nome: "Ligue 1", bandeira: "🇫🇷", source: "fixed", aliases: ["france ligue 1"] },
+  // ── Américas ──
   { id: "liga-argentina", nome: "Super Liga Argentina", bandeira: "🇦🇷", source: "fixed", aliases: ["liga argentina", "superliga argentina", "argentina primera division", "liga profesional argentina"] },
+  { id: "libertadores", nome: "Libertadores", bandeira: "🌎", source: "fixed", aliases: ["copa libertadores", "conmebol libertadores"] },
+  { id: "sul-americana", nome: "Sul-Americana", bandeira: "🥈", source: "fixed", aliases: ["copa sul-americana", "conmebol sudamericana"] },
   { id: "mls", nome: "MLS", bandeira: "🇺🇸", source: "fixed", aliases: ["major league soccer"] },
   { id: "liga-mx", nome: "Liga MX", bandeira: "🇲🇽", source: "fixed", aliases: ["liga mexicana"] },
   { id: "liga-mx-fem", nome: "Liga MX Fem.", bandeira: "🇲🇽", source: "fixed", aliases: ["liga mx femenino", "liga mx feminina"] },
-  { id: "libertadores", nome: "Libertadores", bandeira: "🌎", source: "fixed", aliases: ["copa libertadores", "conmebol libertadores"] },
-  { id: "sul-americana", nome: "Sul-Americana", bandeira: "🥈", source: "fixed", aliases: ["copa sul-americana", "conmebol sudamericana"] },
 ];
 
 const LeagueFilterContext = createContext<LeagueFilterContextType | null>(null);

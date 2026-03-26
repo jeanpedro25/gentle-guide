@@ -140,6 +140,11 @@ export function useBankroll() {
     queryKey: ['bankroll', user?.id],
     queryFn: async () => {
       if (!user) return null;
+      
+      let dbAmount = 0;
+      let bankrollRow: BankrollRow | null = null;
+      let foundInDb = false;
+
       const { data, error } = await supabase
         .from('bankroll')
         .select('*')
@@ -148,15 +153,40 @@ export function useBankroll() {
 
       if (error && !isUserIdColumnError(error)) throw error;
 
-      if (!error && data) return data as unknown as BankrollRow;
+      if (!error && data) {
+        bankrollRow = data as unknown as BankrollRow;
+        dbAmount = Number(bankrollRow.amount);
+        foundInDb = true;
+      } else {
+        const legacy = await supabase
+          .from('bankroll')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (!legacy.error && legacy.data) {
+          bankrollRow = legacy.data as unknown as BankrollRow;
+          dbAmount = Number(bankrollRow.amount);
+          foundInDb = true;
+        }
+      }
 
-      const legacy = await supabase
-        .from('bankroll')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
-      if (legacy.error) throw legacy.error;
-      return legacy.data as unknown as BankrollRow;
+      // Sincronia de segurança: se DB não tiver a banca salvamos pelo app ou estiver zerada, puxar local.
+      if (!foundInDb || dbAmount === 0 || isNaN(dbAmount)) {
+        try {
+          const stored = localStorage.getItem(`profeta_bankroll_${user.id}`);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed && typeof parsed.amount === 'number' && parsed.amount > 0) {
+              return {
+                ...(bankrollRow ?? { id: user.id, user_id: user.id, updated_at: new Date().toISOString() }),
+                amount: parsed.amount,
+              } as unknown as BankrollRow;
+            }
+          }
+        } catch(e) {}
+      }
+
+      return bankrollRow;
     },
     enabled: !!user,
   });

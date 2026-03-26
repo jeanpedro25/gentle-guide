@@ -7,9 +7,10 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const SUPABASE_KEY = SUPABASE_ANON_KEY || SUPABASE_PUBLISHABLE_KEY;
 
-const isLikelyJwt = (key?: string) => typeof key === 'string' && key.split('.').length === 3;
+const isLikelyJwt = (key?: string) => 
+  typeof key === 'string' && (key.split('.').length === 3 || key.startsWith('sb_publishable_'));
 
-export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_KEY && isLikelyJwt(SUPABASE_KEY));
+export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_KEY && (isLikelyJwt(SUPABASE_KEY) || SUPABASE_KEY.length > 20));
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";

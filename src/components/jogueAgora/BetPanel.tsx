@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Target, Check, Loader2, AlertTriangle } from 'lucide-react';
+import { X, Target, Check, Loader2, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { AnaliseJogo, PICK_LABELS } from '@/lib/jogueAgora';
 import { gerarDecisaoFinal } from '@/lib/evDecision';
-import { useCreateBet } from '@/hooks/useBets';
+import { useCreateBet, useBets } from '@/hooks/useBets';
+import { useBankrollManager } from '@/hooks/useBankrollManager';
 import { toast } from 'sonner';
 
 interface Props {
@@ -22,6 +23,9 @@ const OUTCOME_LABEL: Record<BetOutcome, string> = {
 
 export function BetPanel({ analise, bankrollAmount, onClose }: Props) {
   const createBet = useCreateBet();
+  const { data: bets = [] } = useBets();
+  const { stopStatus } = useBankrollManager(bets);
+  
   const [betAmount, setBetAmount] = useState('');
   const [manualProfit, setManualProfit] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
@@ -35,13 +39,13 @@ export function BetPanel({ analise, bankrollAmount, onClose }: Props) {
   const isExcessive = betValue > safeBet;
   const isDangerous = betValue > bankrollAmount * 0.05;
   const exceedsBankroll = betValue > bankrollAmount;
+  const isBlockedByBankroll = stopStatus.blocked;
 
   const potentialProfit = hasManualProfit
     ? Math.max(0, manualProfitValue)
     : analise
       ? Math.max(0, betValue * (analise.melhor_odd - 1))
-      : 0;
-  const totalReturn = betValue + potentialProfit;
+      : 0;  const totalReturn = betValue + potentialProfit;
 
   const settledProfit =
     betOutcome === 'GANHA' ? potentialProfit :
@@ -246,12 +250,22 @@ export function BetPanel({ analise, bankrollAmount, onClose }: Props) {
                 </div>
               )}
 
+              {isBlockedByBankroll && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                  <ShieldAlert className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                  <p className="text-xs text-destructive font-bold leading-tight">
+                    APOSTA BLOQUEADA<br />
+                    <span className="font-normal opacity-90">{stopStatus.message}</span>
+                  </p>
+                </div>
+              )}
+
               <button
                 onClick={() => setShowConfirm(true)}
-                disabled={!decisao?.botaoApostar || betValue <= 0 || exceedsBankroll}
+                disabled={!decisao?.botaoApostar || betValue <= 0 || exceedsBankroll || isBlockedByBankroll}
                 className="w-full py-3 rounded-lg bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {decisao?.botaoApostar ? 'Continuar' : 'APOSTA NAO RECOMENDADA — EV INSUFICIENTE'}
+                {isBlockedByBankroll ? 'OPERAÇÃO BLOQUEADA (VER BANCA)' : decisao?.botaoApostar ? 'Continuar' : 'APOSTA NAO RECOMENDADA — EV INSUFICIENTE'}
               </button>
             </>
           ) : (

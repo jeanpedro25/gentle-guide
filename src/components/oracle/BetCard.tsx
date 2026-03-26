@@ -2,8 +2,9 @@ import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { DollarSign, Zap, Loader2, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
-import { useCreateBet } from '@/hooks/useBets';
+import { useBets, useCreateBet } from '@/hooks/useBets';
 import { useBankroll, useUpdateBankroll } from '@/hooks/usePredictions';
+import { useBankrollManager } from '@/hooks/useBankrollManager';
 
 interface BetCardProps {
   homeTeam: string;
@@ -17,12 +18,17 @@ interface BetCardProps {
 export function BetCard({ homeTeam, awayTeam, league, fixtureId, prediction }: BetCardProps) {
   const [betAmount, setBetAmount] = useState('');
   const [totalReturnInput, setTotalReturnInput] = useState('');
+  
   const createBet = useCreateBet();
+  const { data: bets = [] } = useBets();
+  const { stopStatus } = useBankrollManager(bets);
+  
   const { data: bankroll } = useBankroll();
 
   const bankrollAmount = bankroll?.amount ?? 200;
   const stake = parseFloat(betAmount.replace(',', '.')) || 0;
   const totalReturn = parseFloat(totalReturnInput.replace(',', '.')) || 0;
+  const isBlockedByBankroll = stopStatus.blocked;
   
   // Lucro real = O que eu ganho além do que apostei
   const potentialProfit = totalReturn > stake ? totalReturn - stake : 0;
@@ -56,8 +62,11 @@ export function BetCard({ homeTeam, awayTeam, league, fixtureId, prediction }: B
       
       setBetAmount('');
       setTotalReturnInput('');
-    } catch {
-      toast.error('Erro ao registrar aposta.');
+    } catch (error: any) {
+      console.error('[BetCard] Error detail:', error);
+      toast.error('Erro ao registrar aposta', {
+        description: error.message || 'Verifique sua conexão ou saldo.'
+      });
     }
   };
 
@@ -137,14 +146,20 @@ export function BetCard({ homeTeam, awayTeam, league, fixtureId, prediction }: B
       <button
         type="button"
         onClick={handleConfirmBet}
-        disabled={stake <= 0 || totalReturn <= 0 || exceedsBankroll || createBet.isPending}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,#ff4d4f,#ff2f2f)] text-sm font-extrabold uppercase tracking-[0.08em] text-white shadow-[0_10px_20px_rgba(255,58,58,0.2)] transition-all hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+        disabled={stake <= 0 || totalReturn <= 0 || exceedsBankroll || createBet.isPending || isBlockedByBankroll}
+        className={`flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-extrabold uppercase tracking-[0.08em] text-white transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${isBlockedByBankroll ? 'bg-destructive/50' : 'bg-[linear-gradient(135deg,#ff4d4f,#ff2f2f)] shadow-[0_10px_20px_rgba(255,58,58,0.2)] hover:brightness-110'}`}
       >
         {createBet.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4 fill-current" />}
-        Confirmar Aposta
+        {isBlockedByBankroll ? 'Operaçaõ Bloqueada' : 'Confirmar Aposta'}
       </button>
 
-      {exceedsBankroll && (
+      {isBlockedByBankroll && (
+        <p className="text-center text-[11px] font-bold text-destructive">
+          {stopStatus.message}
+        </p>
+      )}
+
+      {exceedsBankroll && !isBlockedByBankroll && (
         <p className="text-center text-[10px] font-bold text-destructive animate-pulse">
           VALOR ACIMA DO SALDO DISPONÍVEL!
         </p>

@@ -3,7 +3,6 @@ import { preloadTeamLogos } from '@/services/teamLogos';
 import { useTodayFixtures, useTomorrowFixtures, useWeekFixtures } from '@/hooks/useFixtures';
 import { useLiveMatches } from '@/hooks/useLiveMatches';
 import { TimeTabs, TimeFilter } from '@/components/oracle/TimeTabs';
-import { LobbyHeader } from '@/components/oracle/LobbyHeader';
 import { LiveMatches } from '@/components/oracle/LiveMatches';
 import { LiveAlertBanner } from '@/components/oracle/LiveAlertBanner';
 import { StopLossBanner } from '@/components/oracle/StopLossBanner';
@@ -165,7 +164,6 @@ export default function MatchLobby() {
 
   return (
     <div className="min-h-screen bg-background">
-      <LobbyHeader />
       <LiveAlertBanner />
       <StopLossBanner status={stopLoss} />
 
@@ -248,28 +246,66 @@ export default function MatchLobby() {
         )}
 
         {/* Empty state */}
-        {timeFilter !== 'live' && !currentLoading && !currentError && !hasResults && (
-          <div className="flex flex-col items-center justify-center py-20 space-y-4 px-4">
-            <p className="text-2xl font-extrabold text-muted-foreground tracking-wider">
-              {searchQuery ? 'NENHUM RESULTADO' : 'NENHUM JOGO'}
-            </p>
-            <p className="text-muted-foreground text-sm">
-              {searchQuery
-                ? `Nenhum jogo encontrado para "${searchQuery}".`
-                : timeFilter === 'today' ? 'Não há jogos programados para hoje.'
-                : timeFilter === 'tomorrow' ? 'Não há jogos programados para amanhã.'
-                : 'Não há jogos programados para esta semana.'}
-            </p>
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border text-foreground text-sm hover:border-primary/50 transition-colors"
-              >
-                Limpar busca
-              </button>
-            )}
-          </div>
-        )}
+        {timeFilter !== 'live' && !currentLoading && !currentError && !hasResults && (() => {
+          const apiErr = getLastApiError().toLowerCase();
+          const isRateLimit = apiErr.includes('limit') || apiErr.includes('quota') || apiErr.includes('too many');
+          if (isRateLimit || (!searchQuery && !currentError)) {
+            // Show rate limit warning if API quota exceeded
+            if (isRateLimit) return (
+              <div className="flex flex-col items-center justify-center py-16 space-y-4 px-4 text-center">
+                <div className="w-16 h-16 rounded-full bg-orange-500/10 border border-orange-500/30 flex items-center justify-center">
+                  <span className="text-3xl">⏱️</span>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-lg font-black text-orange-400 uppercase tracking-tighter">Limite Diário Atingido</p>
+                  <p className="text-sm text-muted-foreground max-w-xs">
+                    Você consumiu 100/100 requisições hoje. A API redefine à meia-noite (UTC).
+                  </p>
+                </div>
+                <div className="glass-card p-4 border border-orange-500/20 text-left max-w-xs space-y-2 w-full">
+                  <p className="text-[10px] text-muted-foreground font-bold uppercase">O que acontece agora?</p>
+                  <div className="space-y-1.5 text-xs text-foreground">
+                    <div className="flex items-start gap-2">
+                      <span className="text-oracle-win">✅</span>
+                      <span>Amanhã, tudo volta ao normal automaticamente</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-oracle-win">✅</span>
+                      <span>Jogos já visitados ficam em cache — clique nos que você abriu antes</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary">💡</span>
+                      <span>O sistema economizará requests daqui em diante (cache de 5 min ativo)</span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground">Reset: meia-noite UTC · {new Date().toLocaleDateString('pt-BR')}</p>
+              </div>
+            );
+          }
+          return (
+            <div className="flex flex-col items-center justify-center py-20 space-y-4 px-4">
+              <p className="text-2xl font-extrabold text-muted-foreground tracking-wider">
+                {searchQuery ? 'NENHUM RESULTADO' : 'NENHUM JOGO'}
+              </p>
+              <p className="text-muted-foreground text-sm">
+                {searchQuery
+                  ? `Nenhum jogo encontrado para "${searchQuery}".`
+                  : timeFilter === 'today' ? 'Não há jogos programados para hoje.'
+                  : timeFilter === 'tomorrow' ? 'Não há jogos programados para amanhã.'
+                  : 'Não há jogos programados para esta semana.'}
+              </p>
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border text-foreground text-sm hover:border-primary/50 transition-colors"
+                >
+                  Limpar busca
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Match list (non-live tabs) */}
         {timeFilter !== 'live' && !currentLoading && !currentError && hasResults && (

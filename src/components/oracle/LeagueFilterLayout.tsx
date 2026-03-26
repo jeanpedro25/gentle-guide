@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bell, Menu, UserCircle2, X, LayoutDashboard, Zap, Calendar, Wallet, History, User } from "lucide-react";
 import { useBankroll } from "@/hooks/usePredictions";
+import { useAuth } from "@/contexts/AuthContext";
 import { FIXED_LEAGUES, useLeagueFilter } from "@/contexts/LeagueFilterContext";
 import { normalizeLeagueName } from "@/lib/leagueFilter";
 import { useAutoResolveBets } from "@/hooks/useAutoResolveBets";
@@ -163,8 +164,21 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 export function LeagueFilterLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: bankroll } = useBankroll();
+  const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Read from localStorage as fallback (useBankrollManager saves there first)
+  const bankrollAmount = (() => {
+    const supabaseAmount = bankroll?.amount ?? 0;
+    if (supabaseAmount > 0) return supabaseAmount;
+    try {
+      const key = `profeta_bankroll_${user?.id ?? 'guest'}`;
+      const stored = localStorage.getItem(key);
+      if (stored) return JSON.parse(stored).amount ?? 0;
+    } catch {}
+    return 0;
+  })();
 
   useAutoResolveBets();
 
@@ -180,20 +194,34 @@ export function LeagueFilterLayout() {
           <button onClick={() => setMobileOpen(true)} className="md:hidden p-2 border border-[#3B3B3B] rounded">
             <Menu className="w-4 h-4" />
           </button>
-          <span className="font-black tracking-tighter text-xl gold-gradient-text cursor-pointer" onClick={() => navigate('/')}>
-            PROFETABET
-          </span>
+          {/* Logo melhorado */}
+          <div
+            className="flex items-center gap-1.5 cursor-pointer select-none"
+            onClick={() => navigate('/')}
+          >
+            <span className="text-xl">⚡</span>
+            <span
+              className="font-black tracking-tighter text-xl gold-gradient-text"
+              style={{ letterSpacing: '-0.04em', textShadow: '0 0 20px rgba(201,168,76,0.4)' }}
+            >
+              PROFETA<span className="text-white/90">BET</span>
+            </span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="bg-[#C9A84C]/10 border border-[#C9A84C]/30 px-3 py-1 rounded-full flex items-center gap-2">
-            <span className="text-[#C9A84C] text-[10px] font-bold">BANCA:</span>
-            <span className="text-sm font-bold">R$ {(bankroll?.amount ?? 0).toFixed(2)}</span>
-          </div>
-          <button className="p-2 border border-[#3B3B3B] rounded hover:bg-white/5 transition-colors">
+        <div className="flex items-center gap-2">
+          {/* Banca pill — clicável */}
+          <button
+            onClick={() => navigate('/banca')}
+            className="bg-[#C9A84C]/10 border border-[#C9A84C]/40 px-3 py-1.5 rounded-full flex items-center gap-2 hover:bg-[#C9A84C]/20 transition-colors"
+          >
+            <span className="text-[#C9A84C] text-[10px] font-bold">BANCA</span>
+            <span className="text-sm font-black text-white">R$ {bankrollAmount.toFixed(2)}</span>
+          </button>
+          <button className="p-2 border border-[#3B3B3B] rounded hover:bg-white/5 transition-colors" title="Notificações">
             <Bell className="w-4 h-4 text-[#CFCFCF]" />
           </button>
-          <button onClick={() => navigate('/perfil')} className="p-2 border border-[#3B3B3B] rounded hover:bg-white/5 transition-colors">
+          <button onClick={() => navigate('/perfil')} className="p-2 border border-[#3B3B3B] rounded hover:bg-white/5 transition-colors" title="Perfil">
             <UserCircle2 className="w-4 h-4 text-[#CFCFCF]" />
           </button>
         </div>

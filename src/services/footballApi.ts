@@ -42,6 +42,35 @@ async function rawApiFootballFetch<T = unknown>(
 ): Promise<ApiFootballResponse<T>> {
   console.log('[Oracle] API-Football →', endpoint, params || '');
 
+  // Tenta busca direta primeiro (Bypass Proxy) para garantir funcionamento imediato no localhost
+  try {
+    const apiKey = import.meta.env.VITE_FOOTBALL_API_KEY || '7705af77ba8bb13fb97e0a4878c93dc0';
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    const queryParams = new URLSearchParams(params || {});
+    const url = `https://v3.football.api-sports.io/${cleanEndpoint}?${queryParams.toString()}`;
+
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        "x-apisports-key": apiKey,
+      },
+    });
+
+    if (res.ok) {
+      const directData = await res.json();
+      const directErrors = directData?.errors;
+      const hasDirectErrors = directErrors && (Array.isArray(directErrors) ? directErrors.length > 0 : Object.keys(directErrors).length > 0);
+      
+      if (!hasDirectErrors) {
+        console.log('[Oracle] ✅ Direct API fetch success (Bypassing proxy)');
+        return directData as ApiFootballResponse<T>;
+      }
+      console.warn('[Oracle] Direct fetch returned API errors, trying proxy...', directErrors);
+    }
+  } catch (directErr) {
+    console.warn('[Oracle] Direct fetch error (CORS?), falling back to proxy...', directErr);
+  }
+
   const { data, error } = await supabase.functions.invoke('football-proxy', {
     body: { endpoint, params },
   });
@@ -62,8 +91,9 @@ async function rawApiFootballFetch<T = unknown>(
   if (hasApiErrors(response)) {
     const msg = getApiErrorMessage(response);
     lastApiError = msg;
-    // Rate limit check
+    // Rate limit: throw so cachedFetch stale fallback can activate
     if (/limit|too many|quota/i.test(msg)) {
+      console.warn('[Oracle] 🚫 Rate limit atingido. cachedFetch vai servir cache obsoleto.');
       throw new ApiLimitError(msg);
     }
     console.warn('[Oracle] API error:', msg);
@@ -225,12 +255,43 @@ export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
 
 // ── Fixtures by date ──
 
+// Helper: get stale cache key for a date's fixtures
+function getFixtureCacheKey(date: string) {
+  return `apifootball|/fixtures|${JSON.stringify({ date })}`;
+}
+
 export async function fetchTodayMatches(): Promise<ApiFixture[]> {
-  return fetchMatchesByDate(getBrazilDateString(0));
+  try {
+    return await fetchMatchesByDate(getBrazilDateString(0));
+  } catch (err) {
+    // API limit hit — try stale localStorage
+    const { getStaleLsCache } = await import('@/services/apiService');
+    const stale = getStaleLsCache(getFixtureCacheKey(getBrazilDateString(0)));
+    if (stale?.response) {
+      console.info('[Oracle] ✅ Servindo jogos de HOJE do cache obsoleto (API limit).');
+      return (stale.response as ApiFootballFixture[])
+        .map(normalizeFixture)
+        .filter(f => !['CANC', 'ABD', 'AWD', 'WO'].includes(f.fixture.status.short));
+    }
+    console.error('[Oracle] fetchTodayMatches: sem cache disponível.', err);
+    return [];
+  }
 }
 
 export async function fetchTomorrowMatches(): Promise<ApiFixture[]> {
-  return fetchMatchesByDate(getBrazilDateString(1));
+  try {
+    return await fetchMatchesByDate(getBrazilDateString(1));
+  } catch (err) {
+    const { getStaleLsCache } = await import('@/services/apiService');
+    const stale = getStaleLsCache(getFixtureCacheKey(getBrazilDateString(1)));
+    if (stale?.response) {
+      console.info('[Oracle] ✅ Servindo jogos de AMANHÃ do cache obsoleto (API limit).');
+      return (stale.response as ApiFootballFixture[])
+        .map(normalizeFixture)
+        .filter(f => !['CANC', 'ABD', 'AWD', 'WO'].includes(f.fixture.status.short));
+    }
+    return [];
+  }
 }
 
 export async function fetchWeekMatches(): Promise<ApiFixture[]> {
@@ -291,6 +352,8 @@ async function fetchMatchesByDate(date: string): Promise<ApiFixture[]> {
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro ao buscar jogos.';
     lastApiError = msg;
+    // ⚠️ Do NOT swallow ApiLimitError — let the caller show stale cache or error state
+    if (err instanceof ApiLimitError) throw err;
     console.error(`[Oracle] fetchMatchesByDate(${date}) error:`, err);
     return [];
   }

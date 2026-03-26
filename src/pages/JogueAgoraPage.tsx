@@ -8,7 +8,6 @@ import { LoadingSteps, type LoadingStep } from '@/components/jogueAgora/LoadingS
 import { analyzeMatch, classificarJogos, type AnaliseJogo, type RankingFinal } from '@/lib/jogueAgora';
 import { ApiFixture } from '@/types/fixture';
 import { useLeagueFilter } from '@/contexts/LeagueFilterContext';
-import profetaLogo from '@/assets/profeta-bet-logo.png';
 
 export default function JogueAgoraPage() {
   const { data: bankroll } = useBankroll();
@@ -106,18 +105,16 @@ export default function JogueAgoraPage() {
 
   return (
     <div className="min-h-screen bg-[#111111] pb-24">
-      <header className="sticky top-0 z-40 px-4 py-4 bg-[#111111]/90 backdrop-blur-lg border-b border-[#2B2B2B]">
-        <div className="flex items-center gap-3">
-          <img src={profetaLogo} alt="Profeta" className="w-7 h-7" />
-          <div className="flex-1">
-            <h1 className="text-lg font-black tracking-tight gold-gradient-text uppercase">🎯 TOP 10 AGORA</h1>
-            <p className="text-[10px] text-muted-foreground font-bold">MELHORES OPORTUNIDADES NAS PRÓXIMAS 4 HORAS</p>
-          </div>
-          <button onClick={handleRefresh} className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors">
-            <RefreshCw className={`w-4 h-4 text-primary ${loadingToday || isRanking ? 'animate-spin' : ''}`} />
-          </button>
+      {/* Page title — sem header duplicado */}
+      <div className="px-4 py-5 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-black tracking-tight gold-gradient-text uppercase">🎯 TOP 10 AGORA</h1>
+          <p className="text-[10px] text-muted-foreground font-bold">MELHORES OPORTUNIDADES NAS PRÓXIMAS 4 HORAS</p>
         </div>
-      </header>
+        <button onClick={handleRefresh} className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors">
+          <RefreshCw className={`w-4 h-4 text-primary ${loadingToday || isRanking ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
         <div className="flex items-center justify-between bg-[#1A1A1A] border border-[#2B2B2B] rounded-xl px-4 py-3 shadow-lg">
