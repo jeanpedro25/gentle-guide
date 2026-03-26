@@ -126,18 +126,6 @@ export default function HistoryPage() {
         awayTeam={selectedBet?.away_team ?? ''}
         isLoading={isAnalyzing}
       />
-
-      {/* Informativo de Gestão */}
-      <div className="mt-8 p-4 rounded-xl bg-secondary/30 border border-border/50 text-center space-y-2">
-        <h3 className="text-[12px] font-bold uppercase text-primary tracking-widest flex items-center justify-center gap-2">
-          <Zap className="w-4 h-4" />
-          Aviso Importante
-        </h3>
-        <p className="text-[11px] text-muted-foreground leading-relaxed max-w-2xl mx-auto">
-          Lembre-se: Respeitar as regras de gestão de banca <strong className="text-foreground">NÃO garante lucro absoluto</strong> no curto prazo, porém é <strong>essencial</strong>. As métricas de Stop Loss foram criadas especificamente para barrar a ganância psicológica e evitar grandes perdas de capital irrecuperáveis.<br /><br />
-          <strong className="text-primary italic">Dica de Ouro:</strong> Nunca deixe montantes altíssimos de dinheiro parados diretamente na conta da Casa de Apostas (BET). Mantenha seu capital principal seguro na sua conta bancária pessoal, enviando saldo para a BET aos poucos conforme sua gestão demandar.
-        </p>
-      </div>
     </div>
   );
 }

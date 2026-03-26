@@ -17,7 +17,7 @@ const MENU_ITEMS = [
   { icon: "📜", label: "Histórico", rota: "/historico" },
 ];
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarContent({ onNavigate, onShowInfo }: { onNavigate?: () => void; onShowInfo?: () => void }) {
   const { leagueOptions, selectedLeagueIds, setSelectedLeagues, clearSelectedLeagues } = useLeagueFilter();
   const [query, setQuery] = useState("");
   const [showAllLeagues, setShowAllLeagues] = useState(true);
@@ -93,6 +93,17 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             )}
           </NavLink>
         ))}
+        
+        <button
+          onClick={() => {
+            if (onNavigate) onNavigate();
+            if (onShowInfo) onShowInfo();
+          }}
+          className="mx-2 mb-1 flex w-[calc(100%-1rem)] items-center gap-3 rounded-md px-4 py-3 text-sm font-medium transition-all border-l-[3px] text-destructive border-l-transparent hover:bg-destructive/10"
+        >
+          <span className="text-lg"><Zap className="w-5 h-5" /></span>
+          <span className="flex-1 text-left font-bold tracking-widest uppercase">INFORMATIVO</span>
+        </button>
 
         <div className="mx-4 my-4 border-t border-[#C9A84C]/20" />
 
@@ -163,6 +174,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
 export function LeagueFilterLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
   const { data: bankroll } = useBankroll();
   const { user } = useAuth();
   const location = useLocation();
@@ -230,7 +242,7 @@ export function LeagueFilterLayout() {
       <div className="flex flex-1 pt-14">
         {/* Sidebar Desktop */}
         <aside className="hidden md:block fixed left-0 top-14 bottom-0 w-[220px] border-r border-[#C9A84C]/40 z-50">
-          <SidebarContent />
+          <SidebarContent onShowInfo={() => setShowInfoModal(true)} />
         </aside>
 
         {/* Sidebar Mobile (Drawer) */}
@@ -257,7 +269,7 @@ export function LeagueFilterLayout() {
                     <X className="w-5 h-5" />
                   </button>
                 </div>
-                <SidebarContent onNavigate={() => setMobileOpen(false)} />
+                <SidebarContent onNavigate={() => setMobileOpen(false)} onShowInfo={() => setShowInfoModal(true)} />
               </motion.aside>
             </>
           )}
@@ -268,6 +280,65 @@ export function LeagueFilterLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Informativo Global Modal */}
+      <AnimatePresence>
+        {showInfoModal && (
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+              onClick={() => setShowInfoModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-lg bg-[#1A1A1A] border border-[#C9A84C]/20 p-6 sm:p-8 rounded-2xl shadow-2xl flex flex-col items-center text-center mx-auto"
+            >
+              <button
+                onClick={() => setShowInfoModal(false)}
+                className="absolute top-4 right-4 p-2 rounded-full text-muted-foreground hover:bg-white/10 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
+              <div className="w-16 h-16 rounded-full bg-[#C9A84C]/10 flex items-center justify-center mb-6">
+                <Zap className="w-8 h-8 text-[#C9A84C]" />
+              </div>
+              
+              <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tighter mb-4">
+                Regras e Gestão <span className="text-[#C9A84C]">Obrigatórias</span>
+              </h2>
+              
+              <div className="space-y-4 text-sm sm:text-base text-[#CCCCCC] leading-relaxed mb-8">
+                <p>
+                  Respeitar as regras de gestão de banca <strong className="text-white">NÃO garante lucro absoluto</strong> no curto prazo, porém é <strong>essencial para a sobrevivência a longo prazo</strong>.
+                </p>
+                <p>
+                  As métricas de <em>Stop Loss</em> foram criadas especificamente para barrar a sua ganância psicológica e evitar a bancarrota total. A estatística cobra seu preço daqueles que tentam recuperar perdas no mesmo dia.
+                </p>
+                <div className="p-4 rounded-xl bg-[#C9A84C]/10 border border-[#C9A84C]/20 text-left mt-6">
+                  <h4 className="font-bold text-[#C9A84C] uppercase text-[10px] tracking-widest mb-1">Dica de Ouro Fundamental</h4>
+                  <p className="text-sm font-medium text-white italic">
+                    "Nunca deixe montantes de dinheiro muito altos expostos dentro da Casa de Apostas (BET). Mantenha seu capital principal 100% seguro na sua própria conta bancária e envie saldo via Pix apenas nas quantidades que a sua gestão de risco diária ditar."
+                  </p>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => setShowInfoModal(false)}
+                className="w-full py-4 rounded-xl font-black uppercase text-sm tracking-wider bg-[#C9A84C] text-[#1A1A1A] hover:bg-[#C9A84C]/90 transition-colors"
+              >
+                Entendi as Regras
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
