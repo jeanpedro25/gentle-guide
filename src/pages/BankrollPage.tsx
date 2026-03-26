@@ -252,8 +252,8 @@ export default function BankrollPage() {
         {[
           { label: 'Apostas', value: bets.length, color: 'text-white' },
           { label: 'Pendentes', value: pending.length, color: 'text-primary' },
-          { label: 'Greens ✅', value: wins.length, color: 'text-oracle-win' },
-          { label: 'Reds ❌', value: losses.length, color: 'text-destructive' },
+          { label: 'Ganhos ✅', value: wins.length, color: 'text-oracle-win' },
+          { label: 'Perdas ❌', value: losses.length, color: 'text-destructive' },
         ].map(stat => (
           <div key={stat.label} className="glass-card p-3 text-center border border-border/50">
             <p className={`font-black text-2xl ${stat.color}`}>{stat.value}</p>

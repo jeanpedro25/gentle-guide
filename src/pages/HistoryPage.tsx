@@ -74,8 +74,8 @@ export default function HistoryPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="Total" value={stats.total} color="text-foreground" />
         <StatCard label="Pendentes" value={stats.pending} color="text-primary" />
-        <StatCard label="Greens ✅" value={stats.wins} color="text-oracle-win" />
-        <StatCard label="Reds ❌" value={stats.losses} color="text-destructive" />
+        <StatCard label="Ganhos ✅" value={stats.wins} color="text-oracle-win" />
+        <StatCard label="Perdas ❌" value={stats.losses} color="text-destructive" />
       </div>
 
       {/* Filters */}
@@ -91,7 +91,7 @@ export default function HistoryPage() {
                 : 'bg-card border-border text-muted-foreground hover:border-primary/30'
             }`}
           >
-            {f === 'all' ? 'TODOS' : f === 'pending' ? '⏳ PENDENTES' : f === 'won' ? '✅ GREENS' : '❌ REDS'}
+            {f === 'all' ? 'TODOS' : f === 'pending' ? '⏳ PENDENTES' : f === 'won' ? '✅ GANHOS' : '❌ PERDAS'}
           </button>
         ))}
       </div>
@@ -126,6 +126,18 @@ export default function HistoryPage() {
         awayTeam={selectedBet?.away_team ?? ''}
         isLoading={isAnalyzing}
       />
+
+      {/* Informativo de Gestão */}
+      <div className="mt-8 p-4 rounded-xl bg-secondary/30 border border-border/50 text-center space-y-2">
+        <h3 className="text-[12px] font-bold uppercase text-primary tracking-widest flex items-center justify-center gap-2">
+          <Zap className="w-4 h-4" />
+          Aviso Importante
+        </h3>
+        <p className="text-[11px] text-muted-foreground leading-relaxed max-w-2xl mx-auto">
+          Lembre-se: Respeitar as regras de gestão de banca <strong className="text-foreground">NÃO garante lucro absoluto</strong> no curto prazo, porém é <strong>essencial</strong>. As métricas de Stop Loss foram criadas especificamente para barrar a ganância psicológica e evitar grandes perdas de capital irrecuperáveis.<br /><br />
+          <strong className="text-primary italic">Dica de Ouro:</strong> Nunca deixe montantes altíssimos de dinheiro parados diretamente na conta da Casa de Apostas (BET). Mantenha seu capital principal seguro na sua conta bancária pessoal, enviando saldo para a BET aos poucos conforme sua gestão demandar.
+        </p>
+      </div>
     </div>
   );
 }
@@ -161,6 +173,20 @@ function BetHistoryCard({ bet, onOpen }: { bet: BetRow; onOpen: () => void }) {
     setHomeScore(parsed.home);
     setAwayScore(parsed.away);
   }, [bet.id, bet.status, bet.actual_score]);
+
+  // Efeito Mágico: Se o usuário digitar o placar manual, auto-altera o GANHO/PERDA!
+  useEffect(() => {
+    const h = homeScore.trim();
+    const a = awayScore.trim();
+    if (h !== '' && a !== '') {
+      const hn = Number(h);
+      const an = Number(a);
+      if (Number.isInteger(hn) && Number.isInteger(an)) {
+        const result = hn > an ? '1' : hn < an ? '2' : 'X';
+        setManualStatus(result === bet.prediction ? 'won' : 'lost');
+      }
+    }
+  }, [homeScore, awayScore, bet.prediction]);
 
   const handleSave = async (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
@@ -239,7 +265,7 @@ function BetHistoryCard({ bet, onOpen }: { bet: BetRow; onOpen: () => void }) {
             status === 'lost' ? 'text-destructive border-destructive/40 bg-destructive/10' :
             'text-primary border-primary/40 bg-primary/10'
           }`}>
-            {status === 'won' ? 'GREEN ✅' : status === 'lost' ? 'RED ❌' : 'PENDENTE ⏳'}
+            {status === 'won' ? 'GANHO ✅' : status === 'lost' ? 'PERDA ❌' : 'PENDENTE ⏳'}
           </div>
           <button
             type="button"
@@ -311,8 +337,8 @@ function BetHistoryCard({ bet, onOpen }: { bet: BetRow; onOpen: () => void }) {
                 className="w-full rounded-md bg-black/40 border border-border px-2 py-1 text-xs"
               >
                 <option value="pending">Pendente</option>
-                <option value="won">Green</option>
-                <option value="lost">Red</option>
+                <option value="won">Ganho</option>
+                <option value="lost">Perda</option>
               </select>
             </div>
             <div className="space-y-1">

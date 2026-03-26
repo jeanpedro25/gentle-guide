@@ -231,20 +231,36 @@ export function useUpdateBetManual() {
         .eq('user_id', user.id)
         .select('*')
         .maybeSingle();
-      if (error) throw error;
 
+      if (error) throw error;
       if (!updatedBet) return;
 
-      // Se mudou de PENDING para WON: adiciona Stake + Lucro
-      // Se mudou de WON para LOST: remove o que foi dado (Stake + Lucro)
-      // Nota: o Stake original já saiu no useCreateBet.
+      // Lógica de Delta Real (atualização compensatória da banca após a edição manual)
+      // Nota fundamental: O Stake original foi DEDUZIDO na criação da aposta (estado pending).
       let delta = 0;
-      if (status === 'won' && previous_profit_loss === 0) {
-        delta = Number(updatedBet.stake) + Number(updatedBet.potential_profit);
-      } else if (status === 'lost' && previous_profit_loss > 0) {
-        delta = -(Number(updatedBet.stake) + Number(previous_profit_loss));
-      } else if (status === 'pending' && previous_profit_loss > 0) {
-        delta = -(Number(updatedBet.stake) + Number(previous_profit_loss));
+      
+      const prevWasWon = previous_profit_loss > 0;
+      const prevWasLost = previous_profit_loss < 0; 
+      const prevWasPending = previous_profit_loss === 0;
+
+      const stake = Number(updatedBet.stake);
+      const profit = Number(updatedBet.potential_profit);
+      const totalReturn = stake + profit; // O prêmio bruto pago a quem ganha
+
+      if (status === 'won') {
+        if (!prevWasWon) {
+          // Passou de LOST ou PENDING para WON
+          // O usuário não tinha o prêmio. Agora ele ganha o Stake de volta + o Lucro.
+          delta = totalReturn;
+        }
+      } else if (status === 'lost' || status === 'pending') {
+        if (prevWasWon) {
+          // Passou de WON para LOST ou PENDING
+          // O usuário TINHA o prêmio (Stake + Lucro) injetado na banca dele. Precisamos remover.
+          delta = -totalReturn;
+        }
+        // Se mudou de LOST para PENDING ou vice-versa, não há impacto porque
+        // em ambos os casos o Stake está ausente da banca e não há lucro.
       }
 
       if (delta === 0) return;
