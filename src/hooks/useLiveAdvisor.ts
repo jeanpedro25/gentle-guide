@@ -24,6 +24,18 @@ interface MatchData {
   context?: string;
 }
 
+const SYSTEM_PROMPT = `Voce e o PROFETA, um consultor de apostas ao vivo de elite.
+Analise e de uma recomendacao CLARA e OBJETIVA em JSON:
+{
+  "action": "CASHOUT" | "HOLD" | "BET_MORE" | "HEDGE",
+  "confidence": number (0-100),
+  "reasoning": "string (portugues)",
+  "emoji": "emoji",
+  "riskLevel": "BAIXO" | "MEDIO" | "ALTO" | "CRITICO",
+  "suggestion": "string",
+  "profitTip": "string"
+}`;
+
 export function useLiveAdvisor() {
   const [advice, setAdvice] = useState<Record<string, LiveAdvice>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
@@ -31,11 +43,12 @@ export function useLiveAdvisor() {
   const getAdvice = useCallback(async (matchId: string, matchData: MatchData) => {
     setLoading(prev => ({ ...prev, [matchId]: true }));
     let adviceResult: LiveAdvice | null = null;
+    let fallbackError: string | null = null;
 
-    // BYPASS: Se tiver chave Gemini no .env, chama direto sem depender da Edge Function do Supabase
-    const geminiKey = import.meta.env.VITE_GEMINI_API_KEY || 'AIzaSyBuyyofn81gC66vrlU8uyNAIdByX3jIFwg';
-    if (geminiKey && geminiKey !== 'COLE_AQUI_SUA_CHAVE_GEMINI') {
-      try {
+    try {
+      // BYPASS: Se tiver chave Gemini no .env, chama direto sem depender da Edge Function do Supabase
+      const geminiKey = import.meta.env.VITE_GEMINI_API_KEY || 'AIzaSyBuyyofn81gC66vrlU8uyNAIdByX3jIFwg';
+      if (geminiKey && geminiKey !== 'COLE_AQUI_SUA_CHAVE_GEMINI') {
         const userPrompt = `JOGO AO VIVO:
 ${matchData.homeTeam} ${matchData.homeScore} x ${matchData.awayScore} ${matchData.awayTeam}
 Liga: ${matchData.league}
@@ -72,15 +85,16 @@ Analise a situacao e de sua recomendacao.`;
         if (content) {
           const cleaned = (content || "").replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
           adviceResult = JSON.parse(cleaned) as LiveAdvice;
-          console.log('[LiveAdvisor] ✅ Advice recebido direatmente!');
+          console.log('[LiveAdvisor] ✅ Advice recebido diretamente!');
         }
-      } catch (err) {
-        console.error('[LiveAdvisor] Erro no bypass Gemini:', err);
-        throw new Error(`[Live IA] ${err instanceof Error ? err.message : 'Erro na Inteligência Artificial'}`);
       }
+    } catch (err) {
+      console.error('[LiveAdvisor] Erro no bypass Gemini:', err);
+      fallbackError = err instanceof Error ? err.message : 'Erro na Inteligência Artificial';
     }
 
     try {
+      // Se o bypass falhou (ou não existia), usamos a API Edge do Supabase e encerramos.
       if (!adviceResult) {
         const { data, error } = await supabase.functions.invoke('live-advisor', {
           body: { matchData },
@@ -94,23 +108,11 @@ Analise a situacao e de sua recomendacao.`;
       setAdvice(prev => ({ ...prev, [matchId]: adviceResult as LiveAdvice }));
     } catch (err) {
       console.error('[LiveAdvisor] error:', err);
-      toast.error(err instanceof Error ? err.message : 'Erro ao consultar advisor');
+      toast.error(fallbackError || (err instanceof Error ? err.message : 'Erro ao consultar advisor'));
     } finally {
       setLoading(prev => ({ ...prev, [matchId]: false }));
     }
   }, []);
-
-const SYSTEM_PROMPT = `Voce e o PROFETA, um consultor de apostas ao vivo de elite.
-Analise e de uma recomendacao CLARA e OBJETIVA em JSON:
-{
-  "action": "CASHOUT" | "HOLD" | "BET_MORE" | "HEDGE",
-  "confidence": number (0-100),
-  "reasoning": "string (portugues)",
-  "emoji": "emoji",
-  "riskLevel": "BAIXO" | "MEDIO" | "ALTO" | "CRITICO",
-  "suggestion": "string",
-  "profitTip": "string"
-}`;
 
   const clearAdvice = useCallback((matchId: string) => {
     setAdvice(prev => {
