@@ -314,9 +314,9 @@ export default function MatchDetail() {
               league={fixture.league.name}
               fixtureId={fixture.fixture.id}
               prediction={
-                oracle.primaryBet.market.includes(fixture.teams.home.name) ? '1' :
-                oracle.primaryBet.market.includes(fixture.teams.away.name) ? '2' :
-                oracle.primaryBet.market === 'Empate' ? 'X' : '1'
+                oracle.predictedScore 
+                  ? `${oracle.predictedScore.home}x${oracle.predictedScore.away}`
+                  : (oracle.poisson.mostLikelyScores?.[0]?.score || '1')
               }
             />
 

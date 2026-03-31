@@ -148,7 +148,11 @@ function parseScore(score: string | null) {
 
 function BetHistoryCard({ bet, onOpen }: { bet: BetRow; onOpen: () => void }) {
   const status = bet.status;
-  const predLabel = bet.prediction === '1' ? 'Casa' : bet.prediction === 'X' ? 'Empate' : 'Fora';
+  
+  // Se a predição tiver "x", é um placar (ex: "2x0"). Senão, fallback pro legado.
+  const isScorePrediction = bet.prediction.includes('x');
+  const predLabel = isScorePrediction ? bet.prediction : (bet.prediction === '1' ? 'Casa' : bet.prediction === 'X' ? 'Empate' : 'Fora');
+
   const updateBet = useUpdateBetManual();
   const [isEditing, setIsEditing] = useState(false);
   const [manualStatus, setManualStatus] = useState<BetRow['status']>(bet.status);
@@ -171,7 +175,14 @@ function BetHistoryCard({ bet, onOpen }: { bet: BetRow; onOpen: () => void }) {
       const an = Number(a);
       if (Number.isInteger(hn) && Number.isInteger(an)) {
         const result = hn > an ? '1' : hn < an ? '2' : 'X';
-        setManualStatus(result === bet.prediction ? 'won' : 'lost');
+        
+        let expectedWinner = bet.prediction;
+        if (isScorePrediction) {
+          const [predH, predA] = bet.prediction.split('x').map(Number);
+          expectedWinner = predH > predA ? '1' : predH < predA ? '2' : 'X';
+        }
+        
+        setManualStatus(result === expectedWinner ? 'won' : 'lost');
       }
     }
   }, [homeScore, awayScore, bet.prediction]);

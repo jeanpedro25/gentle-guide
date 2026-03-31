@@ -382,7 +382,7 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
                       awayTeam={fixture.teams.away.name}
                       league={fixture.league.name}
                       fixtureId={fixture.fixture.id}
-                      prediction={analysis.melhor_resultado}
+                      prediction={analysis.placar_provavel || analysis.melhor_resultado}
                     />
                   </div>
 
