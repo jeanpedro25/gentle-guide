@@ -92,23 +92,31 @@ export async function analyzeMatch(
   const awayTeam = fixture.teams.away.name;
 
   // Stats (usando neutros para amistosos/falta de dados para não criar falsos +18% EV)
-  const hW = homeStats?.fixtures?.wins?.total ?? 3;
-  const hD = homeStats?.fixtures?.draws?.total ?? 3;
-  const hL = homeStats?.fixtures?.loses?.total ?? 3;
-  const hGF = homeStats?.goals?.for?.total?.total ?? 10;
-  const hGA = homeStats?.goals?.against?.total?.total ?? 10;
-  const hForm = homeStats?.form || 'WDDLW';
+  // Penalize confidence later if stats are missing
+  const hasStats = !!(homeStats && awayStats);
+  const hW = homeStats?.fixtures?.wins?.total ?? 1;
+  const hD = homeStats?.fixtures?.draws?.total ?? 1;
+  const hL = homeStats?.fixtures?.loses?.total ?? 1;
+  const hGF = homeStats?.goals?.for?.total?.total ?? 1;
+  const hGA = homeStats?.goals?.against?.total?.total ?? 1;
+  const hForm = homeStats?.form || 'DDD';
 
-  const aW = awayStats?.fixtures?.wins?.total ?? 3;
-  const aD = awayStats?.fixtures?.draws?.total ?? 3;
-  const aL = awayStats?.fixtures?.loses?.total ?? 3;
-  const aGF = awayStats?.goals?.for?.total?.total ?? 10;
-  const aGA = awayStats?.goals?.against?.total?.total ?? 10;
-  const aForm = awayStats?.form || 'LDDWD';
+  const aW = awayStats?.fixtures?.wins?.total ?? 1;
+  const aD = awayStats?.fixtures?.draws?.total ?? 1;
+  const aL = awayStats?.fixtures?.loses?.total ?? 1;
+  const aGF = awayStats?.goals?.for?.total?.total ?? 1;
+  const aGA = awayStats?.goals?.against?.total?.total ?? 1;
+  const aForm = awayStats?.form || 'DDD';
 
-  // Lambdas (expected goals)
+  // Lambdas (expected goals remaining to be scored)
   let lambdaHome = lambdaFromStats(hGF, hGA, hW, hD, hL, true);
   let lambdaAway = lambdaFromStats(aGF, aGA, aW, aD, aL, false);
+
+  // Se não temos stats, matar o home bonus para não criar falso EV
+  if (!hasStats) {
+    lambdaHome = 1.0;
+    lambdaAway = 1.0;
+  }
 
   // Adjust by form
   const homeFormMult = 0.85 + formScore(hForm) * 0.3;
@@ -133,23 +141,37 @@ export async function analyzeMatch(
     lambdaAway = Math.max(0.4, lambdaAway);
   }
 
-  // Build score matrix & probabilities
-  const matrix = buildScoreMatrix(lambdaHome, lambdaAway);
-  const { home: pHome, draw: pDraw, away: pAway } = calcWinDrawLoss(matrix);
-  const pOver25 = calcOver25(matrix);
-  const pBTTS = calcBTTS(matrix);
+  // Se o jogo está ao vivo, os gols já marcados são a base!
+  const liveHomeG = fixture.goals.home ?? 0;
+  const liveAwayG = fixture.goals.away ?? 0;
 
-  // Top score scenarios
+  // Build score matrix for the REMAINING goals
+  const matrix = buildScoreMatrix(lambdaHome, lambdaAway);
+  
+  // Para vitórias globais, precisamos somar a matriz incluindo os gols live
+  let pHome = 0, pDraw = 0, pAway = 0, pOver25 = 0, pBTTS = 0;
   let scenarios: { score: string; prob: number; homeG: number; awayG: number }[] = [];
+
   for (let h = 0; h <= 5; h++) {
     for (let a = 0; a <= 5; a++) {
-      scenarios.push({ score: `${h}x${a}`, prob: matrix[h][a], homeG: h, awayG: a });
+      const prob = matrix[h][a];
+      const finalHome = liveHomeG + h;
+      const finalAway = liveAwayG + a;
+      
+      scenarios.push({ score: `${finalHome}x${finalAway}`, prob, homeG: finalHome, awayG: finalAway });
+      
+      if (finalHome > finalAway) pHome += prob;
+      else if (finalHome < finalAway) pAway += prob;
+      else pDraw += prob;
+
+      if ((finalHome + finalAway) > 2.5) pOver25 += prob;
+      if (finalHome > 0 && finalAway > 0) pBTTS += prob;
     }
   }
+
   scenarios.sort((a, b) => b.prob - a.prob);
 
   // ── Alinhar Placar Provável com o Vencedor ──
-  // Evita a contradição de prever "Vitória Mandante" mas colocar o placar como "1x1".
   const winner = pHome > Math.max(pDraw, pAway) ? 'home' : (pAway > Math.max(pHome, pDraw) ? 'away' : 'draw');
   
   let validScenarios = scenarios;
@@ -160,7 +182,8 @@ export async function analyzeMatch(
   const topScenarios = validScenarios.slice(0, 5).map(s => ({ score: s.score, prob: Math.round(s.prob * 1000) / 10 }));
 
   // Most likely score (já filtrado e alinhado)
-  const bestScore = validScenarios[0].score.split('x');
+  const bestScoreStr = validScenarios.length > 0 ? validScenarios[0].score : `${liveHomeG}x${liveAwayG}`;
+  const bestScore = bestScoreStr.split('x');
   const predictedHome = parseInt(bestScore[0]);
   const predictedAway = parseInt(bestScore[1]);
 
