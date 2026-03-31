@@ -361,7 +361,7 @@ export default function MatchDetail() {
             <BettingInsight result={analysis.result} oracle={oracle} />
             {oracle.redFlags.length > 0 && <RedFlagsCard redFlags={oracle.redFlags} />}
             <H2HHistory h2h={h2h} homeTeamId={fixture.teams.home.id} />
-            <BankrollCalculator oracle={oracle} />
+            {/* BankrollCalculator removed */}
 
             <motion.button
               initial={{ opacity: 0 }}
