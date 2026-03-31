@@ -149,9 +149,12 @@ function parseScore(score: string | null) {
 function BetHistoryCard({ bet, onOpen }: { bet: BetRow; onOpen: () => void }) {
   const status = bet.status;
   
+  // Se a predição tiver "@@", extrai só o conteúdo antes para exibir
+  const purePrediction = bet.prediction.split('@@')[0];
+  
   // Se a predição tiver "x", é um placar (ex: "2x0"). Senão, fallback pro legado.
-  const isScorePrediction = bet.prediction.includes('x');
-  const predLabel = isScorePrediction ? bet.prediction : (bet.prediction === '1' ? 'Casa' : bet.prediction === 'X' ? 'Empate' : 'Fora');
+  const isScorePrediction = purePrediction.includes('x');
+  const predLabel = isScorePrediction ? purePrediction : (purePrediction === '1' ? 'Casa' : purePrediction === 'X' ? 'Empate' : 'Fora');
 
   const updateBet = useUpdateBetManual();
   const [isEditing, setIsEditing] = useState(false);
@@ -176,9 +179,9 @@ function BetHistoryCard({ bet, onOpen }: { bet: BetRow; onOpen: () => void }) {
       if (Number.isInteger(hn) && Number.isInteger(an)) {
         const result = hn > an ? '1' : hn < an ? '2' : 'X';
         
-        let expectedWinner = bet.prediction;
+        let expectedWinner = purePrediction;
         if (isScorePrediction) {
-          const [predH, predA] = bet.prediction.split('x').map(Number);
+          const [predH, predA] = purePrediction.split('x').map(Number);
           expectedWinner = predH > predA ? '1' : predH < predA ? '2' : 'X';
         }
         

@@ -318,6 +318,7 @@ export default function MatchDetail() {
                   ? `${oracle.predictedScore.home}x${oracle.predictedScore.away}`
                   : (oracle.poisson.mostLikelyScores?.[0]?.score || '1')
               }
+              matchDate={fixture.fixture.date}
             />
 
             <motion.div

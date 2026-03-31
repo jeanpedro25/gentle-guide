@@ -12,16 +12,20 @@ interface BetCardProps {
   league: string;
   fixtureId: number;
   prediction: string;
-  odd?: number; // Agora opcional, pois o foco é o retorno manual
+  matchDate?: string;
+  odd?: number;
 }
 
-export function BetCard({ homeTeam, awayTeam, league, fixtureId, prediction }: BetCardProps) {
+export function BetCard({ homeTeam, awayTeam, league, fixtureId, prediction, matchDate }: BetCardProps) {
   const [betAmount, setBetAmount] = useState('');
   const [totalReturnInput, setTotalReturnInput] = useState('');
   
   const createBet = useCreateBet();
   const { data: bets = [] } = useBets();
-  const { stopStatus } = useBankrollManager(bets);
+  
+  // Calcula limites considerando a DATA DO JOGO (se fornecida), não hoje!
+  const targetDateForLimit = matchDate ? new Date(matchDate) : new Date();
+  const { stopStatus } = useBankrollManager(bets, targetDateForLimit);
   
   const { data: bankroll } = useBankroll();
 
@@ -45,12 +49,15 @@ export function BetCard({ homeTeam, awayTeam, league, fixtureId, prediction }: B
     }
 
     try {
+      // Codifica a data do jogo na prediction para o bankroll manager ler depois
+      const predictionPayload = matchDate ? `${prediction}@@${matchDate}` : prediction;
+
       await createBet.mutateAsync({
         home_team: homeTeam,
         away_team: awayTeam,
         league: league,
         fixture_id: fixtureId,
-        prediction: prediction as any,
+        prediction: predictionPayload as any,
         stake: stake,
         potential_profit: potentialProfit,
         odd: calculatedOdd,

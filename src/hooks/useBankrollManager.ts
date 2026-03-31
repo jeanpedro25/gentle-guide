@@ -77,7 +77,7 @@ export interface BankrollSettings {
 }
 
 // ─── Hook Principal ──────────────────────────────────────────────────────────
-export function useBankrollManager(bets: BetRow[]) {
+export function useBankrollManager(bets: BetRow[], targetDate: Date = new Date()) {
   const { user } = useAuth();
   const storageKey = `profeta_bankroll_${user?.id ?? 'guest'}`;
   const profileKey = `profeta_profile_${user?.id ?? 'guest'}`;
@@ -154,11 +154,18 @@ export function useBankrollManager(bets: BetRow[]) {
     const now = new Date();
 
     // --- Diário ---
-    const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
-    const todayBets = bets.filter(b =>
-      new Date(b.created_at) >= todayStart
-    );
-    const dailyBetsCount = todayBets.length;
+    const targetStart = new Date(targetDate); 
+    targetStart.setHours(0, 0, 0, 0);
+    
+    const targetBets = bets.filter(b => {
+      // Se a aposta recém criada via app tiver "@@", extraímos a data original do JOGO
+      const parts = b.prediction.split('@@');
+      const betDate = parts.length > 1 ? new Date(parts[1]) : new Date(b.created_at);
+      betDate.setHours(0, 0, 0, 0);
+      return betDate.getTime() === targetStart.getTime();
+    });
+    
+    const dailyBetsCount = targetBets.length;
     const dailyBlocked = dailyBetsCount >= profile.maxBetsPerDay;
 
     // --- Semanal ---
@@ -193,11 +200,12 @@ export function useBankrollManager(bets: BetRow[]) {
       message = `🟠 STOP SEMANAL — Perda de ${weeklyLossPct.toFixed(0)}% esta semana. Apostas bloqueadas por segurança.`;
     } else if (dailyBlocked) {
       severity = 'warning';
-      message = `🟡 LIMITE DIÁRIO — Você já fez ${dailyBetsCount} apostas hoje. Volte amanhã!`;
+      const dateText = targetStart.getTime() === new Date(now.setHours(0,0,0,0)).getTime() ? 'hoje' : 'neste dia';
+      message = `🟡 LIMITE DE JOGOS — Você já fez ${dailyBetsCount} apostas ${dateText}. O limite é ${profile.maxBetsPerDay}!`;
     }
 
     return { dailyBetsCount, dailyBlocked, weeklyLossPct, weeklyBlocked, totalHealthPct, totalBlocked, blocked, severity, message };
-  }, [bets, settings]);
+  }, [bets, settings, targetDate]);
 
   const profileConfig = PROFILES[settings.profile];
 

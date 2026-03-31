@@ -92,7 +92,7 @@ const ProfilePage = () => {
   const losses = resolved.filter(b => b.status === "lost").length;
   const winRate = resolved.length > 0 ? (wins / resolved.length * 100) : 0;
   const totalPnL = resolved.reduce((s, b) => s + (b.profit_loss ?? 0), 0);
-  const todayBets = bets.filter(b => new Date(b.created_at) >= (() => { const d = new Date(); d.setHours(0,0,0,0); return d; })()).length;
+  const todayBets = stopStatus.dailyBetsCount;
 
   const handleSaveName = async () => {
     if (!nameInput.trim()) return;

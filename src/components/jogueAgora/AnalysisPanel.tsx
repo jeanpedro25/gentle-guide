@@ -383,6 +383,7 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
                       league={fixture.league.name}
                       fixtureId={fixture.fixture.id}
                       prediction={analysis.placar_provavel || analysis.melhor_resultado}
+                      matchDate={fixture.fixture.date}
                     />
                   </div>
 
