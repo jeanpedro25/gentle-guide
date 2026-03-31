@@ -296,7 +296,7 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 z-[60] max-h-[90vh] overflow-y-auto rounded-t-2xl border-t-2 border-primary/30 bg-background shadow-2xl"
+            className="fixed bottom-0 left-0 right-0 mx-auto w-full max-w-[800px] z-[60] max-h-[90vh] md:max-h-[85vh] overflow-y-auto rounded-t-2xl md:rounded-2xl border-t-2 md:border-2 border-primary/30 bg-background shadow-2xl md:bottom-8"
           >
             <div className="space-y-4 p-5 pb-28">
               <div className="flex items-center justify-between">
