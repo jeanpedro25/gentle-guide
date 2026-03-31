@@ -77,7 +77,12 @@ Analise a situacao e de sua recomendacao.`;
 
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
-          throw new Error(`Gemini API Error: ${response.status} - ${errData.error?.message || 'Falha na IA'}`);
+          const errMsg = errData.error?.message || 'Falha na IA';
+          
+          if (response.status === 429) {
+            throw new Error('O cérebro da Inteligência Artificial está sobrecarregado (Limite de uso gratuito atingido). Por favor, aguarde cerca de 1 minuto e tente novamente!');
+          }
+          throw new Error(`Gemini API Error: ${response.status} - ${errMsg}`);
         }
         
         const result = await response.json();
