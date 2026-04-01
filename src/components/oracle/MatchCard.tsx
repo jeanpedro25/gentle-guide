@@ -341,6 +341,7 @@ export function MatchCard({ fixture, onClick, index, bestValue }: MatchCardProps
         bankrollAmount={bankrollAmount}
         fixtureId={fixture.fixture.id}
         league={fixture.league.name}
+        matchDate={fixture.fixture.date}
         onViewFull={() => {
           setShowAnalyzeModal(false);
           sessionStorage.setItem('selected-fixture', JSON.stringify(fixture));

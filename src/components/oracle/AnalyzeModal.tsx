@@ -15,6 +15,7 @@ interface AnalyzeModalProps {
   bankrollAmount?: number;
   fixtureId?: number;
   league?: string;
+  matchDate?: string;
   onViewFull?: () => void;
 }
 
@@ -28,6 +29,7 @@ export function AnalyzeModal({
   bankrollAmount = 200,
   fixtureId,
   league = '',
+  matchDate,
   onViewFull
 }: AnalyzeModalProps) {
   if (!isOpen) return null;
@@ -121,7 +123,12 @@ export function AnalyzeModal({
                   awayTeam={awayTeam}
                   league={league}
                   fixtureId={fixtureId}
-                  prediction={oracle.primaryBet.market.includes(homeTeam) ? '1' : oracle.primaryBet.market.includes(awayTeam) ? '2' : 'X'}
+                  prediction={
+                    oracle.predictedScore 
+                      ? `${oracle.predictedScore.home}x${oracle.predictedScore.away}`
+                      : (oracle.primaryBet.market.includes(homeTeam) ? '1' : oracle.primaryBet.market.includes(awayTeam) ? '2' : 'X')
+                  }
+                  matchDate={matchDate}
                   odd={oracle.primaryBet.ev > 0 ? 1.85 : 2.10}
                 />
               )}
