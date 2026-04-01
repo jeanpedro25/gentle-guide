@@ -295,29 +295,34 @@ export async function fetchTomorrowMatches(): Promise<ApiFixture[]> {
 }
 
 export async function fetchWeekMatches(): Promise<ApiFixture[]> {
-  const dates: string[] = [];
-  for (let i = 2; i <= 7; i++) {
-    dates.push(getBrazilDateString(i));
-  }
+  const fromDate = getBrazilDateString(2);
+  const toDate = getBrazilDateString(7);
 
-  const allFixtures: ApiFixture[] = [];
-  const seenIds = new Set<number>();
+  try {
+    const response = await apiFootballFetch<ApiFootballFixture>(
+      '/fixtures',
+      { from: fromDate, to: toDate },
+      'jogos',
+      'medium'
+    );
+    const fixtures = response.response.map(normalizeFixture);
 
-  for (const date of dates) {
-    try {
-      const fixtures = await fetchMatchesByDate(date);
-      for (const f of fixtures) {
-        if (!seenIds.has(f.fixture.id)) {
-          seenIds.add(f.fixture.id);
-          allFixtures.push(f);
-        }
-      }
-    } catch (err) {
-      if (isApiLimitError(err)) throw err;
+    return fixtures
+      .filter(f => !['CANC', 'ABD', 'AWD', 'WO'].includes(f.fixture.status.short))
+      .sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
+  } catch (err) {
+    const { getStaleLsCache } = await import('@/services/apiService');
+    const cacheKey = `apifootball|/fixtures|${JSON.stringify({ from: fromDate, to: toDate })}`;
+    const stale = getStaleLsCache(cacheKey);
+    if (stale?.response) {
+      console.info('[Oracle] ✅ Servindo jogos da SEMANA do cache obsoleto (API limit).');
+      return (stale.response as ApiFootballFixture[])
+        .map(normalizeFixture)
+        .filter(f => !['CANC', 'ABD', 'AWD', 'WO'].includes(f.fixture.status.short))
+        .sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
     }
+    return [];
   }
-
-  return allFixtures.sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
 }
 
 export async function fetchFixtureById(fixtureId: number): Promise<ApiFixture | null> {

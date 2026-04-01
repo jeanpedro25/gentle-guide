@@ -1,14 +1,13 @@
 import { supabase } from '@/integrations/supabase/client';
 
-// ── Cache TTLs by data type — optimized to minimize API-Football requests ──
 const CACHE_TTLS: Record<CacheDataType, number> = {
-  jogos:       5 * 60 * 1000,             // 5 minutes (was 30min, jogos mudam status)
-  livescores:  90 * 1000,                 // 90 seconds (ao vivo)
-  odds:        10 * 60 * 1000,            // 10 minutes
-  resultado:   Infinity,                  // Permanent (resultado não muda)
-  liga:        7 * 24 * 60 * 60 * 1000,  // 7 days
-  time:        7 * 24 * 60 * 60 * 1000,  // 7 days
-  estatistica: 6 * 60 * 60 * 1000,       // 6 hours (era 24h, ajustado)
+  jogos:       30 * 60 * 1000,            // 30 min (antes 5) - Poupando limite gratuito de 100/dia
+  livescores:  5 * 60 * 1000,             // 5 min (antes 1.5) - Evita esgotar tokens em 2h
+  odds:        60 * 60 * 1000,            // 1 hora
+  resultado:   Infinity,                  // Permanente
+  liga:        7 * 24 * 60 * 60 * 1000,   // 7 dias
+  time:        7 * 24 * 60 * 60 * 1000,   // 7 dias
+  estatistica: 24 * 60 * 60 * 1000,       // 24 horas
 };
 
 export type CacheDataType = 'jogos' | 'odds' | 'resultado' | 'liga' | 'time' | 'estatistica' | 'livescores';
