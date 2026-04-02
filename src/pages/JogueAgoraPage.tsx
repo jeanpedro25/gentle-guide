@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { RefreshCw, Clock, Trophy, Zap, Timer } from 'lucide-react';
+import { RefreshCw, Clock, Trophy, Zap, Timer, Calendar } from 'lucide-react';
 import { useBankroll } from '@/hooks/usePredictions';
-import { useTodayFixtures } from '@/hooks/useFixtures';
+import { useTodayFixtures, useTomorrowFixtures } from '@/hooks/useFixtures';
 import { AnalysisPanel } from '@/components/jogueAgora/AnalysisPanel';
 import { RankedMatchCard } from '@/components/jogueAgora/RankedMatchCard';
 import { LoadingSteps, type LoadingStep } from '@/components/jogueAgora/LoadingSteps';
@@ -12,8 +12,10 @@ import { useLeagueFilter } from '@/contexts/LeagueFilterContext';
 export default function JogueAgoraPage() {
   const { data: bankroll } = useBankroll();
   const { data: todayMatches = [], isLoading: loadingToday, refetch: refetchToday } = useTodayFixtures();
+  const { data: tomorrowMatches = [], isLoading: loadingTomorrow, refetch: refetchTomorrow } = useTomorrowFixtures();
   const { isLeagueAllowed } = useLeagueFilter();
 
+  const [dayFilter, setDayFilter] = useState<'today' | 'tomorrow'>('today');
   const [ranking, setRanking] = useState<RankingFinal | null>(null);
   const [selectedFixture, setSelectedFixture] = useState<ApiFixture | null>(null);
   const [analysis, setAnalysis] = useState<AnaliseJogo | null>(null);
@@ -22,35 +24,24 @@ export default function JogueAgoraPage() {
   
   const bankrollAmount = bankroll?.amount ?? 200;
 
-  // Filtro Otimizado: Apenas jogos NS, nas próximas 4 horas e que respeitam o filtro de ligas
-  // Fallback: se não houver jogos nas próximas 4h, ampliar para 12h e depois para o dia todo.
+  const currentMatches = dayFilter === 'today' ? todayMatches : tomorrowMatches;
+  const isLoading = dayFilter === 'today' ? loadingToday : loadingTomorrow;
+
+  // Mostra TODOS os jogos não-iniciados que passaram no filtro da liga
   const upcomingMatches = useMemo(() => {
-    const candidates = todayMatches.filter(m => {
+    return currentMatches.filter(m => {
+      // Apenas não iniciados
       if (m.fixture.status.short !== 'NS') return false;
+      // Respeitar filtro de liga da sidebar
       if (!isLeagueAllowed(m.league.name, m.league.id)) return false;
       return true;
     });
-
-    const now = Date.now();
-    const withDiff = candidates.map(m => {
-      const matchTime = new Date(m.fixture.date).getTime();
-      const diffHours = (matchTime - now) / (1000 * 60 * 60);
-      return { fixture: m, diffHours };
-    });
-
-    const within4 = withDiff.filter(({ diffHours }) => diffHours > 0 && diffHours <= 4).map(({ fixture }) => fixture);
-    if (within4.length > 0) return within4;
-
-    const within12 = withDiff.filter(({ diffHours }) => diffHours > 0 && diffHours <= 12).map(({ fixture }) => fixture);
-    if (within12.length > 0) return within12;
-
-    return candidates;
-  }, [todayMatches, isLeagueAllowed]);
+  }, [currentMatches, isLeagueAllowed]);
 
   useEffect(() => {
-    if (loadingToday) return;
+    if (isLoading) return;
     runRanking(upcomingMatches);
-  }, [loadingToday, upcomingMatches]);
+  }, [isLoading, upcomingMatches]);
 
   async function runRanking(matches: ApiFixture[]) {
     if (matches.length === 0) {
@@ -60,38 +51,41 @@ export default function JogueAgoraPage() {
 
     setIsRanking(true);
     const newSteps: LoadingStep[] = [
-      { icon: '⚽', text: `Escaneando jogos próximos... (${matches.length})`, status: 'done' },
-      { icon: '📊', text: 'Cruzando dados estatísticos...', status: 'running' },
-      { icon: '🏆', text: 'Selecionando Top 10...', status: 'pending' },
+      { icon: '⚽', text: `Escaneando todos os jogos... (${matches.length})`, status: 'done' },
+      { icon: '📊', text: 'Calculando EV e Probabilidades...', status: 'running' },
+      { icon: '🏆', text: 'Selecionando Melhores Oportunidades...', status: 'pending' },
     ];
     setSteps([...newSteps]);
 
-    // Análise local rápida (Poisson)
+    // Analisa todos
     const analyzed = matches.map(m => analyzeMatch(m));
     
     newSteps[1].status = 'done';
     newSteps[2].status = 'running';
     setSteps([...newSteps]);
 
-    // Classifica e limita ao Top 10 total
+    // Classifica
     const result = classificarJogos(analyzed);
     
-    // Limita a exibição para não sobrecarregar
-    const limitedResult: RankingFinal = {
-      top: result.top.slice(0, 5),
-      medio: result.medio.slice(0, 3),
-      explorar: result.explorar.slice(0, 2),
-      total: Math.min(result.total, 10)
+    // Filtra para remover a classificação "PASSAR" rigorosamente se necessário.
+    // classificarJogos do lib já restringe os resultados retornados às premissas EV positivo e confiança.
+    // Agora não cortamos mais com .slice(). Queremos exibir TODOS os aprovados!
+    const filteredResult: RankingFinal = {
+      top: result.top,
+      medio: result.medio,
+      explorar: result.explorar,
+      total: result.top.length + result.medio.length + result.explorar.length
     };
 
-    setRanking(limitedResult);
+    setRanking(filteredResult);
     setIsRanking(false);
   }
 
   const handleRefresh = useCallback(() => {
     setRanking(null);
-    refetchToday();
-  }, [refetchToday]);
+    if (dayFilter === 'today') refetchToday();
+    else refetchTomorrow();
+  }, [refetchToday, refetchTomorrow, dayFilter]);
 
   const handleOpenAnalysis = useCallback((analise: AnaliseJogo) => {
     setSelectedFixture(analise.fixture);
@@ -105,22 +99,44 @@ export default function JogueAgoraPage() {
 
   return (
     <div className="min-h-screen bg-[#111111] pb-24">
-      {/* Page title — sem header duplicado */}
-      <div className="px-4 py-5 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-black tracking-tight gold-gradient-text uppercase">🎯 TOP 10 AGORA</h1>
-          <p className="text-[10px] text-muted-foreground font-bold">MELHORES OPORTUNIDADES NAS PRÓXIMAS 4 HORAS</p>
+      {/* Page header e Tabs */}
+      <div className="px-4 pt-5 pb-3">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-xl font-black tracking-tight gold-gradient-text uppercase">COMPUTADOR QUÂNTICO</h1>
+            <p className="text-[10px] text-muted-foreground font-bold uppercase">Analisando 100% das partidas disponíveis</p>
+          </div>
+          <button onClick={handleRefresh} className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors">
+            <RefreshCw className={`w-4 h-4 text-primary ${isLoading || isRanking ? 'animate-spin' : ''}`} />
+          </button>
         </div>
-        <button onClick={handleRefresh} className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors">
-          <RefreshCw className={`w-4 h-4 text-primary ${loadingToday || isRanking ? 'animate-spin' : ''}`} />
-        </button>
+
+        {/* Custom Tabs */}
+        <div className="flex bg-[#1A1A1A] rounded-xl p-1 w-full max-w-sm border border-[#2B2B2B]">
+          <button
+            onClick={() => setDayFilter('today')}
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${
+              dayFilter === 'today' ? 'bg-primary text-primary-foreground shadow-lg' : 'text-muted-foreground hover:text-white'
+            }`}
+          >
+            🔥 Hoje
+          </button>
+          <button
+            onClick={() => setDayFilter('tomorrow')}
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${
+              dayFilter === 'tomorrow' ? 'bg-primary text-primary-foreground shadow-lg' : 'text-muted-foreground hover:text-white'
+            }`}
+          >
+            📅 Amanhã
+          </button>
+        </div>
       </div>
 
-      <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+      <main className="max-w-4xl mx-auto px-4 py-4 space-y-6">
         <div className="flex items-center justify-between bg-[#1A1A1A] border border-[#2B2B2B] rounded-xl px-4 py-3 shadow-lg">
           <div className="flex items-center gap-2">
             <Timer className="w-4 h-4 text-primary" />
-            <span className="text-xs font-bold text-muted-foreground uppercase">Oportunidades:</span>
+            <span className="text-xs font-bold text-muted-foreground uppercase">Oportunidades (EV+):</span>
             <span className="font-black text-white">{ranking?.total ?? 0}</span>
           </div>
           <div className="flex items-center gap-2">
@@ -129,7 +145,7 @@ export default function JogueAgoraPage() {
           </div>
         </div>
 
-        {(loadingToday || isRanking) ? (
+        {(isLoading || isRanking) ? (
           <LoadingSteps steps={steps} />
         ) : ranking ? (
           <>
@@ -137,7 +153,7 @@ export default function JogueAgoraPage() {
               <section className="space-y-4">
                 <div className="flex items-center gap-2 px-1">
                   <Trophy className="w-5 h-5 text-primary" />
-                  <h2 className="text-sm font-black text-primary uppercase tracking-widest">RECOMENDAÇÕES DE ELITE</h2>
+                  <h2 className="text-sm font-black text-primary uppercase tracking-widest">RECOMENDAÇÕES DE ELITE (ALTO EV)</h2>
                 </div>
                 <div className="space-y-4">
                   {ranking.top.map((a, i) => (
@@ -154,10 +170,10 @@ export default function JogueAgoraPage() {
             )}
 
             {ranking.medio.length > 0 && (
-              <section className="space-y-4">
+              <section className="space-y-4 mt-8">
                 <div className="flex items-center gap-2 px-1">
                   <Zap className="w-5 h-5 text-oracle-draw" />
-                  <h2 className="text-sm font-black text-oracle-draw uppercase tracking-widest">VALE A PENA CONFERIR</h2>
+                  <h2 className="text-sm font-black text-oracle-draw uppercase tracking-widest">MÉDIO RISCO / BOM VALOR</h2>
                 </div>
                 <div className="space-y-4">
                   {ranking.medio.map((a, i) => (
@@ -173,14 +189,34 @@ export default function JogueAgoraPage() {
               </section>
             )}
 
+            {ranking.explorar.length > 0 && (
+              <section className="space-y-4 mt-8">
+                <div className="flex items-center gap-2 px-1 text-muted-foreground">
+                  <Calendar className="w-5 h-5" />
+                  <h2 className="text-sm font-black uppercase tracking-widest">OPORTUNIDADES SECUNDÁRIAS</h2>
+                </div>
+                <div className="space-y-4">
+                  {ranking.explorar.map((a, i) => (
+                    <RankedMatchCard
+                      key={a.fixture.fixture.id}
+                      analise={a}
+                      rank={ranking.top.length + ranking.medio.length + i + 1}
+                      onAnalyze={() => handleOpenAnalysis(a)}
+                      onBet={() => handleOpenAnalysis(a)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
             {ranking.total === 0 && (
               <div className="text-center py-20 space-y-4">
                 <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto">
                   <Clock className="w-8 h-8 text-muted-foreground" />
                 </div>
-                <p className="text-lg font-bold text-white">Nenhuma oportunidade imediata</p>
+                <p className="text-lg font-bold text-white">Nenhuma oportunidade com EV positivo.</p>
                 <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                  Tente ajustar os filtros de liga ou aguarde os próximos jogos.
+                  O sistema analisou os jogos e determinou risco alto demais em todos as partidas ativas.
                 </p>
               </div>
             )}
