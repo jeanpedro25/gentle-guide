@@ -98,9 +98,9 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
           <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
           <span className="font-bold text-sm tracking-widest uppercase text-muted-foreground">Ao Vivo</span>
         </div>
-        <div className="flex gap-4 overflow-x-auto scrollbar-hide">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="min-w-[280px] h-[140px] rounded-lg bg-card animate-pulse" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="w-full h-[140px] rounded-lg bg-card animate-pulse" />
           ))}
         </div>
       </div>
@@ -134,7 +134,7 @@ export function LiveMatches({ matches, isLoading }: LiveMatchesProps) {
               {liveMatches.length} {liveMatches.length === 1 ? 'jogo' : 'jogos'}
             </span>
           </div>
-          <div className="flex gap-4 overflow-x-auto px-4 scrollbar-hide">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 px-4">
             <AnimatePresence>
               {liveMatches.map((match) => (
                 <LiveMatchCard
@@ -195,7 +195,7 @@ function LiveMatchCard({ match, advice, isLoadingAdvice, onRequestAdvice, onClea
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className="min-w-[280px] glass-card rounded-lg p-4 relative overflow-hidden"
+      className="w-full glass-card rounded-lg p-4 relative overflow-hidden"
     >
       <div className="flex justify-between items-start mb-4">
         <span className="text-[10px] font-bold text-primary uppercase tracking-tighter">{match.league}</span>
