@@ -9,12 +9,31 @@ interface AnalysisSummaryProps {
 }
 
 export function AnalysisSummary({ oracle, homeTeam, awayTeam }: AnalysisSummaryProps) {
-  const probs = normalizeProbabilities(oracle.probabilities);
-  const maxP = Math.max(probs.homeWin, probs.draw, probs.awayWin);
-  const winner = maxP === probs.homeWin ? homeTeam : maxP === probs.awayWin ? awayTeam : 'Empate';
-
   const predicted = oracle.predictedScore;
   const scoreStr = predicted ? `${predicted.home} × ${predicted.away}` : '—';
+
+  let winner = 'Empate';
+  let winnerBadge = '⚖️';
+  let winnerSuffix = '';
+
+  if (predicted) {
+    if (predicted.home > predicted.away) {
+      winner = homeTeam;
+      winnerBadge = '🏠';
+      winnerSuffix = '(casa)';
+    } else if (predicted.away > predicted.home) {
+      winner = awayTeam;
+      winnerBadge = '✈️';
+      winnerSuffix = '(visitante)';
+    }
+  } else {
+    // Fallback if no specific score is available
+    const probs = normalizeProbabilities(oracle.probabilities);
+    const maxP = Math.max(probs.homeWin, probs.draw, probs.awayWin);
+    winner = maxP === probs.homeWin ? homeTeam : maxP === probs.awayWin ? awayTeam : 'Empate';
+    winnerBadge = maxP === probs.homeWin ? '🏠' : maxP === probs.awayWin ? '✈️' : '⚖️';
+    winnerSuffix = maxP === probs.homeWin ? '(casa)' : maxP === probs.awayWin ? '(visitante)' : '';
+  }
 
   const gkWinner = oracle.goalkeeperDuel
     ? oracle.goalkeeperDuel.winner === 'HOME' ? homeTeam
@@ -43,9 +62,6 @@ export function AnalysisSummary({ oracle, homeTeam, awayTeam }: AnalysisSummaryP
   const riskMap: Record<string, string> = {
     'A+': 'MUITO BAIXO', 'A': 'BAIXO', 'B': 'MÉDIO', 'C': 'ALTO', 'D': 'MUITO ALTO'
   };
-
-  const winnerBadge = maxP === probs.homeWin ? '🏠' : maxP === probs.awayWin ? '✈️' : '⚖️';
-  const winnerSuffix = maxP === probs.homeWin ? '(casa)' : maxP === probs.awayWin ? '(visitante)' : '';
 
   const rows = [
     { icon: <Target className="w-4 h-4" />, label: 'PLACAR PROVÁVEL', value: scoreStr, highlight: true, scoreCard: true },

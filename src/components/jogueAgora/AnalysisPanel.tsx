@@ -309,45 +309,63 @@ export function AnalysisPanel({ fixture, analysis, analyzing, betMode = false, o
                 </button>
               </div>
 
-              <div className="space-y-1 rounded-lg border border-border bg-card p-4">
-                <p className="text-[10px] text-muted-foreground">{fixture.league.name}</p>
-                <p className="text-base font-extrabold text-foreground">{fixture.teams.home.name}</p>
-                <p className="text-sm text-muted-foreground">vs {fixture.teams.away.name}</p>
-                <p className="text-[10px] text-muted-foreground">
-                  {new Date(fixture.fixture.date).toLocaleString('pt-BR', {
-                    weekday: 'short',
-                    day: '2-digit',
-                    month: 'short',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    timeZone: 'America/Manaus',
-                  })}
-                </p>
+              <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-border bg-card p-6">
+                <div className="flex items-center gap-4 sm:gap-8">
+                  <div className="flex flex-col items-center gap-2 w-[100px]">
+                    <img src={fixture.teams.home.logo} alt={fixture.teams.home.name} className="w-14 h-14 object-contain" />
+                    <span className="text-[11px] sm:text-xs font-bold text-center leading-tight">{fixture.teams.home.name}</span>
+                  </div>
+
+                  {analyzing ? (
+                     <div className="flex flex-col items-center gap-2 px-2">
+                       <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                     </div>
+                  ) : analysis ? (
+                    <div className="flex flex-col items-center">
+                      <span className="text-3xl sm:text-4xl font-black text-foreground tracking-widest">{analysis.placar_provavel}</span>
+                      <span className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wider mt-1">Placar Provável</span>
+                      <span className="text-[8px] text-muted-foreground">{analysis.prob_placar.toFixed(1)}% prob.</span>
+                    </div>
+                  ) : (
+                    <span className="text-2xl font-black text-muted-foreground">VS</span>
+                  )}
+
+                  <div className="flex flex-col items-center gap-2 w-[100px]">
+                    <img src={fixture.teams.away.logo} alt={fixture.teams.away.name} className="w-14 h-14 object-contain" />
+                    <span className="text-[11px] sm:text-xs font-bold text-center leading-tight">{fixture.teams.away.name}</span>
+                  </div>
+                </div>
+
+                <div className="text-center mt-2">
+                  <p className="text-[10px] text-muted-foreground">
+                    {fixture.league.name} • {new Date(fixture.fixture.date).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
               </div>
 
               {analyzing ? (
-                <div className="flex flex-col items-center gap-3 py-10">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <p className="text-sm font-bold text-foreground">Gerando analise...</p>
-                  <p className="text-[10px] text-muted-foreground">Calculando Poisson, EV e Kelly Criterion</p>
+                <div className="flex flex-col items-center gap-3 py-6">
+                  <p className="text-sm font-bold text-foreground">Calculando dados...</p>
+                  <p className="text-[10px] text-muted-foreground">Isso pode levar alguns segundos.</p>
                 </div>
               ) : analysis ? (
                 <>
-                  <div className="flex items-center justify-center">
-                    <div className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/20 px-4 py-2">
-                      <Target className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-bold text-primary">
-                        {PICK_LABELS_FULL[analysis.melhor_resultado]}
+                  <div className="flex items-center justify-center mt-2">
+                    <div className="inline-flex flex-col items-center gap-1 rounded-xl border border-primary/40 bg-primary/10 px-8 py-3 w-full sm:w-auto shadow-lg">
+                      <div className="flex items-center gap-2">
+                        <Target className="h-5 w-5 text-primary" />
+                        <span className="text-sm sm:text-base font-black text-primary uppercase text-center">
+                          {analysis.melhor_resultado === '1' 
+                            ? `${fixture.teams.home.name} VENCE` 
+                            : analysis.melhor_resultado === '2' 
+                              ? `${fixture.teams.away.name} VENCE` 
+                              : `OS DOIS TIMES EMPATAM`}
+                        </span>
+                      </div>
+                      <span className="text-[9px] text-primary/70 uppercase font-bold tracking-widest mt-1">
+                        Aposta Recomendada
                       </span>
                     </div>
-                  </div>
-
-                  <div className="rounded-lg bg-secondary/60 p-4 text-center">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Placar provavel</p>
-                    <p className="text-3xl font-black tracking-widest text-foreground">{analysis.placar_provavel}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {analysis.prob_placar.toFixed(1)}% de probabilidade
-                    </p>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2">
