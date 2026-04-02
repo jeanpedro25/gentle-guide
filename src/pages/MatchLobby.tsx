@@ -19,6 +19,7 @@ import { useNavigate } from 'react-router-dom';
 import { MultiplaBar } from '@/components/oracle/MultiplaBar';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { useLeagueFilter } from '@/contexts/LeagueFilterContext';
 
 const LIVE_STATUSES = new Set(['1H', '2H', 'HT', 'LIVE', 'PEN']);
 
@@ -58,6 +59,7 @@ export default function MatchLobby() {
   const { data: bets = [] } = useBets();
   const { data: bankroll } = useBankroll();
   const stopLoss = useStopLoss(bets, bankroll?.amount ?? 100, 100);
+  const { isLeagueAllowed } = useLeagueFilter();
 
   const handleMatchClick = (fixture: ApiFixture) => {
     sessionStorage.setItem('selected-fixture', JSON.stringify(fixture));
@@ -95,6 +97,11 @@ export default function MatchLobby() {
   const grouped = useMemo(() => {
     const q = searchQuery;
     const filtered = fixtures.filter(f => {
+      // Sidebar League Context filter
+      if (!isLeagueAllowed(f.league.name, f.league.id)) {
+        return false;
+      }
+      
       // For 'live' tab, only show live matches
       if (timeFilter === 'live') {
         if (!LIVE_STATUSES.has(f.fixture.status.short)) return false;
@@ -124,7 +131,7 @@ export default function MatchLobby() {
       if (!aLive && bLive) return 1;
       return a.leagueName.localeCompare(b.leagueName);
     });
-  }, [fixtures, searchQuery, timeFilter]);
+  }, [fixtures, searchQuery, timeFilter, isLeagueAllowed]);
 
   // Determine "best value" matches - pick top 3 with highest simulated odds
   const bestValueIds = useMemo(() => {
