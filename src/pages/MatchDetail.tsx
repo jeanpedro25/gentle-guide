@@ -280,13 +280,20 @@ export default function MatchDetail() {
               awayTeam={analysis.awayTeam}
             />
 
+            {/* 🎯 Card de Registro de Aposta Manual (Principal) */}
             <BetCard
               homeTeam={fixture.teams.home.name}
               awayTeam={fixture.teams.away.name}
               league={fixture.league.name}
               fixtureId={fixture.fixture.id}
-              prediction={oracle.primaryBet.market.includes(fixture.teams.home.name) ? '1' : oracle.primaryBet.market.includes(fixture.teams.away.name) ? '2' : 'X'}
+              prediction={
+                oracle.predictedScore 
+                  ? `${oracle.predictedScore.home}x${oracle.predictedScore.away}`
+                  : (oracle.poisson.mostLikelyScores?.[0]?.score || '1')
+              }
+              matchDate={fixture.fixture.date}
             />
+
 
             <VerdictCard
               result={analysis.result}
@@ -307,19 +314,7 @@ export default function MatchDetail() {
               awayProb={oracle.probabilities.awayWin > 1 ? oracle.probabilities.awayWin / 100 : oracle.probabilities.awayWin}
             />
 
-            {/* 🎯 Card de Registro de Aposta Manual */}
-            <BetCard
-              homeTeam={fixture.teams.home.name}
-              awayTeam={fixture.teams.away.name}
-              league={fixture.league.name}
-              fixtureId={fixture.fixture.id}
-              prediction={
-                oracle.predictedScore 
-                  ? `${oracle.predictedScore.home}x${oracle.predictedScore.away}`
-                  : (oracle.poisson.mostLikelyScores?.[0]?.score || '1')
-              }
-              matchDate={fixture.fixture.date}
-            />
+
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
