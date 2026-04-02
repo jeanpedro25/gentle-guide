@@ -225,7 +225,7 @@ export interface LiveMatchData {
 
 export async function fetchLiveMatches(): Promise<LiveMatchData[]> {
   try {
-    const response = await apiFootballFetch<ApiFootballFixture>('/fixtures', { live: 'all' }, 'livescores', 'high');
+    const response = await apiFootballFetch<ApiFootballFixture>('/fixtures', { live: 'all', timezone: 'America/Sao_Paulo' }, 'livescores', 'high');
     const fixtures = response.response.map(normalizeFixture);
 
     return fixtures
@@ -301,7 +301,7 @@ export async function fetchWeekMatches(): Promise<ApiFixture[]> {
   try {
     const response = await apiFootballFetch<ApiFootballFixture>(
       '/fixtures',
-      { from: fromDate, to: toDate },
+      { from: fromDate, to: toDate, timezone: 'America/Sao_Paulo' },
       'jogos',
       'medium'
     );
@@ -345,7 +345,7 @@ async function fetchMatchesByDate(date: string): Promise<ApiFixture[]> {
   try {
     const response = await apiFootballFetch<ApiFootballFixture>(
       '/fixtures',
-      { date },
+      { date, timezone: 'America/Sao_Paulo' },
       'jogos',
       'medium'
     );
