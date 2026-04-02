@@ -17,6 +17,7 @@ import AuthPage from "./pages/AuthPage";
 import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
 import DebugApiPage from "./pages/DebugApiPage";
+import AdminPage from "./pages/AdminPage";
 import { LeagueFilterLayout } from "@/components/oracle/LeagueFilterLayout";
 
 clearFootballCache();
@@ -59,6 +60,8 @@ const AppRoutes = () => {
         <Route path="/banca" element={<BankrollPage />} />
         <Route path="/perfil" element={<ProfilePage />} />
         <Route path="/historico" element={<HistoryPage />} />
+        <Route path="/admin-master" element={<AdminPage />} />
+        <Route path="/admin" element={<Navigate to="/admin-master" replace />} />
         <Route path="/admin/debug-api" element={<DebugApiPage />} />
       </Route>
       <Route path="*" element={<NotFound />} />
