@@ -27,7 +27,7 @@ async function fetchBankroll(userId: string) {
   let key = 'user_id';
   let foundInDb = false;
 
-  const { data, error } = await supabase.from('bankroll').select('amount').eq('user_id', userId).maybeSingle();
+  const { data, error } = await (supabase as any).from('bankroll').select('amount').eq('user_id', userId).maybeSingle();
   if (!error && data) {
     dbAmount = Number(data.amount);
     foundInDb = true;
@@ -136,7 +136,7 @@ export function useCreateBet() {
         const newAmount = currentAmount - bet.stake;
         
         // Tenta atualizar BD
-        const { error: bankrollError } = await supabase
+        const { error: bankrollError } = await (supabase as any)
           .from('bankroll')
           .update({ amount: newAmount, updated_at: new Date().toISOString() })
           .eq(bankInfo.key, user.id);

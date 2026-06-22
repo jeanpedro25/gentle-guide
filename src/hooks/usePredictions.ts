@@ -60,7 +60,7 @@ export function usePredictions() {
     queryKey: ['predictions', user?.id],
     queryFn: async () => {
       if (!user) return [] as PredictionRow[];
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('predictions')
         .select('*')
         .eq('user_id', user.id)
@@ -145,7 +145,7 @@ export function useBankroll() {
       let bankrollRow: BankrollRow | null = null;
       let foundInDb = false;
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('bankroll')
         .select('*')
         .eq('user_id', user.id)
@@ -232,7 +232,7 @@ export function useBetResults() {
     queryKey: ['bet_results', user?.id],
     queryFn: async () => {
       if (!user) return [] as any[];
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('bet_results')
         .select('*')
         .eq('user_id', user.id)
