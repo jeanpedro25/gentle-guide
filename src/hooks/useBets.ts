@@ -27,13 +27,13 @@ async function fetchBankroll(userId: string) {
   let key = 'user_id';
   let foundInDb = false;
 
-  const { data, error } = await supabase.from('bankroll').select('amount').eq('user_id', userId).maybeSingle();
+  const { data, error } = await (supabase as any).from('bankroll').select('amount').eq('user_id', userId).maybeSingle();
   if (!error && data) {
     dbAmount = Number(data.amount);
     foundInDb = true;
   } else {
     // Legacy fallback
-    const legacy = await supabase.from('bankroll').select('amount').eq('id', userId).maybeSingle();
+    const legacy = await (supabase as any).from('bankroll').select('amount').eq('id', userId).maybeSingle();
     if (!legacy.error && legacy.data) {
       dbAmount = Number(legacy.data.amount);
       key = 'id';
@@ -136,7 +136,7 @@ export function useCreateBet() {
         const newAmount = currentAmount - bet.stake;
         
         // Tenta atualizar BD
-        const { error: bankrollError } = await supabase
+        const { error: bankrollError } = await (supabase as any)
           .from('bankroll')
           .update({ amount: newAmount, updated_at: new Date().toISOString() })
           .eq(bankInfo.key, user.id);
@@ -186,7 +186,7 @@ export function useResolveBet() {
           const totalReturn = Number(bet.stake) + Number(bet.potential_profit);
           const newAmount = bankInfo.amount + totalReturn;
           
-          await supabase
+          await (supabase as any)
             .from('bankroll')
             .update({ amount: newAmount, updated_at: new Date().toISOString() })
             .eq(bankInfo.key, user.id);
@@ -270,7 +270,7 @@ export function useUpdateBetManual() {
 
       const newAmount = bankInfo.amount + delta;
 
-      await supabase
+      await (supabase as any)
         .from('bankroll')
         .update({ amount: newAmount, updated_at: new Date().toISOString() })
         .eq(bankInfo.key, user.id);

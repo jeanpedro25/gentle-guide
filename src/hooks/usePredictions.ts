@@ -60,7 +60,7 @@ export function usePredictions() {
     queryKey: ['predictions', user?.id],
     queryFn: async () => {
       if (!user) return [] as PredictionRow[];
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('predictions')
         .select('*')
         .eq('user_id', user.id)
@@ -78,7 +78,7 @@ export function usePredictionByFixture(fixtureId: number | undefined) {
     queryKey: ['predictions', 'fixture', fixtureId, user?.id],
     queryFn: async () => {
       if (!fixtureId || !user) return null;
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('predictions')
         .select('*')
         .eq('fixture_id', fixtureId)
@@ -96,9 +96,9 @@ export function useSavePrediction() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: async (prediction: Omit<PredictionRow, 'id' | 'created_at'>) => {
+    mutationFn: async (prediction: Omit<PredictionRow, 'id' | 'created_at' | 'user_id'>) => {
       if (!user) throw new Error('Usuário não autenticado');
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('predictions')
         .insert({ ...prediction, user_id: user.id } as any)
         .select()
@@ -118,7 +118,7 @@ export function useUpdatePredictionStatus() {
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       if (!user) throw new Error('Usuário não autenticado');
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('predictions')
         .update({ status } as any)
         .eq('id', id)
@@ -145,7 +145,7 @@ export function useBankroll() {
       let bankrollRow: BankrollRow | null = null;
       let foundInDb = false;
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('bankroll')
         .select('*')
         .eq('user_id', user.id)
@@ -158,7 +158,7 @@ export function useBankroll() {
         dbAmount = Number(bankrollRow.amount);
         foundInDb = true;
       } else {
-        const legacy = await supabase
+        const legacy = await (supabase as any)
           .from('bankroll')
           .select('*')
           .eq('id', user.id)
@@ -200,7 +200,7 @@ export function useUpdateBankroll() {
     mutationFn: async (amount: number) => {
       if (!user) throw new Error('Usuário não autenticado');
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('bankroll')
         .upsert(
           { user_id: user.id, amount, updated_at: new Date().toISOString() } as any,
@@ -212,7 +212,7 @@ export function useUpdateBankroll() {
       const shouldFallback = isUserIdColumnError(error) || isConflictConstraintError(error);
       if (!shouldFallback) throw error;
 
-      const legacy = await supabase
+      const legacy = await (supabase as any)
         .from('bankroll')
         .upsert(
           { id: user.id, amount, updated_at: new Date().toISOString() } as any,
@@ -232,7 +232,7 @@ export function useBetResults() {
     queryKey: ['bet_results', user?.id],
     queryFn: async () => {
       if (!user) return [] as any[];
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('bet_results')
         .select('*')
         .eq('user_id', user.id)
