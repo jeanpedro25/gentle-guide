@@ -78,7 +78,7 @@ export function usePredictionByFixture(fixtureId: number | undefined) {
     queryKey: ['predictions', 'fixture', fixtureId, user?.id],
     queryFn: async () => {
       if (!fixtureId || !user) return null;
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('predictions')
         .select('*')
         .eq('fixture_id', fixtureId)

@@ -186,7 +186,7 @@ export function useResolveBet() {
           const totalReturn = Number(bet.stake) + Number(bet.potential_profit);
           const newAmount = bankInfo.amount + totalReturn;
           
-          await supabase
+          await (supabase as any)
             .from('bankroll')
             .update({ amount: newAmount, updated_at: new Date().toISOString() })
             .eq(bankInfo.key, user.id);
