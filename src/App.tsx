@@ -18,6 +18,7 @@ import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
 import DebugApiPage from "./pages/DebugApiPage";
 import AdminPage from "./pages/AdminPage";
+import XauusdDashboard from "./pages/XauusdDashboard";
 import { LeagueFilterLayout } from "@/components/oracle/LeagueFilterLayout";
 
 clearFootballCache();
@@ -58,6 +59,7 @@ const AppRoutes = () => {
         <Route path="/jogueagora" element={<Navigate to="/jogar" replace />} />
         <Route path="/jogar" element={<JogueAgoraPage />} />
         <Route path="/banca" element={<BankrollPage />} />
+        <Route path="/xauusd" element={<XauusdDashboard />} />
         <Route path="/perfil" element={<ProfilePage />} />
         <Route path="/historico" element={<HistoryPage />} />
         <Route path="/admin-master" element={<AdminPage />} />
