@@ -36,12 +36,12 @@ serve(async (req) => {
   }
 });
 
-function getApiKey(): string {
-  const key =
-    (Deno.env.get("FOOTBALL_API_KEY") || "").trim() ||
-    (Deno.env.get("ODDS_API_KEY") || "").trim() ||
-    FALLBACK_KEY;
-  return key;
+function getApiKeys(): string[] {
+  return [
+    (Deno.env.get("FOOTBALL_API_KEY") || "").trim(),
+    (Deno.env.get("ODDS_API_KEY") || "").trim(),
+    FALLBACK_KEY,
+  ].filter((k, i, all) => Boolean(k) && all.indexOf(k) === i);
 }
 
 // Map odds-api.io status → API-Football short/long status
