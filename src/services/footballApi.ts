@@ -40,36 +40,7 @@ async function rawApiFootballFetch<T = unknown>(
   endpoint: string,
   params?: Record<string, string>
 ): Promise<ApiFootballResponse<T>> {
-  console.log('[Oracle] API-Football →', endpoint, params || '');
-
-  // Tenta busca direta primeiro (Bypass Proxy) para garantir funcionamento imediato no localhost
-  try {
-    const apiKey = import.meta.env.VITE_FOOTBALL_API_KEY || '7705af77ba8bb13fb97e0a4878c93dc0';
-    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
-    const queryParams = new URLSearchParams(params || {});
-    const url = `https://v3.football.api-sports.io/${cleanEndpoint}?${queryParams.toString()}`;
-
-    const res = await fetch(url, {
-      method: "GET",
-      headers: {
-        "x-apisports-key": apiKey,
-      },
-    });
-
-    if (res.ok) {
-      const directData = await res.json();
-      const directErrors = directData?.errors;
-      const hasDirectErrors = directErrors && (Array.isArray(directErrors) ? directErrors.length > 0 : Object.keys(directErrors).length > 0);
-      
-      if (!hasDirectErrors) {
-        console.log('[Oracle] ✅ Direct API fetch success (Bypassing proxy)');
-        return directData as ApiFootballResponse<T>;
-      }
-      console.warn('[Oracle] Direct fetch returned API errors, trying proxy...', directErrors);
-    }
-  } catch (directErr) {
-    console.warn('[Oracle] Direct fetch error (CORS?), falling back to proxy...', directErr);
-  }
+  console.log('[Oracle] odds-api.io →', endpoint, params || '');
 
   const { data, error } = await supabase.functions.invoke('football-proxy', {
     body: { endpoint, params },
