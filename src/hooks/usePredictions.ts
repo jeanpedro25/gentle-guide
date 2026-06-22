@@ -96,7 +96,7 @@ export function useSavePrediction() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: async (prediction: Omit<PredictionRow, 'id' | 'created_at'>) => {
+    mutationFn: async (prediction: Omit<PredictionRow, 'id' | 'created_at' | 'user_id'>) => {
       if (!user) throw new Error('Usuário não autenticado');
       const { data, error } = await (supabase as any)
         .from('predictions')
