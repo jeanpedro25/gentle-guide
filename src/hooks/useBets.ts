@@ -33,7 +33,7 @@ async function fetchBankroll(userId: string) {
     foundInDb = true;
   } else {
     // Legacy fallback
-    const legacy = await supabase.from('bankroll').select('amount').eq('id', userId).maybeSingle();
+    const legacy = await (supabase as any).from('bankroll').select('amount').eq('id', userId).maybeSingle();
     if (!legacy.error && legacy.data) {
       dbAmount = Number(legacy.data.amount);
       key = 'id';
@@ -270,7 +270,7 @@ export function useUpdateBetManual() {
 
       const newAmount = bankInfo.amount + delta;
 
-      await supabase
+      await (supabase as any)
         .from('bankroll')
         .update({ amount: newAmount, updated_at: new Date().toISOString() })
         .eq(bankInfo.key, user.id);
