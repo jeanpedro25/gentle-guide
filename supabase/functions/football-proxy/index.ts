@@ -136,24 +136,34 @@ async function handleFixturesRequest(body: {
   params?: Record<string, string>;
   path?: string;
 }): Promise<Response> {
-  const apiKey = getApiKey();
+  const apiKeys = getApiKeys();
   const params = body.params || {};
 
-  const url = `${ODDS_API_URL}/events?sport=football&apiKey=${encodeURIComponent(apiKey)}`;
   console.log(`[football-proxy] odds-api.io → events params:`, params);
 
-  const res = await fetch(url);
-  if (!res.ok) {
-    const text = await res.text();
-    console.error("[football-proxy] odds-api.io error:", res.status, text.slice(0, 200));
+  let events: OddsEvent[] | null = null;
+  let lastStatus = 0;
+
+  for (const apiKey of apiKeys) {
+    const url = `${ODDS_API_URL}/events?sport=football&apiKey=${encodeURIComponent(apiKey)}`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const json = await res.json();
+      events = Array.isArray(json) ? json : [];
+      break;
+    }
+    lastStatus = res.status;
+    console.warn(`[football-proxy] key failed (${res.status}), trying next key...`);
+  }
+
+  if (events === null) {
+    console.error("[football-proxy] all odds-api.io keys failed:", lastStatus);
     return new Response(
-      JSON.stringify({ errors: [`odds-api.io ${res.status}`], results: 0, response: [] }),
+      JSON.stringify({ errors: [`odds-api.io ${lastStatus}`], results: 0, response: [] }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
-  let events: OddsEvent[] = await res.json();
-  if (!Array.isArray(events)) events = [];
 
   // ── Filter according to API-Football style params ──
   if (params.id) {
